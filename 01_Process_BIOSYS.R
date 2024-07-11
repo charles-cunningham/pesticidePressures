@@ -1,7 +1,6 @@
 # HEADER -----------------------------------------------------------------------
 #
 # Author: Charles Cunningham
-# Email: charles.cunningham@defra.gov.uk
 # 
 # Script Name: Process BIOSYS data
 #
