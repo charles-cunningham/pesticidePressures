@@ -2,10 +2,11 @@
 #
 # Author: Charles Cunningham
 # 
-# Script Name: Read in BIOSYS data from online repository
+# Script Name: Read in Biosys data from online repository
 #
-# Script Description: Using the Biosys website, this script reads in the seperate files that comprise the Biosys dataset. 
-# It unzips them, and combines them into a single file, removing duplicated columns.
+# Script Description: Using the Biosys website, this script reads in the separate
+# files that comprise the Biosys dataset. It unzips them, and combines them into
+# a single file, removing duplicated columns.
 
 ### LOAD LIBRARIES -------------------------------------------------------------
 
@@ -17,7 +18,7 @@ library(tidyverse)
 # Set data directory
 # If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Raw/Species"
 # If working locally: "../Data/Raw/Species"
-dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/"
+dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Species_data/Biosys/"
 
 # Create directory if it doesn't exist
 if (!file.exists(dataDir)) {
@@ -26,13 +27,11 @@ if (!file.exists(dataDir)) {
 
 ### DOWNLOAD BIOSYS DATA -------------------------------------------------------
 
-# Dataset documentation available here:
-# https://www.data.gov.uk/dataset/3faf10d7-04bc-49e0-8377-61f75186d21d/freshwater-river-macroinvertebrate-surveys-biosys
-
 # Bulk downloads for entire dataset here:
 # https://environment.data.gov.uk/ecology/explorer/downloads/
 
-### DOWNLOAD TAXON INFO DATA FROM DATA.GOV.UK SITE
+# Dataset documentation available here:
+# https://www.data.gov.uk/dataset/3faf10d7-04bc-49e0-8377-61f75186d21d/freshwater-river-macroinvertebrate-surveys-biosys
 
 # SURVEY DATA
 
@@ -49,11 +48,6 @@ download.file(url = url, destfile = paste0(dataDir, file_name, ".zip"), sep = ""
 # "INV_OPEN_DATA_SITE.csv", "INV_OPEN_DATA_TAXA.csv")
 unzip(paste0(dataDir, "/", file_name, ".zip"), exdir = dataDir)
 
-# Delete .zip files as no longer needed
-unlink(paste0(dataDir,
-              c("TaxonInfo.zip",
-                "SurveyData.zip")))
-
 # TAXON INFO
 
 # Set download url
@@ -67,6 +61,11 @@ download.file(url = url, destfile = paste0(dataDir, file_name, ".zip"), sep = ""
 
 # Unzip (file name = "OPEN_DATA_TAXON_INFO.csv")
 unzip(paste0(dataDir, "/", file_name, ".zip"), exdir = dataDir)
+
+# Delete .zip files as no longer needed
+unlink(paste0(dataDir,
+              c("TaxonInfo.zip",
+                "SurveyData.zip")))
 
 ### READ IN BIOSYS DATA --------------------------------------------------------
 
