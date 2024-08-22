@@ -2,10 +2,10 @@
 #
 # Author: Charles Cunningham
 # 
-# Script Name: Process BIOSYS data
+# Script Name: Read in BIOSYS data from online repository
 #
-# Script Description:
-#
+# Script Description: Using the Biosys website, this script reads in the seperate files that comprise the Biosys dataset. 
+# It unzips them, and combines them into a single file, removing duplicated columns.
 
 ### LOAD LIBRARIES -------------------------------------------------------------
 
@@ -15,7 +15,7 @@ library(tidyverse)
 ### DATA MANAGEMENT ------------------------------------------------------------
 
 # Set data directory
-# If working on DASH: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Raw/Species"
+# If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Raw/Species"
 # If working locally: "../Data/Raw/Species"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/"
 
@@ -76,11 +76,42 @@ invSite <- read.csv(paste0(dataDir, "INV_OPEN_DATA_SITE.csv"))
 invTaxa <- read.csv(paste0(dataDir, "INV_OPEN_DATA_TAXA.csv"))
 taxonInfo <- read.csv(paste0(dataDir, "OPEN_DATA_TAXON_INFO.csv"))
 
+# !!! Add in this step while error in INV_OPEN_DATA_SITE.csv is fixed
+# (duplicated SITE_ID)
+invSite <- invSite %>%
+  group_by(SITE_ID) %>%
+  slice_head(n = 1) %>%
+  ungroup
+
 # Join files together
-# N.B. Based on dataset documentation, the following can be used to join:
+# N.B. Based on dataset documentation, these relationships can be used to join:
 # INV_OPEN_DATA_SITE.SITE_ID = INV_OPEN_DATA_METRICS.SITE_ID
 # INV_OPEN_DATA_METRICS.ANALYSIS_ID = INV_OPEN_DATA_TAXA.ANALYSIS_ID
 # OPEN_DATA_TAXON_INFO.TAXON_LIST_ITEM_KEY = INV_OPEN_DATA_TAXA.TAXON_LIST_ITEM_KEY
 
-#test <- left_join(invMetrics, invSite, by = "SITE_ID")
+invData <- 
+  inner_join(invSite,
+             invMetrics,
+             # Use relationships above
+             by = "SITE_ID", 
+             # If duplicate columns, add ".y" to second duplicate
+             suffix=c("",".y")) %>% 
+  inner_join(.,
+             invTaxa,
+             by = "ANALYSIS_ID",
+             suffix=c("",".y")) %>%
+  inner_join(.,
+             taxonInfo,
+             by = "TAXON_LIST_ITEM_KEY",
+             suffix=c("",".y")) %>%
+  # Remove all colums with ".y" at end, i.e. duplicate columns
+  select(-ends_with(".y")) 
 
+# Remove large files no longer needed
+rm(invMetrics, invSite, invTaxa, taxonInfo)
+gc()
+
+### SAVE BIOSYS DATA --------------------------------------------------------
+
+# Save file
+saveRDS(invData, file = paste0(dataDir, "invData.Rds"))
