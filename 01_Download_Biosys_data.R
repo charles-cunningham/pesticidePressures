@@ -16,9 +16,9 @@ library(tidyverse)
 ### DATA MANAGEMENT ------------------------------------------------------------
 
 # Set data directory
-# If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Raw/Species_data/Biosys/"
-# If working locally: "../Data/Raw/Species_data/Biosys/"
-dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Raw/Species_data/Biosys/"
+# If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/Raw/Biosys/"
+# If working locally: "../Data/Raw/Biosys/"
+dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/Raw/Biosys/"
 
 # Create directory if it doesn't exist
 if (!file.exists(dataDir)) {
