@@ -89,14 +89,14 @@ invSite <- invSite %>%
 # OPEN_DATA_TAXON_INFO.TAXON_LIST_ITEM_KEY = INV_OPEN_DATA_TAXA.TAXON_LIST_ITEM_KEY
 
 invData <- 
-  inner_join(invSite,
-             invMetrics,
+  inner_join(invMetrics,
+             invSite,
              # Use relationships above
              by = "SITE_ID", 
              # If duplicate columns, add ".y" to second duplicate
              suffix=c("",".y")) %>% 
-  inner_join(.,
-             invTaxa,
+  inner_join(invTaxa,
+             .,
              by = "ANALYSIS_ID",
              suffix=c("",".y")) %>%
   inner_join(.,
