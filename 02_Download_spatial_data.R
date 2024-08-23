@@ -61,19 +61,41 @@ unlink(paste0(catchmentDir, "Catchment_data.zip"), recursive = TRUE)
 # Bulk downloads for entire dataset here:
 # https://osdatahub.os.uk/downloads/open/Terrain50
 
+# Set download url
 url <- "https://api.os.uk/downloads/v1/products/Terrain50/downloads?area=GB&format=ASCII+Grid+and+GML+%28Grid%29&redirect"
 
-# Set file name
-file_name <- "CatchmentData"
-
 # Download
-download.file(url = url, destfile = paste0(dataDir, file_name, ".zip"), sep = "")
+download.file(url = url,
+              destfile = paste0(topoDir, "Topographic_data.zip"),
+              sep = "")
 
 # Unzip
-unzip(paste0(dataDir, "/", file_name, ".zip"), exdir = dataDir)
+unzip(paste0(topoDir, "Topographic_data.zip"),
+      exdir = topoDir)
 
 # Delete .zip files as no longer needed
-unlink(paste0(dataDir,
-              "CatchmentData.zip"))
+unlink(paste0(topoDir, "Topographic_data.zip"), recursive = TRUE)
+
+### PROCESS TOPOGRAPHIC DATA ---------------------------------------------------
+
+# List all .zip files
+zipFiles <- list.files(paste0(topoDir, "data"),
+                   full.names = TRUE,
+                   pattern = "\\.zip$",
+                   recursive = TRUE)
+
+# Unzip to new folder
+lapply(zipFiles, unzip, exdir = paste0(topoDir, "dataUnzipped"))
+
+# List all .asc files in unzipped folder
 
 
+# Read and merge these files
+
+
+# Save under topoDir
+
+
+# Unlist dataUnzipped folder
+
+list.files(topoDir)
