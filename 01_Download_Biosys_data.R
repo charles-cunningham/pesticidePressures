@@ -67,7 +67,7 @@ unlink(paste0(dataDir,
               c("TaxonInfo.zip",
                 "SurveyData.zip")))
 
-### READ IN BIOSYS DATA --------------------------------------------------------
+### PROCESS BIOSYS DATA --------------------------------------------------------
 
 # Read in separate files
 invMetrics <- read.csv(paste0(dataDir, "INV_OPEN_DATA_METRICS.csv"))
