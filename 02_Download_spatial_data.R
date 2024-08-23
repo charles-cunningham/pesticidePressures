@@ -2,7 +2,7 @@
 #
 # Author: Charles Cunningham
 # 
-# Script Name: Process EA catchment data
+# Script Name: Read in spatial data
 #
 # Script Description:
 
@@ -15,16 +15,25 @@ library(terra)
 ### DATA MANAGEMENT ------------------------------------------------------------
 
 # Set data directory
-# If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Raw/SpatialData/CatchmentData/"
-# If working locally: "../Data/Raw/Spatial_data/CatchmentData/"
-dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Raw/SpatialData/CatchmentData/"
+# If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Raw/Spatial_data/"
+# If working locally: "../Data/Raw/Spatial_data/"
+dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Raw/Spatial_data/"
 
-# Create directory if it doesn't exist
-if (!file.exists(dataDir)) {
-  dir.create(dataDir, recursive = TRUE)
-}
+# Specify directory for catchment data
+catchmentDir <- paste0(dataDir, "Catchment_data")
 
-### DOWNLOAD CATCHMENT DATA -------------------------------------------------------
+# Specify directory for topgraphic data
+topoDir <- paste0(dataDir, "Topographic_data")
+
+# Create directories if they do not exist
+c(catchmentDir, topoDir) %>%
+  lapply(., function(x) {
+    if (!file.exists(x)) {
+      dir.create(x, recursive = TRUE)
+    }
+  })
+
+### DOWNLOAD CATCHMENT DATA ----------------------------------------------------
 
 # Bulk downloads for entire dataset here:
 # https://environment.data.gov.uk/catchment-planning
@@ -48,6 +57,13 @@ unzip(paste0(dataDir, "/", file_name, ".zip"), exdir = dataDir)
 unlink(paste0(dataDir,
               "CatchmentData.zip"))
 
-test <- vect(paste0(dataDir, "WFD_River_Water_Bodies_Cycle_3.shp"))
+### DOWNLOAD TOPOGRAPHIC DATA --------------------------------------------------
 
-plot(test)
+
+
+
+
+
+
+
+
