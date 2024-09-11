@@ -11,6 +11,7 @@
 # Load packages
 library(tidyverse)
 library(terra)
+library(sf)
 
 ### DATA MANAGEMENT ------------------------------------------------------------
 
@@ -19,25 +20,42 @@ library(terra)
 # If working locally: "../Data/Raw/"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/Raw/"
 
+# Specify directory for surface flow data
+flowDir <- paste0(dataDir, "Flow_data/")
 # Specify directory for catchment data
 catchmentDir <- paste0(dataDir, "Catchment_data/")
-
 # Specify directory for national boundaries data
 countryDir <- paste0(dataDir, "Country_data/")
-
+# Specify directory for land cover data
+landDir <-  paste0(dataDir, "Land_cover_data/")
+# Specify directory for pesticide data
+pestDir <-  paste0(dataDir, "Pesticide_data/")
+# Specify directory for farming archetype data
+farmDir <-  paste0(dataDir, "Farm_archetype_data/")
 # Specify directory for topographic data
 topoDir <- paste0(dataDir, "Topographic_data/")
 
-# Specify directory for surface flow data
-flowDir <- paste0(dataDir, "Flow_data/")
-
 # Create directories if they do not exist
-c(catchmentDir, countryDir, topoDir, flowDir) %>%
+c(flowDir,
+  catchmentDir,
+  countryDir,
+  landDir,
+  pestDir,
+  farmDir,
+  topoDir) %>%
   lapply(., function(x) {
     if (!file.exists(x)) {
       dir.create(x, recursive = TRUE)
     }
   })
+
+### DOWNLOAD FLOW DATA ---------------------------------------------------------
+
+# This must be requested by raising a support ticket with Defra Data Services
+# https://environment.data.gov.uk/explore/36e7f4d3-61b2-4e64-aaa2-2b85bceb61a9?download=true
+
+# Dataset documentation available:
+# https://www.data.gov.uk/dataset/c9dd994d-9649-4041-96d4-cdc0f1a53152/overland-flow-pathways
 
 ### DOWNLOAD CATCHMENT DATA ----------------------------------------------------
 
@@ -88,9 +106,12 @@ boundaryUK <- paste0(countryDir,
 # Filter to England only
 boundaryEngland <- boundaryUK[boundaryUK$CTRY23NM == "England",]
 
-# Save to England folder (forced to use .kml to to Databricks)
+# Project to British National Grid
+boundaryEngland <- project(boundaryEngland, "EPSG:27700")
+
+# Save to England folder
 writeVector(boundaryEngland,
-            filename = paste0(countryDir, "England.kml"),
+            filename = paste0(countryDir, "England.shp"),
             overwrite = TRUE)
 
 # Remove files and directories no longer needed
@@ -114,12 +135,15 @@ for (i in 1:NROW(boundaries)) {
   # Download country boundary
   boundary <- geodata::gadm(country = GADMcode, level = 0,
                             path = countryDir)
+  
+  # Project to British National Grid
+  boundary <- project(boundary, "EPSG:27700")
 
   # Save country as vector
   writeVector(boundary,
               filename = paste0(countryDir,
                                 country,
-                                ".kml"),
+                                ".shp"),
               overwrite = TRUE)
   
   # Unlink gadm file
@@ -127,6 +151,28 @@ for (i in 1:NROW(boundaries)) {
                 "/gadm"),
          recursive = TRUE)
 }
+
+### DOWNLOAD LAND COVER DATA ---------------------------------------------------
+
+# Information on data here:
+# https://catalogue.ceh.ac.uk/documents/bb15e200-9349-403c-bda9-b430093807c7
+
+# This must be ordered through the EIDC data request:
+# https://order-eidc.ceh.ac.uk/resources/7RDVVS3B/order
+
+### DOWNLOAD PESTICIDE DATA ----------------------------------------------------
+
+# Information on data here:
+# https://www.ceh.ac.uk/data/ukceh-land-cover-plus-fertilisers-and-pesticides
+
+# This must be ordered through the EIDC data request:
+# https://www.ceh.ac.uk/data-request-form
+
+
+### DOWNLOAD FARMING ARCHETYPE DATA --------------------------------------------
+
+
+
 
 ### DOWNLOAD TOPOGRAPHIC DATA --------------------------------------------------
 
@@ -181,13 +227,3 @@ writeRaster(topoGB_R,
 # Delete dataUnzipped folder, and remove redundant objects
 unlink(paste0(topoDir, "dataUnzipped"), recursive = TRUE)
 rm(topoGB_list, topoGB_R)
-
-### DOWNLOAD FLOW DATA ---------------------------------------------------------
-
-# Bulk downloads for entire dataset here:
-...
-
-
-
-
-
