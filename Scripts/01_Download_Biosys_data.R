@@ -75,13 +75,6 @@ invSite <- read.csv(paste0(dataDir, "INV_OPEN_DATA_SITE.csv"))
 invTaxa <- read.csv(paste0(dataDir, "INV_OPEN_DATA_TAXA.csv"))
 taxonInfo <- read.csv(paste0(dataDir, "OPEN_DATA_TAXON_INFO.csv"))
 
-# !!! Add in this step while error in INV_OPEN_DATA_SITE.csv is fixed
-# (duplicated SITE_ID)
-invSite <- invSite %>%
-  group_by(SITE_ID) %>%
-  slice_head(n = 1) %>%
-  ungroup
-
 # Join files together
 # N.B. Based on dataset documentation, these relationships can be used to join:
 # INV_OPEN_DATA_SITE.SITE_ID = INV_OPEN_DATA_METRICS.SITE_ID
