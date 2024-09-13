@@ -57,6 +57,11 @@ c(flowDir,
 # Dataset documentation available:
 # https://www.data.gov.uk/dataset/c9dd994d-9649-4041-96d4-cdc0f1a53152/overland-flow-pathways
 
+# Once downloaded:
+# (i) .gpkg file is unzipped, then
+# (ii) file is renamed 'Flow_data.gpkg', then 
+# (iii) file is moved to flowDir
+
 ### DOWNLOAD CATCHMENT DATA ----------------------------------------------------
 
 # Bulk downloads for entire dataset here:
@@ -110,8 +115,8 @@ boundaryEngland <- boundaryUK[boundaryUK$CTRY23NM == "England",]
 boundaryEngland <- project(boundaryEngland, "EPSG:27700")
 
 # Save to England folder
-writeVector(boundaryEngland,
-            filename = paste0(countryDir, "England.shp"),
+saveRDS(boundaryEngland,
+            filename = paste0(countryDir, "England.Rds"),
             overwrite = TRUE)
 
 # Remove files and directories no longer needed
@@ -140,11 +145,11 @@ for (i in 1:NROW(boundaries)) {
   boundary <- project(boundary, "EPSG:27700")
 
   # Save country as vector
-  writeVector(boundary,
-              filename = paste0(countryDir,
-                                country,
-                                ".shp"),
-              overwrite = TRUE)
+  saveRDS(boundary,
+          filename = paste0(countryDir,
+                            country,
+                            ".Rds"),
+          overwrite = TRUE)
   
   # Unlink gadm file
   unlink(paste0(countryDir,
