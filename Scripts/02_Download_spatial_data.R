@@ -11,7 +11,6 @@
 # Load packages
 library(tidyverse)
 library(terra)
-library(sf)
 
 ### DATA MANAGEMENT ------------------------------------------------------------
 
@@ -30,6 +29,8 @@ countryDir <- paste0(dataDir, "Country_data/")
 landDir <-  paste0(dataDir, "Land_cover_data/")
 # Specify directory for pesticide data
 pestDir <-  paste0(dataDir, "Pesticide_data/")
+# Specify directory for fertiliser data
+fertDir <-  paste0(dataDir, "Fertiliser_data/")
 # Specify directory for farming archetype data
 farmDir <-  paste0(dataDir, "Farm_archetype_data/")
 # Specify directory for topographic data
@@ -41,6 +42,7 @@ c(flowDir,
   countryDir,
   landDir,
   pestDir,
+  fertDir,
   farmDir,
   topoDir) %>%
   lapply(., function(x) {
@@ -49,7 +51,7 @@ c(flowDir,
     }
   })
 
-### DOWNLOAD FLOW DATA ---------------------------------------------------------
+### DOWNLOAD FLOW DATA [MANUAL] ------------------------------------------------
 
 # This must be requested by raising a support ticket with Defra Data Services
 # https://environment.data.gov.uk/explore/36e7f4d3-61b2-4e64-aaa2-2b85bceb61a9?download=true
@@ -60,9 +62,9 @@ c(flowDir,
 # Once downloaded:
 # (i) .gpkg file is unzipped, then
 # (ii) file is renamed 'Flow_data.gpkg', then 
-# (iii) file is moved to flowDir
+# (iii) file is moved to flowDir [>file.copy("../Flow_data.gpkg", flowDir)]
 
-### DOWNLOAD CATCHMENT DATA ----------------------------------------------------
+### DOWNLOAD CATCHMENT DATA [AUTOMATED] ----------------------------------------
 
 # Bulk downloads for entire dataset here:
 # https://environment.data.gov.uk/catchment-planning
@@ -85,7 +87,7 @@ unzip(paste0(catchmentDir, "Catchment_data.zip"),
 # Delete .zip files as no longer needed
 unlink(paste0(catchmentDir, "Catchment_data.zip"), recursive = TRUE)
 
-### DOWNLOAD AND PROCESS ENGLAND BOUNDARY FOR ANALYSIS -------------------------
+### DOWNLOAD AND PROCESS ENGLAND BOUNDARY FOR ANALYSIS [AUTOMATED] -------------
 
 # Information on data here:
 # https://www.data.gov.uk/dataset/fac1d8f9-e8ab-47ac-b37a-5640a29634f9/countries-december-2023-boundaries-uk-bsc
@@ -116,14 +118,13 @@ boundaryEngland <- project(boundaryEngland, "EPSG:27700")
 
 # Save to England folder
 saveRDS(boundaryEngland,
-            filename = paste0(countryDir, "England.Rds"),
-            overwrite = TRUE)
+            file = paste0(countryDir, "England.Rds"))
 
 # Remove files and directories no longer needed
 unlink(paste0(countryDir, "England.zip"), recursive = TRUE)
 unlink(paste0(countryDir, "EnglandUnzip"), recursive = TRUE)
 
-### DOWNLOAD OTHER BOUNDARIES FOR PLOTTING -------------------------------------
+### DOWNLOAD OTHER BOUNDARIES FOR PLOTTING [AUTOMATED] -------------------------
 # N.B. Download all British isles for plotting (UK, Ireland, and Isle of Man)
 
 # Create data frame with name of country, and GADM code
@@ -146,18 +147,14 @@ for (i in 1:NROW(boundaries)) {
 
   # Save country as vector
   saveRDS(boundary,
-          filename = paste0(countryDir,
-                            country,
-                            ".Rds"),
-          overwrite = TRUE)
+          file = paste0(countryDir, country, ".Rds"))
   
   # Unlink gadm file
-  unlink(paste0(countryDir,
-                "/gadm"),
+  unlink(paste0(countryDir, "/gadm"),
          recursive = TRUE)
 }
 
-### DOWNLOAD LAND COVER DATA ---------------------------------------------------
+### DOWNLOAD LAND COVER DATA [MANUAL] ------------------------------------------
 
 # Information on data here:
 # https://catalogue.ceh.ac.uk/documents/bb15e200-9349-403c-bda9-b430093807c7
@@ -165,7 +162,12 @@ for (i in 1:NROW(boundaries)) {
 # This must be ordered through the EIDC data request:
 # https://order-eidc.ceh.ac.uk/resources/7RDVVS3B/order
 
-### DOWNLOAD PESTICIDE DATA ----------------------------------------------------
+# Once downloaded:
+# (i) .gpkg file is unzipped, then
+# (ii) file is renamed 'Flow_data.gpkg', then 
+# (iii) file is moved to flowDir [>file.copy("../Flow_data.gpkg", flowDir)]
+
+### DOWNLOAD PESTICIDE AND FERTILISER DATA [MANUAL] ----------------------------
 
 # Information on data here:
 # https://www.ceh.ac.uk/data/ukceh-land-cover-plus-fertilisers-and-pesticides
@@ -173,13 +175,22 @@ for (i in 1:NROW(boundaries)) {
 # This must be ordered through the EIDC data request:
 # https://www.ceh.ac.uk/data-request-form
 
+# Once downloaded:
+# (i) .gpkg file is unzipped, then
+# (ii) file is renamed 'Flow_data.gpkg', then 
+# (iii) file is moved to flowDir [>file.copy("../Flow_data.gpkg", flowDir)]
 
-### DOWNLOAD FARMING ARCHETYPE DATA --------------------------------------------
 
 
 
 
-### DOWNLOAD TOPOGRAPHIC DATA --------------------------------------------------
+
+### DOWNLOAD FARMING ARCHETYPE DATA [MANUAL] -----------------------------------
+
+
+
+
+### DOWNLOAD TOPOGRAPHIC DATA [AUTOMATED] --------------------------------------
 
 # Bulk downloads for entire dataset here:
 # https://osdatahub.os.uk/downloads/open/Terrain50
