@@ -257,6 +257,9 @@ writeRaster(topoGB_R,
             overwrite = TRUE)
 
 # Delete data and dataUnzipped folder, and remove redundant objects
+# For unknown reason need to run unlink x3 (too many files or sub-directories?)
 unlink(paste0(topoDir, "data"), recursive = TRUE)
+unlink(paste0(topoDir, "data"), recursive = TRUE)
+unlink(paste0(topoDir, "dataUnzipped"), recursive = TRUE)
 unlink(paste0(topoDir, "dataUnzipped"), recursive = TRUE)
 rm(topoGB_list, topoGB_R)
