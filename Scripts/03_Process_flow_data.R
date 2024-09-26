@@ -158,95 +158,50 @@ ggplot(st_as_sf(test)) +
 
 
 
-testData <- flowData[flowData$ea_wb_id == "GB105033043250",] 
+testData <- flowData[flowData$ea_wb_id == "GB105033043250",]
 
 ggplot(st_as_sf(testData)) +
   geom_sf(aes(colour = endz)) +
   theme_void()
 
-#########
 
-# Find network (inlcude 10m buffer to not miss any spatial errors)
-riverNetwork <- st_touches(testData, remove_self = TRUE, dist = 10)
+# Find network
+riverNetwork <- st_touches(testData)
 
-for(i in 1:NROW(testData)) {
-
-iSegments <- iNetwork <- i
-
-isHigher = TRUE
-
-while (is.numeric(iSegments)) {
-  
-  newSegments <- NULL
-
-  for (j in iSegments) {
- 
-    iSegmentsTouches <- riverNetwork[j][[1]]
-    
-    isHigher <- (testData$startz[iSegmentsTouches] >= testData$startz[j]-10) |
-      (testData$endz[iSegmentsTouches] >= testData$endz[j]-10)
-                   
-    if(any(isHigher)) {
-
-      higherSegments <- iSegmentsTouches[isHigher]
-      
-      newSegments <- setdiff(higherSegments, iNetwork)
-      
-      iNetwork <- c(iNetwork, higherSegments) %>% unique
-      
-    }
-    
-  }
-  ## assign iSegments here
-  iSegments <- newSegments
-  
-}
-
-print(iNetwork)
-#test
-testData[i, "test"] <- any(testData$startz[iNetwork] > 80 )
-
-}
-
-
-########
 for(i in 1:NROW(testData)) {
   
   iSegments <- iNetwork <- i
   
-  higherSegments <- which(testData$startz >= testData$startz[i])
+  higherSegments <- which(testData$maxflowacc <= testData$maxflowacc[i] |
+                            testData$startz <= testData$endz[i])
   
   higherNetwork <- riverNetwork[higherSegments]
   names(higherNetwork) <- higherSegments
   
   while (is.numeric(iSegments)) {
-    
-    countSegments <- NULL
+
+    allNewSegments <- NULL
     
     for (j in iSegments) {
- 
-      iSegmentsTouches <- higherNetwork[as.character(j)][[1]]
+
+      jSegmentsTouches <- higherNetwork[as.character(j)][[1]]
       
-      newSegments <- setdiff(iSegmentsTouches, iNetwork)
+      jNewSegments <- setdiff(jSegmentsTouches, iNetwork)
       
-      iNetwork <- c(iNetwork, newSegments)
-      
-      countSegments <- c(countSegments, newSegments)
+      allNewSegments <- c(allNewSegments, jNewSegments)
       
       }
       
+    iNetwork <- c(iNetwork, allNewSegments)
+    
     ## assign iSegments here
-    iSegments <- setdiff(countSegments, iSegments)
+    iSegments <- setdiff(allNewSegments, iSegments)
     
   }
   
-  print(iNetwork)
-  #test
-  testData[i, "test"] <- any(testData$startz[iNetwork] > 80 )
+  testData[i, "test"] <- any(testData$startz[iNetwork] > 70 )
   
 }
-
-
 
 
 
@@ -258,3 +213,4 @@ ggplot(st_as_sf(testData[iNetwork,])) +
   theme_void()
 
 saveRDS(testData, "test.Rds")
+
