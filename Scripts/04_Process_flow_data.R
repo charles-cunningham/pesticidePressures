@@ -21,13 +21,13 @@ library(sf)
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 
 # Create processed data folder
-lapply(paste0(dataDir, "/Processed/Catchments"), function(x) {
+lapply(paste0(dataDir, "/Processed/Flow"), function(x) {
   if (!file.exists(x)) {
     dir.create(x, recursive = TRUE)
   }
 })
 
-### FILTER AND SEPARATE FLOW AND CATCHMENT DATA --------------------------------
+### FILTER AND SEPARATE FLOW DATA ----------------------------------------------
 
 # FLOW DATA
 
@@ -48,86 +48,13 @@ flowData <- flowData %>%
 
 # Save
 saveRDS(flowData,
-        file = paste0(dataDir, "/Processed/Catchments/Flow_data_only.Rds"))
+        file = paste0(dataDir, "/Processed/Flow/Flow_data_only.Rds"))
 
 # Remove objects and clear memory
 rm(flowData)
 gc()
 
-# CATCHMENT DATA
-
-# Read in catchment data from geopackage, with query that selects:
-# columns needed, only River water catchment type, and only segments with 1km
-# flow accumulation or greater
-catchmentData <- read_sf(dsn = paste0(dataDir, "Raw/Flow_data/Flow_data.gpkg"),
-                         query = "
-                         SELECT *
-                         FROM ea_detailed_watersheds
-                         WHERE watercat = 'River'
-                         AND country = 'England'
-                         ")
-
-# Drop columns not needed
-catchmentData <- catchmentData %>%
-  select (!c(country, watercat, shape_length, shape_area))
-
-# Save
-saveRDS(catchmentData,
-        file = paste0(dataDir,
-                      "/Processed/Catchments/Catchment_data_only.Rds"))
-
-# Remove objects and clear memory
-rm(catchmentData)
-gc()
-
-# EXTRACT FERTILISER AND PESTICIDE DATA TO CATCHMENTS --------------------------  
-
-### READ IN CATCHMENT DATA
-
-# Read catchment .Rds
-catchmentData <- readRDS(paste0(dataDir,
-                                "/Processed/Catchments/Catchment_data_only.Rds"))
-
-### READ IN FERTILSIER DATA
-
-# List files (each contains two layers - (1) data layer, (2) uncertainty layer)
-fertFiles <- list.files(paste0(dataDir, "Raw/Fertiliser_data/data"),
-                        full.names = TRUE)
-
-# Extract the data layer from each file
-fertData <- lapply(fertFiles, function(x) { 
-  
-  # Create spatRaster from first file...
-  rast(x, lyrs = 1)
-  
-  # ... and combine together
-}) %>% rast
-
-# Change layer names to remove "uncertainty"
-names(fertData) <- gsub("_prediction_uncertainty_1", "", names(fertData) )
-
-### CALCULATE PER CATCHMENT FERTILISER APPLICATION
-
-#### filter for testing!!!!!!!!!!!!!!!!!
-catchmentData <- catchmentData %>%
-  filter(wbname == "Heacham River" )
-###!!!!!!
-
-# Weighted sum (missing data is treated as 0)
-# N.B. Since each 1x1km data square value is estimated amount applied per 1x1km,
-# a weighted sum extract function over each catchment results in estimated 
-# amount applied within that catchment
-catchmentFert <- extract(fertData, catchmentData, exact = TRUE, fun = sum,
-                         na.rm = TRUE, ID = FALSE, bind = TRUE)
-
-# Save
-saveRDS(catchmentFert,
-        file = paste0(dataDir,
-                      "/Processed/Catchments/Catchment_fertiliser.Rds"))
-
-
-
-# FILTER WATERCOURSES
+# FILTER WATERCOURSES ----------------------------------------------------------
 
 # Read in flow data
 flowData <- readRDS(file = paste0(dataDir, "/Processed/Catchments/Flow_data_only.Rds"))
