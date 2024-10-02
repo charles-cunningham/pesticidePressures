@@ -20,12 +20,29 @@ library(sf)
 # If working locally: "../Data/"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 
-# Create processed data folder
-lapply(paste0(dataDir, "/Processed/Flow"), function(x) {
+# Create processed flow data folder
+lapply(paste0(dataDir, "Processed/Flow"), function(x) {
   if (!file.exists(x)) {
     dir.create(x, recursive = TRUE)
   }
 })
+
+# Read England spatVector
+england <- readRDS(paste0(dataDir,
+                          "Raw/Country_data/England.Rds"))
+
+# Convert England to sf object for later processing
+england <- england %>%
+  st_as_sf %>%
+  st_transform(., "EPSG:27700")
+
+# Read catchment fertiliser data
+catchmentFert <- readRDS(paste0(dataDir,
+                                "/Processed/Catchments/Catchment_fertiliser.Rds"))
+
+# Read catchment pesticide data
+# catchmentPest <- readRDS(paste0(dataDir,
+#                                 "/Processed/Catchments/Catchment_pesticides.Rds"))
 
 ### FILTER AND SEPARATE FLOW DATA ----------------------------------------------
 
@@ -54,90 +71,150 @@ saveRDS(flowData,
 rm(flowData)
 gc()
 
-# FILTER WATERCOURSES ----------------------------------------------------------
+# SET FLOW AND BASIN DATA ------------------------------------------------------
 
 # Read in flow data
-flowData <- readRDS(file = paste0(dataDir, "/Processed/Catchments/Flow_data_only.Rds"))
+flowData <- readRDS(file = paste0(dataDir, "/Processed/Flow/Flow_data_only.Rds"))
 
-# Filter river basic districts entirely in England
-# (no need to do complex river network filtering on these to speed up)
-flowData$rbdAllEngland <- flowData$rbd %in% c("Anglian",
-                                              "Humber",
-                                              "North West",
-                                              "South East",
-                                              "South West",
-                                              "Thames")
+# Set river basin districts
+basins <- flowData$rbd %>% unique
 
+# Set basins entirely within England
+allEnglishBasins <- c("Anglian",
+                      "Humber",
+                      "North West",
+                      "South East",
+                      "South West",
+                      "Thames")
 
-flowData[flowData$rbdAllEngland == FALSE,]
+# Add column indicating whether upsteam network is entirely within England 
+flowData$withinEngland <- if_else(flowData$rbd %in% allEnglishBasins,
+                                  "Yes",
+                                  NA)
 
+# EXTRACT CATCHMENT DATA TO CATCHMENTS -----------------------------------------
 
-ggplot(st_as_sf(test)) +
-  geom_sf(aes(fill = test$fertiliser_k)) +
-  theme_void()
+###!!!###
+#testing#
+###!!!###
+testData <- flowData[flowData$opcatch == "Derwent",]
+###!!!###
+#testing#
+###!!!###
 
+### SET UP BASIN LOOP
 
-
-# extract fertiliser data onto catchments as a test
-# crop to England larger catchments only, i.e. no part of a river should come from wales or scotland
-# for each river segment, extract catchment data
-
-
-
-
-testData <- flowData[flowData$ea_wb_id == "GB105033043250",]
-
-ggplot(st_as_sf(testData)) +
-  geom_sf(aes(colour = endz)) +
-  theme_void()
-
-
-# Find network
-riverNetwork <- st_touches(testData)
-
-for(i in 1:NROW(testData)) {
+# Loop through each basic separately to speed up
+for(basin in "North West") { # for(i in basins) {
   
-  iSegments <- iNetwork <- i
+  # Subset to river basin
+  basinFlow <- testData[testData$rbd == basin,] #~! change
+  # basinFlow <- flowData[flowData$rbd == basin,]
   
-  higherSegments <- which(testData$maxflowacc <= testData$maxflowacc[i] |
-                            testData$startz <= testData$endz[i])
+  # Find all intersections between river segments within basin
+  basinNetwork <- st_touches(basinFlow)
   
-  higherNetwork <- riverNetwork[higherSegments]
+### SET UP SEGMENT LOOP AND IDENTIFY SMALLER STREAMS
+  
+  # For each segment in the river basin
+  for(i in 1:NROW(basinFlow)) {
+  
+  # Find all segments with lower or equal to cumulative flow than segment i
+  # (including i)
+  higherSegments <- which(basinFlow$maxflowacc <= basinFlow$maxflowacc[i])
+  
+  # Subset the network to segment i and higherSegments, 
+  higherNetwork <- basinNetwork[higherSegments]
+  
+  # Rename segments to correct number (number is lost on subsetting)
   names(higherNetwork) <- higherSegments
   
+### ESTABLISH CONNECTED UPSTREAM NETWORK ---------------------------------------
+  
+  # Set starting current segment as i; set starting network as i
+  iSegments <- iNetwork <- i
+
+  # While there are still new segments to check, i.e. iSegments is not NULL ...
   while (is.numeric(iSegments)) {
 
+    # Reset new segments to NULL, this will be filled in later 
     allNewSegments <- NULL
     
+    # For every segment j (for first iteration this is 1 but can be >1)
     for (j in iSegments) {
 
+      # Which higher segments is segment j connected to (can be >1)?
       jSegmentsTouches <- higherNetwork[as.character(j)][[1]]
       
+      # Which new segments will be added to the network?
       jNewSegments <- setdiff(jSegmentsTouches, iNetwork)
       
+      # Running tally of new added segments
       allNewSegments <- c(allNewSegments, jNewSegments)
       
       }
       
+    # Add all new segments to the network
     iNetwork <- c(iNetwork, allNewSegments)
     
-    ## assign iSegments here
+    # Assign new segments as iSegments for next iteration
     iSegments <- setdiff(allNewSegments, iSegments)
     
   }
   
-  testData[i, "test"] <- any(testData$startz[iNetwork] > 70 )
+### CHECK IF IN ENGLAND --------------------------------------------------------
+# N.B. The st_interests funtion takes a while for a large stream network,
+# hence prior if statements to reduce number of times this is needed
+  
+  # If entire river basin is not in England (NA), we need to check upstream...
+  if (is.na(basinFlow$withinEngland[i])) {
+    
+    # Check if any upstream segments have already been classified as non-English
+    if(any(basinFlow[inetwork, "withinEngland"] == "No")) {
+      
+      # If so, assign "No"
+      basinFlow$withinEngland[i] <- "No"
+      
+      # Otherwise need to check manually
+      } else {
+        
+        # Do all upstream segments intersect with England polygon?
+        basinFlow$withinEngland[i] <- if_else(
+          st_intersects(basinFlow[inetwork,],
+                        england) %>%
+            as.logical %>%
+            all,
+          "Yes",
+          "No")
+    }
+    
+### EXTRACT FLOW VARIABLES FROM CATCHMENTS -------------------------------------
+  
+  if (basinFlow$withinEngland[i] == TRUE) {
+    
+    
+    extract columns = values
+  
+    } else {
+    
+    extract columns = NA
+  }
+  
   
 }
 
+  
+  # Run function on entire network above segment
+  testData[i, "test"] <- any(testData$startz[iNetwork] > 400 )
 
 
-plot(testData[, "test"])
+  
+  
 
-
-ggplot(st_as_sf(testData[iNetwork,])) +
+ggplot(st_as_sf(testData)) +
   geom_sf(aes(colour = test)) +
   theme_void()
+
 
 saveRDS(testData, "test.Rds")
 
