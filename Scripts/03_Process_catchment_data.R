@@ -2,7 +2,7 @@
 #
 # Author: Charles Cunningham
 # 
-# Script Name: Process catchment scale data
+# Script Name: Process catchment data
 #
 # Script Description:
 
@@ -20,8 +20,8 @@ library(sf)
 # If working locally: "../Data/"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 
-# Create processed data folder
-lapply(paste0(dataDir, "/Processed/Catchments"), function(x) {
+# Create processed catchement data folder
+lapply(paste0(dataDir, "Processed/Catchments"), function(x) {
   if (!file.exists(x)) {
     dir.create(x, recursive = TRUE)
   }
@@ -113,8 +113,14 @@ pestData <- lapply(pestFiles, function(x) {
   # Combine together
   rast
 
+# CONVERT PESTICIDE DATA TO TOTAL PESTICIDE EXPOSURE ---------------------------
+
+# ...
+
 # EXTRACT FERTILISER DATA TO CATCHMENTS ----------------------------------------
 # N.B. Warning: this runs overnight
+# Could be sped up using parallelised for loop for each layer, whereby results
+# are saved to a separate dataframe (bind = FALSE), and joined afterwards
 
 # Weighted sum (missing data is treated as 0)
 # N.B. Since each 1x1km data square value is estimated amount applied per 1x1km,
@@ -128,4 +134,10 @@ saveRDS(catchmentFert,
         file = paste0(dataDir,
                       "/Processed/Catchments/Catchment_fertiliser.Rds"))
 
-# EXTRACT PESTICIDE DATA TO CATCHMENTS ----------------------------------------
+# EXTRACT PESTICIDE DATA TO CATCHMENTS -----------------------------------------
+# N.B. Warning: this runs overnight
+# Could be sped up using parallelised for loop for each layer, whereby results
+# are saved to a separate dataframe (bind = FALSE), and joined afterwards
+
+#...
+
