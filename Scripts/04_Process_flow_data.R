@@ -38,7 +38,11 @@ england <- england %>%
 
 # Read catchment fertiliser data
 catchmentFert <- readRDS(paste0(dataDir,
-                                "/Processed/Catchments/Catchment_fertiliser.Rds"))
+                                "/Processed/Catchments/Catchment_fertiliser.Rds")) %>%
+  st_as_sf
+
+
+fertLayers <- grep("fertiliser", names(catchmentFert), value = TRUE)
 
 # Read catchment pesticide data
 # catchmentPest <- readRDS(paste0(dataDir,
@@ -92,56 +96,73 @@ flowData$withinEngland <- if_else(flowData$rbd %in% allEnglishBasins,
                                   "Yes",
                                   NA)
 
+# Important - sort data from smallest to largest flow to speed up later steps
+flowData <- arrange(flowData, maxflowacc)
+
 # EXTRACT CATCHMENT DATA TO CATCHMENTS -----------------------------------------
 
 ###!!!###
 #testing#
 ###!!!###
-testData <- flowData[flowData$opcatch == "Derwent",]
+#testData <- flowData[flowData$rbd == "Solway Tweed",]
+testData <- flowData[flowData$opcatch == "Esk and Irthing",]
 ###!!!###
 #testing#
 ###!!!###
 
+# start system time
+system.time(
+
 ### SET UP BASIN LOOP
 
-# Loop through each basic separately to speed up
-for(basin in "North West") { # for(i in basins) {
+# Loop through each basin separately to speed up
+for(basin in "Solway Tweed") { # for(i in basins) {
   
   # Subset to river basin
   basinFlow <- testData[testData$rbd == basin,] #~! change
   # basinFlow <- flowData[flowData$rbd == basin,]
   
   # Find all intersections between river segments within basin
-  basinNetwork <- st_touches(basinFlow)
+  segmentNetwork <- st_touches(basinFlow)
+  
+  # Set up list of upstream networks for each segment
+  upstreamNetwork <- vector(mode = "list",
+                            length = NROW(basinFlow))
   
 ### SET UP SEGMENT LOOP AND IDENTIFY SMALLER STREAMS
   
-  # For each segment in the river basin
+  # For each segment i in the river basin
   for(i in 1:NROW(basinFlow)) {
   
-  # Find all segments with lower or equal to cumulative flow than segment i
+  # Find all segments with lower, or equal, cumulative flow than segment i
   # (including i)
   higherSegments <- which(basinFlow$maxflowacc <= basinFlow$maxflowacc[i])
   
-  # Subset the network to segment i and higherSegments, 
-  higherNetwork <- basinNetwork[higherSegments]
+  # Subset the network to segment i and higherSegments 
+  higherNetwork <- segmentNetwork[higherSegments]
   
   # Rename segments to correct number (number is lost on subsetting)
   names(higherNetwork) <- higherSegments
   
-### ESTABLISH CONNECTED UPSTREAM NETWORK ---------------------------------------
+### ESTABLISH CONNECTED UPSTREAM NETWORK --------------------------------------- 
   
-  # Set starting current segment as i; set starting network as i
-  iSegments <- iNetwork <- i
+  
+  #####
+  TODO
+  ####
+  #This isn't working! iNetwork included many duplicates, needs fixing 
+  
+  # Set starting current segment to check as i; set starting network as i
+  checkSegments <- iNetwork <- i
 
-  # While there are still new segments to check, i.e. iSegments is not NULL ...
-  while (is.numeric(iSegments)) {
+  # While there are still new segments to check, i.e. checkSegments not empty ...
+  while (!is.null(checkSegments)) {
 
     # Reset new segments to NULL, this will be filled in later 
     allNewSegments <- NULL
     
-    # For every segment j (for first iteration this is 1 but can be >1)
-    for (j in iSegments) {
+    # For every segment j (one value for first iteration but can be >1)
+    for (j in checkSegments) {
 
       # Which higher segments is segment j connected to (can be >1)?
       jSegmentsTouches <- higherNetwork[as.character(j)][[1]]
@@ -152,69 +173,107 @@ for(basin in "North West") { # for(i in basins) {
       # Running tally of new added segments
       allNewSegments <- c(allNewSegments, jNewSegments)
       
-      }
-      
-    # Add all new segments to the network
-    iNetwork <- c(iNetwork, allNewSegments)
+    }
     
-    # Assign new segments as iSegments for next iteration
-    iSegments <- setdiff(allNewSegments, iSegments)
+    # Reassign new allNewSegments as checkSegments
+    checkSegments <- setdiff(allNewSegments, checkSegments)
+    
+    # Create a vector of check segments to remove
+    notChecked <- c()
+    
+    # For every k in checkSegments...
+    for (k in checkSegments) {
+      
+      # Check if this segment has already been processed
+      if(!is.null(upstreamNetwork[[k]])) {
+        
+        # Add that upstream network to the existing network
+        iNetwork <- c(iNetwork, upstreamNetwork[[k]])
+        
+      } else {
+        
+        # Add new segments to the network
+        iNetwork <- c(iNetwork, k)
+        
+        # Add k to list of not checked segments
+        notChecked <- c(notChecked, k)
+      }
+    }
+    
+    # Reassign checkSegments to notChecked
+    checkSegments <- notChecked
     
   }
   
-### CHECK IF IN ENGLAND --------------------------------------------------------
-# N.B. The st_interests funtion takes a while for a large stream network,
+  # Save network for i
+  upstreamNetwork[[i]] <- iNetwork
+
+### CHECK IF WITHIN ENGLAND --------------------------------------------------------
+# N.B. The st_interests function takes a while for a large stream network,
 # hence prior if statements to reduce number of times this is needed
-  
+
   # If entire river basin is not in England (NA), we need to check upstream...
   if (is.na(basinFlow$withinEngland[i])) {
-    
+
     # Check if any upstream segments have already been classified as non-English
-    if(any(basinFlow[inetwork, "withinEngland"] == "No")) {
-      
+    if(any(basinFlow[iNetwork,]$withinEngland == "No", na.rm = TRUE)) {
+
       # If so, assign "No"
       basinFlow$withinEngland[i] <- "No"
-      
+
       # Otherwise need to check manually
       } else {
         
-        # Do all upstream segments intersect with England polygon?
+        # Count number of iNetwork segments contained within England
+        englishSegmentsN <- st_contains(england,
+                                        basinFlow[iNetwork,],)[[1]] %>% 
+          length
+        
+        # Does number in englishSegmentsN match iNetwork (i.e. all English)
         basinFlow$withinEngland[i] <- if_else(
-          st_intersects(basinFlow[inetwork,],
-                        england) %>%
-            as.logical %>%
-            all,
+          englishSegmentsN == length(iNetwork),
           "Yes",
           "No")
-    }
-    
-### EXTRACT FLOW VARIABLES FROM CATCHMENTS -------------------------------------
-  
-  if (basinFlow$withinEngland[i] == TRUE) {
-    
-    
-    extract columns = values
-  
-    } else {
-    
-    extract columns = NA
+      }
   }
-  
-  
-}
 
-  
+### EXTRACT FLOW VARIABLES FROM CATCHMENTS -------------------------------------
+
+
+  # if (basinFlow$withinEngland[i] == "Yes") {
+  # 
+  # lapply(fertLayers[1], function (x) {
+  #   
+  #   st_intersects(basinFlow[iNetwork,],
+  #                 catchmentFert)
+  #   
+  #   
+  #   
+  # })
+  #   
+  #   
+  #   #extract columns = values
+  # 
+  #   } else {
+  # 
+  #  #extract columns = NA
+  # }
+
+
   # Run function on entire network above segment
-  testData[i, "test"] <- any(testData$startz[iNetwork] > 400 )
-
-
+  #testData[i, "test"] <- any(testData$startz[iNetwork] > 400 )
   
-  
+  }
+}
+ 
+# end system time (benchmark 195)
+)
 
-ggplot(st_as_sf(testData)) +
-  geom_sf(aes(colour = test)) +
+ggplot(st_as_sf(basinFlow)) +
+  geom_sf(aes(colour = withinEngland)) + 
   theme_void()
 
 
 saveRDS(testData, "test.Rds")
+
 
