@@ -13,7 +13,7 @@ library(tidyverse)
 library(terra)
 library(sf)
 
-### DATA MANAGEMENT ------------------------------------------------------------
+### DIRECTORY MANAGEMENT -------------------------------------------------------
 
 # Set data directory
 # If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/Raw/"
@@ -26,6 +26,8 @@ lapply(paste0(dataDir, "Processed/Flow"), function(x) {
     dir.create(x, recursive = TRUE)
   }
 })
+
+### LOAD DATA ------------------------------------------------------------------
 
 # Read England spatVector
 england <- readRDS(paste0(dataDir,
@@ -41,12 +43,13 @@ catchmentFert <- readRDS(paste0(dataDir,
                                 "/Processed/Catchments/Catchment_fertiliser.Rds")) %>%
   st_as_sf
 
-
+# List fertiliser layer names
 fertLayers <- grep("fertiliser", names(catchmentFert), value = TRUE)
 
 # Read catchment pesticide data
 # catchmentPest <- readRDS(paste0(dataDir,
 #                                 "/Processed/Catchments/Catchment_pesticides.Rds"))
+
 
 ### FILTER AND SEPARATE FLOW DATA ----------------------------------------------
 
@@ -104,8 +107,9 @@ flowData <- arrange(flowData, maxflowacc)
 ###!!!###
 #testing#
 ###!!!###
-#testData <- flowData[flowData$rbd == "Solway Tweed",]
-testData <- flowData[flowData$opcatch == "Esk and Irthing",]
+testData <- flowData[flowData$rbd == "Solway Tweed",]
+#testData <- flowData[flowData$opcatch == "Esk and Irthing",]  
+#testData <- flowData[flowData$ea_wb_id == "GB102077074190",]
 ###!!!###
 #testing#
 ###!!!###
@@ -129,83 +133,82 @@ for(basin in "Solway Tweed") { # for(i in basins) {
   upstreamNetwork <- vector(mode = "list",
                             length = NROW(basinFlow))
   
-### SET UP SEGMENT LOOP AND IDENTIFY SMALLER STREAMS
+  # Filter catchment data to basin only
+  basinFert <- catchmentFert %>%
+    filter(rbd == basin)
+  
+  # Add fertiliser layers
+  basinFlow[,fertLayers] = NA
+  
+  ### SET UP SEGMENT LOOP AND IDENTIFY SMALLER STREAMS
   
   # For each segment i in the river basin
   for(i in 1:NROW(basinFlow)) {
-  
-  # Find all segments with lower, or equal, cumulative flow than segment i
-  # (including i)
-  higherSegments <- which(basinFlow$maxflowacc <= basinFlow$maxflowacc[i])
-  
-  # Subset the network to segment i and higherSegments 
-  higherNetwork <- segmentNetwork[higherSegments]
-  
-  # Rename segments to correct number (number is lost on subsetting)
-  names(higherNetwork) <- higherSegments
-  
+    
+    # Find all segments with lower, or equal, cumulative flow than segment i
+    # (including i)
+    higherSegments <- which(basinFlow$maxflowacc <= basinFlow$maxflowacc[i])
+    
+    # Subset the network to segment i and higherSegments 
+    higherNetwork <- segmentNetwork[higherSegments]
+    
+    # Rename segments to correct number (number is lost on subsetting)
+    names(higherNetwork) <- higherSegments
+    
 ### ESTABLISH CONNECTED UPSTREAM NETWORK --------------------------------------- 
-  
-  
-  #####
-  TODO
-  ####
-  #This isn't working! iNetwork included many duplicates, needs fixing 
-  
-  # Set starting current segment to check as i; set starting network as i
-  checkSegments <- iNetwork <- i
 
-  # While there are still new segments to check, i.e. checkSegments not empty ...
-  while (!is.null(checkSegments)) {
-
-    # Reset new segments to NULL, this will be filled in later 
-    allNewSegments <- NULL
+    # Set starting current segment to check as i; set starting network as i
+    checkSegments <- iNetwork <- i
     
-    # For every segment j (one value for first iteration but can be >1)
-    for (j in checkSegments) {
-
-      # Which higher segments is segment j connected to (can be >1)?
-      jSegmentsTouches <- higherNetwork[as.character(j)][[1]]
+    # While there are still new segments to check, i.e. checkSegments not NULL ...
+    while (!is.null(checkSegments)) {
       
-      # Which new segments will be added to the network?
-      jNewSegments <- setdiff(jSegmentsTouches, iNetwork)
+      # Reset allNewSegments (new segments that are added)
+      allNewSegments <- NULL
       
-      # Running tally of new added segments
-      allNewSegments <- c(allNewSegments, jNewSegments)
-      
-    }
-    
-    # Reassign new allNewSegments as checkSegments
-    checkSegments <- setdiff(allNewSegments, checkSegments)
-    
-    # Create a vector of check segments to remove
-    notChecked <- c()
-    
-    # For every k in checkSegments...
-    for (k in checkSegments) {
-      
-      # Check if this segment has already been processed
-      if(!is.null(upstreamNetwork[[k]])) {
+      # For every j segment to check (one value for first iteration but can be >1)
+      for (j in checkSegments) {
         
-        # Add that upstream network to the existing network
-        iNetwork <- c(iNetwork, upstreamNetwork[[k]])
+        # Which segments is segment j connected to (can be >1)?
+        jSegmentsTouches <- higherNetwork[as.character(j)][[1]]
         
-      } else {
+        # Make sure new segments are not already in network
+        newSegments <- setdiff(jSegmentsTouches, iNetwork)
         
-        # Add new segments to the network
-        iNetwork <- c(iNetwork, k)
+        # Running tally of all new added segments
+        allNewSegments <- c(allNewSegments, newSegments)
         
-        # Add k to list of not checked segments
-        notChecked <- c(notChecked, k)
       }
+      
+      # Make sure all new segments are unique
+      allNewSegments <- unique(allNewSegments)
+      
+      # Reset checkSegments (segments to check on next iteration)
+      checkSegments <- c()
+      
+      # For every new segment...
+      for (k in allNewSegments) {
+
+          # Check if this segment has already been processed...
+          if(!is.null(upstreamNetwork[[k]])) {
+            
+            # Add that upstream network to the existing network
+            iNetwork <- c(iNetwork, upstreamNetwork[[k]]) %>%
+              unique
+            
+            # Otherwise check 
+          } else {
+            
+            # Add new segments to the network
+            iNetwork <- c(iNetwork, k)
+            
+            # Add k to list of segments to check for next iteration
+            checkSegments <- c(checkSegments, k)
+          }
+        }
     }
-    
-    # Reassign checkSegments to notChecked
-    checkSegments <- notChecked
-    
-  }
   
-  # Save network for i
+  # Save iNetwork in upstreamNetwork list
   upstreamNetwork[[i]] <- iNetwork
 
 ### CHECK IF WITHIN ENGLAND --------------------------------------------------------
@@ -223,12 +226,12 @@ for(basin in "Solway Tweed") { # for(i in basins) {
 
       # Otherwise need to check manually
       } else {
-        
+
         # Count number of iNetwork segments contained within England
         englishSegmentsN <- st_contains(england,
-                                        basinFlow[iNetwork,],)[[1]] %>% 
+                                        basinFlow[iNetwork,],)[[1]] %>%
           length
-        
+
         # Does number in englishSegmentsN match iNetwork (i.e. all English)
         basinFlow$withinEngland[i] <- if_else(
           englishSegmentsN == length(iNetwork),
@@ -238,39 +241,33 @@ for(basin in "Solway Tweed") { # for(i in basins) {
   }
 
 ### EXTRACT FLOW VARIABLES FROM CATCHMENTS -------------------------------------
+  
+  if (basinFlow$withinEngland[i] == "Yes") {
 
+    iCatchment <- basinFert %>%
+      filter(lengths(st_intersects(.,
+                                basinFlow[iNetwork,])) > 0) %>%
+      as.tibble
 
-  # if (basinFlow$withinEngland[i] == "Yes") {
-  # 
-  # lapply(fertLayers[1], function (x) {
-  #   
-  #   st_intersects(basinFlow[iNetwork,],
-  #                 catchmentFert)
-  #   
-  #   
-  #   
-  # })
-  #   
-  #   
-  #   #extract columns = values
-  # 
-  #   } else {
-  # 
-  #  #extract columns = NA
-  # }
-
+    for (x in fertLayers) {
+      
+      basinFlow[i, x] <- iCatchment[, x] %>%
+        sum(., na.rm = TRUE)
+      
+    }
+  }
 
   # Run function on entire network above segment
-  #testData[i, "test"] <- any(testData$startz[iNetwork] > 400 )
+  #basinFlow[i, "test"] <- any(basinFlow$startz[iNetwork] > 400 )
   
   }
 }
  
-# end system time (benchmark 195)
+# end system time (benchmark 8.7)
 )
 
 ggplot(st_as_sf(basinFlow)) +
-  geom_sf(aes(colour = withinEngland)) + 
+  geom_sf(aes(colour = get(fertLayers[3]))) + 
   theme_void()
 
 
