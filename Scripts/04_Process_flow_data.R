@@ -107,9 +107,9 @@ flowData <- arrange(flowData, maxflowacc)
 ###!!!###
 #testing#
 ###!!!###
-testData <- flowData[flowData$rbd == "Solway Tweed",]
+#testData <- flowData[flowData$rbd == "Solway Tweed",]
 #testData <- flowData[flowData$opcatch == "Esk and Irthing",]  
-#testData <- flowData[flowData$ea_wb_id == "GB102077074190",]
+testData <- flowData[flowData$ea_wb_id == "GB102077074190",]
 ###!!!###
 #testing#
 ###!!!###
@@ -140,26 +140,16 @@ for(basin in "Solway Tweed") { # for(i in basins) {
   # Add fertiliser layers
   basinFlow[,fertLayers] = NA
   
-  ### SET UP SEGMENT LOOP AND IDENTIFY SMALLER STREAMS
+### SET UP SEGMENT LOOP
   
   # For each segment i in the river basin
   for(i in 1:NROW(basinFlow)) {
     
-    # Find all segments with lower, or equal, cumulative flow than segment i
-    # (including i)
-    higherSegments <- which(basinFlow$maxflowacc <= basinFlow$maxflowacc[i])
-    
-    # Subset the network to segment i and higherSegments 
-    higherNetwork <- segmentNetwork[higherSegments]
-    
-    # Rename segments to correct number (number is lost on subsetting)
-    names(higherNetwork) <- higherSegments
-    
+    # Set starting current segment to check as i; set starting network as i
+    checkSegments <- iNetwork <- i  
+
 ### ESTABLISH CONNECTED UPSTREAM NETWORK --------------------------------------- 
 
-    # Set starting current segment to check as i; set starting network as i
-    checkSegments <- iNetwork <- i
-    
     # While there are still new segments to check, i.e. checkSegments not NULL ...
     while (!is.null(checkSegments)) {
       
@@ -170,9 +160,9 @@ for(basin in "Solway Tweed") { # for(i in basins) {
       for (j in checkSegments) {
         
         # Which segments is segment j connected to (can be >1)?
-        jSegmentsTouches <- higherNetwork[as.character(j)][[1]]
+        jSegmentsTouches <- segmentNetwork[j][[1]]
         
-        # Make sure new segments are not already in network
+        # Make sure new segments are not already in network (so unidirectional)
         newSegments <- setdiff(jSegmentsTouches, iNetwork)
         
         # Running tally of all new added segments
@@ -188,26 +178,31 @@ for(basin in "Solway Tweed") { # for(i in basins) {
       
       # For every new segment...
       for (k in allNewSegments) {
-
-          # Check if this segment has already been processed...
-          if(!is.null(upstreamNetwork[[k]])) {
-            
-            # Add that upstream network to the existing network
-            iNetwork <- c(iNetwork, upstreamNetwork[[k]]) %>%
-              unique
-            
-            # Otherwise check 
-          } else {
+        
+        # Check if k is upstream of i (only important for 
+        # 1st iteration to start off search in upstream direction)
+        if(basinFlow$maxflowacc[k] <= basinFlow$maxflowacc[i]) {
+          
+          # If upstream network for k has not been filled in yet...
+          if (is.null(upstreamNetwork[[k]])) {
             
             # Add new segments to the network
             iNetwork <- c(iNetwork, k)
             
             # Add k to list of segments to check for next iteration
             checkSegments <- c(checkSegments, k)
-          }
+            
+            } else {
+              
+              # Add that upstream network to the existing network
+              iNetwork <- c(iNetwork, upstreamNetwork[[k]]) %>%
+                unique
+              
+            }
         }
+      }
     }
-  
+    
   # Save iNetwork in upstreamNetwork list
   upstreamNetwork[[i]] <- iNetwork
 
@@ -250,27 +245,24 @@ for(basin in "Solway Tweed") { # for(i in basins) {
       as.tibble
 
     for (x in fertLayers) {
-      
+
       basinFlow[i, x] <- iCatchment[, x] %>%
         sum(., na.rm = TRUE)
-      
+
     }
   }
 
   # Run function on entire network above segment
-  #basinFlow[i, "test"] <- any(basinFlow$startz[iNetwork] > 400 )
+  basinFlow[i, "test"] <- any(basinFlow$startz[iNetwork] > 400 )
   
   }
 }
  
-# end system time (benchmark 8.7)
+# end system time (benchmark 8.87)
 )
 
 ggplot(st_as_sf(basinFlow)) +
-  geom_sf(aes(colour = get(fertLayers[3]))) + 
+  geom_sf(aes(colour = withinEngland)) + 
   theme_void()
 
-
-saveRDS(testData, "test.Rds")
-
-
+saveRDS(basinFlow, "test.Rds")
