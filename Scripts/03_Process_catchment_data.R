@@ -13,6 +13,11 @@ library(tidyverse)
 library(terra)
 library(sf)
 
+# Set terra options to speed up
+terraOptions(memfrac = 0.9)
+terraOptions(memmax = 0.0001)     
+terraOptions()
+
 ### DATA MANAGEMENT ------------------------------------------------------------
 
 # Set data directory
@@ -40,9 +45,10 @@ catchmentData <- read_sf(dsn = paste0(dataDir, "Raw/Flow_data/Flow_data.gpkg"),
                          AND country = 'England'
                          ")
 
-# Drop columns not needed
+# Drop columns not needed, and set standardised crs
 catchmentData <- catchmentData %>%
-  select (!c(country, watercat, shape_length, shape_area))
+  select (!c(country, watercat, shape_length, shape_area)) %>%
+  st_set_crs("EPSG:27700")
 
 # Save
 saveRDS(catchmentData,
@@ -113,20 +119,30 @@ pestData <- lapply(pestFiles, function(x) {
   # Combine together
   rast
 
-# CONVERT PESTICIDE DATA TO TOTAL PESTICIDE EXPOSURE ---------------------------
+# JOIN FERTILISER AND PESTICIDE DATA TOGETHER ----------------------------------
 
-# ...
+# Join fertliser and pesticide spatRasters into single combined spatRaster
+combinedData <- c(fertData, pestData)
 
-# EXTRACT FERTILISER DATA TO CATCHMENTS ----------------------------------------
+# Remove separate objects
+rm(fertData, pestData)
+gc()
+
+# EXTRACT DATA TO CATCHMENTS ---------------------------------------------------
 # N.B. Warning: this runs overnight
 # Could be sped up using parallelised for loop for each layer, whereby results
 # are saved to a separate dataframe (bind = FALSE), and joined afterwards
 
+### TESTING ######################
+testData <- catchmentData[1:10,]
+##################################
+
+
 # Weighted sum (missing data is treated as 0)
 # N.B. Since each 1x1km data square value is estimated amount applied per 1x1km,
-# a weighted sum extract function over each catchment results in estimated 
+# a weighted sum extract function for each catchment results in estimated 
 # amount applied within that catchment
-system.time(catchmentFert <- extract(fertData, catchmentData, exact = TRUE, fun = sum,
+system.time(catchmentTest <- extract(combinedData[[c(1:6)]], testData, exact = TRUE, fun = sum,
                          na.rm = TRUE, ID = FALSE, bind = TRUE))
 
 # Save
@@ -134,10 +150,5 @@ saveRDS(catchmentFert,
         file = paste0(dataDir,
                       "/Processed/Catchments/Catchment_fertiliser.Rds"))
 
-# EXTRACT PESTICIDE DATA TO CATCHMENTS -----------------------------------------
-# N.B. Warning: this runs overnight
-# Could be sped up using parallelised for loop for each layer, whereby results
-# are saved to a separate dataframe (bind = FALSE), and joined afterwards
 
-#...
 
