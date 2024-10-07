@@ -35,8 +35,7 @@ england <- readRDS(paste0(dataDir,
 
 # Convert England to sf object for later processing
 england <- england %>%
-  st_as_sf %>%
-  st_transform(., "EPSG:27700")
+  st_as_sf 
 
 # Read catchment fertiliser data
 catchmentFert <- readRDS(paste0(dataDir,
@@ -66,9 +65,10 @@ flowData <- read_sf(dsn = paste0(dataDir, "Raw/Flow_data/Flow_data.gpkg"),
                 AND ( flowacccl = '1Km' OR flowacccl = '10Km' )
                 ")
 
-# Drop columns not needed
+# Drop columns not needed, and set standardised crs
 flowData <- flowData %>%
-  select (!c(water_cat, ponding, zdiff, flowacccl, shape_length))
+  select (!c(water_cat, ponding, zdiff, flowacccl, shape_length)) %>%
+  st_set_crs("EPSG:27700")
 
 # Save
 saveRDS(flowData,
@@ -102,7 +102,7 @@ flowData$withinEngland <- if_else(flowData$rbd %in% allEnglishBasins,
 # Important - sort data from smallest to largest flow to speed up later steps
 flowData <- arrange(flowData, maxflowacc)
 
-# EXTRACT CATCHMENT DATA TO CATCHMENTS -----------------------------------------
+# EXTRACT CATCHMENT DATA TO RIVER SEGMENTS -------------------------------------
 
 ###!!!###
 #testing#
@@ -138,23 +138,33 @@ for(basin in "Solway Tweed") { # for(i in basins) {
     filter(rbd == basin)
   
   # Add fertiliser layers
-  basinFlow[,fertLayers] = NA
+  basinFlow[, fertLayers] <- NA
   
-### SET UP SEGMENT LOOP
+### SET UP SEGMENT LOOP WITH IMMEDIATE NETWORK CHECK
   
   # For each segment i in the river basin
   for(i in 1:NROW(basinFlow)) {
     
-    # Set starting current segment to check as i; set starting network as i
-    checkSegments <- iNetwork <- i  
+    # Set starting network as i
+    iNetwork <- i
+ 
+    # Which segments is segment i connected to (can be >1)?
+    checkSegments <- segmentNetwork[i][[1]]
+    
+    # Filter segments that are upstream of i (important initial check)
+    checkSegments <- checkSegments[basinFlow$maxflowacc[checkSegments] <= 
+                                           basinFlow$maxflowacc[i]]
 
-### ESTABLISH CONNECTED UPSTREAM NETWORK --------------------------------------- 
+### ESTABLISH ENTIRE CONNECTED UPSTREAM NETWORK
 
-    # While there are still new segments to check, i.e. checkSegments not NULL ...
+    # While there are still new segments to check
     while (!is.null(checkSegments)) {
       
+      # Add segments to check to network
+      iNetwork <- c(iNetwork, checkSegments)
+
       # Reset allNewSegments (new segments that are added)
-      allNewSegments <- NULL
+      allNewSegments <- c()
       
       # For every j segment to check (one value for first iteration but can be >1)
       for (j in checkSegments) {
@@ -172,41 +182,32 @@ for(basin in "Solway Tweed") { # for(i in basins) {
       
       # Make sure all new segments are unique
       allNewSegments <- unique(allNewSegments)
-      
+ 
       # Reset checkSegments (segments to check on next iteration)
       checkSegments <- c()
       
       # For every new segment...
       for (k in allNewSegments) {
         
-        # Check if k is upstream of i (only important for 
-        # 1st iteration to start off search in upstream direction)
-        if(basinFlow$maxflowacc[k] <= basinFlow$maxflowacc[i]) {
+        # If upstream network for k has not been filled in yet...
+        if (is.null(upstreamNetwork[[k]])) {
+
+          # Add k to list of segments to check for next iteration
+          checkSegments <- c(checkSegments, k)
           
-          # If upstream network for k has not been filled in yet...
-          if (is.null(upstreamNetwork[[k]])) {
+          } else {
             
-            # Add new segments to the network
-            iNetwork <- c(iNetwork, k)
-            
-            # Add k to list of segments to check for next iteration
-            checkSegments <- c(checkSegments, k)
-            
-            } else {
-              
-              # Add that upstream network to the existing network
-              iNetwork <- c(iNetwork, upstreamNetwork[[k]]) %>%
-                unique
-              
-            }
-        }
+            # Add that upstream network to the existing network
+            iNetwork <- c(iNetwork, upstreamNetwork[[k]]) %>%
+              unique
+          }
       }
     }
-    
-  # Save iNetwork in upstreamNetwork list
-  upstreamNetwork[[i]] <- iNetwork
 
-### CHECK IF WITHIN ENGLAND --------------------------------------------------------
+    # Save iNetwork in upstreamNetwork list
+    upstreamNetwork[[i]] <- iNetwork
+
+### CHECK IF WITHIN ENGLAND
 # N.B. The st_interests function takes a while for a large stream network,
 # hence prior if statements to reduce number of times this is needed
 
@@ -234,31 +235,30 @@ for(basin in "Solway Tweed") { # for(i in basins) {
           "No")
       }
   }
+    
+### EXTRACT FLOW VARIABLES FROM CATCHMENTS
 
-### EXTRACT FLOW VARIABLES FROM CATCHMENTS -------------------------------------
-  
-  if (basinFlow$withinEngland[i] == "Yes") {
-
-    iCatchment <- basinFert %>%
-      filter(lengths(st_intersects(.,
-                                basinFlow[iNetwork,])) > 0) %>%
-      as.tibble
-
-    for (x in fertLayers) {
-
-      basinFlow[i, x] <- iCatchment[, x] %>%
-        sum(., na.rm = TRUE)
-
-    }
-  }
-
-  # Run function on entire network above segment
-  basinFlow[i, "test"] <- any(basinFlow$startz[iNetwork] > 400 )
-  
+    # # If upstream of segment is entirely within England
+    # if (basinFlow$withinEngland[i] == "Yes") {
+    #   
+    #   # Extract all catchments that intersect with upstream network
+    #   iCatchment <- basinFert %>%
+    #     filter(lengths(st_intersects(.,
+    #                                  basinFlow[iNetwork,])) > 0) %>%
+    #     as.tibble # Convert to tibble
+    #   
+    #   # For every fertiliser layer
+    #   for (x in fertLayers) {
+    # 
+    #     # Sum all catchment values
+    #     basinFlow[i, x] <- iCatchment[, x] %>%
+    #       sum(., na.rm = TRUE)
+    # 
+    #   }
+    # }
+    
   }
 }
- 
-# end system time (benchmark 8.87)
 )
 
 ggplot(st_as_sf(basinFlow)) +
