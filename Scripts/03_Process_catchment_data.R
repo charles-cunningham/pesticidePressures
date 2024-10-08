@@ -15,8 +15,6 @@ library(sf)
 
 # Set terra options to speed up
 terraOptions(memfrac = 0.9)
-terraOptions(memmax = 0.0001)     
-terraOptions()
 
 ### DATA MANAGEMENT ------------------------------------------------------------
 
