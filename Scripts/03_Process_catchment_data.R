@@ -90,6 +90,21 @@ fertData <- lapply(fertFiles, function(x) {
   # Combine together
   rast
 
+### READ IN FERTILISER DATA TO MEMORY
+# As fertData cannot be loaded into memory (reason unknown), use workaround
+# below to load the spatRast into memory which massively speeds up later
+# extract() funtion
+
+# Save to temporary .Rds file
+saveRDS(fertData,
+        file = paste0(dataDir, "temp.Rds"))
+
+# Read back in from temporary .Rds file
+fertData <- readRDS(paste0(dataDir, "temp.Rds"))
+
+# Delete temporary .Rds file
+unlink(paste0(dataDir, "temp.Rds"))
+
 ### READ IN PESTICIDE DATA
 
 # List files (each contains two layers - (1) data layer, (2) uncertainty layer)
@@ -122,7 +137,7 @@ pestData <- lapply(pestFiles, function(x) {
 # JOIN FERTILISER AND PESTICIDE DATA TOGETHER ----------------------------------
 
 # Join fertliser and pesticide spatRasters into single combined spatRaster
-combinedData <- c(fertData, pestData)
+chemData <- c(fertData, pestData)
 
 # Remove separate objects
 rm(fertData, pestData)
@@ -130,25 +145,19 @@ gc()
 
 # EXTRACT DATA TO CATCHMENTS ---------------------------------------------------
 # N.B. Warning: this runs overnight
-# Could be sped up using parallelised for loop for each layer, whereby results
-# are saved to a separate dataframe (bind = FALSE), and joined afterwards
-
-### TESTING ######################
-testData <- catchmentData[1:10,]
-##################################
-
 
 # Weighted sum (missing data is treated as 0)
 # N.B. Since each 1x1km data square value is estimated amount applied per 1x1km,
 # a weighted sum extract function for each catchment results in estimated 
 # amount applied within that catchment
-system.time(catchmentTest <- extract(combinedData[[c(1:6)]], testData, exact = TRUE, fun = sum,
-                         na.rm = TRUE, ID = FALSE, bind = TRUE))
+system.time(
+  
+  catchmentChemData <- extract(chemData, catchmentData, exact = TRUE,
+                              fun = sum, na.rm = TRUE,
+                              ID = FALSE, bind = TRUE)
+  )
 
 # Save
-saveRDS(catchmentFert,
+saveRDS(catchmentChemData,
         file = paste0(dataDir,
-                      "/Processed/Catchments/Catchment_fertiliser.Rds"))
-
-
-
+                      "/Processed/Catchments/Catchment_chem_data.Rds"))
