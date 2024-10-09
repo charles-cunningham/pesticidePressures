@@ -10,8 +10,13 @@
 
 # Load packages
 library(tidyverse)
-library(terra)
 library(sf)
+library(parallel)
+
+### CHECK CORES ----------------------------------------------------------------
+
+# Check cores
+nCores <- detectCores()
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 
@@ -38,17 +43,13 @@ england <- england %>%
   st_as_sf 
 
 # Read catchment fertiliser data
-catchmentFert <- readRDS(paste0(dataDir,
-                                "/Processed/Catchments/Catchment_fertiliser.Rds")) %>%
+catchmentChem <- readRDS(paste0(dataDir,
+                                "/Processed/Catchments/Catchment_chem_data.Rds")) %>%
   st_as_sf
 
-# List fertiliser layer names
-fertLayers <- grep("fertiliser", names(catchmentFert), value = TRUE)
-
-# Read catchment pesticide data
-# catchmentPest <- readRDS(paste0(dataDir,
-#                                 "/Processed/Catchments/Catchment_pesticides.Rds"))
-
+# List fertiliser and pesticide layer names
+fertLayers <- grep("fertiliser", names(catchmentChem), value = TRUE)
+pestLayers <- grep("pesticide", names(catchmentChem), value = TRUE)
 
 ### FILTER AND SEPARATE FLOW DATA ----------------------------------------------
 
@@ -102,14 +103,17 @@ flowData$withinEngland <- if_else(flowData$rbd %in% allEnglishBasins,
 # Important - sort data from smallest to largest flow to speed up later steps
 flowData <- arrange(flowData, maxflowacc)
 
-# EXTRACT CATCHMENT DATA TO RIVER SEGMENTS -------------------------------------
+# EXTRACT CATCHMENT DATA TO RIVER SEGMENTS (BASIN LOOP) ------------------------
 
 ###!!!###
-#testing#
-###!!!###
+#create testing dataset
+#testData <- flowData[flowData$rbd == basins[1],][1:10,]
+#testData <- rbind(testData, flowData[flowData$rbd == basins[2],][1:10,])
+#testData <- rbind(testData, flowData[flowData$rbd == basins[3],][1:10,])
+#basins <- basins[1:3]
 #testData <- flowData[flowData$rbd == "Solway Tweed",]
 #testData <- flowData[flowData$opcatch == "Esk and Irthing",]  
-testData <- flowData[flowData$ea_wb_id == "GB102077074190",]
+#testData <- flowData[flowData$ea_wb_id == "GB102077074190",]
 ###!!!###
 #testing#
 ###!!!###
@@ -119,26 +123,32 @@ system.time(
 
 ### SET UP BASIN LOOP
 
-# Loop through each basin separately to speed up
-for(basin in "Solway Tweed") { # for(i in basins) {
+# Loop through each basin separately on  separate cores to speed up
+mclapply(basins, function(basin) {
   
   # Subset to river basin
-  basinFlow <- testData[testData$rbd == basin,] #~! change
-  # basinFlow <- flowData[flowData$rbd == basin,]
+  basinFlow <- testData[flowData$rbd == basin,] ### !!! Change for testing !!!
   
   # Find all intersections between river segments within basin
-  segmentNetwork <- st_touches(basinFlow)
+  # N.B. Include 5m buffer for any misalignment errors in original flow data
+  segmentNetwork <- st_is_within_distance(basinFlow,
+                                          dist = 1,
+                                          remove_self = T)
+
+  
+
+
   
   # Set up list of upstream networks for each segment
   upstreamNetwork <- vector(mode = "list",
                             length = NROW(basinFlow))
   
   # Filter catchment data to basin only
-  basinFert <- catchmentFert %>%
+  basinChem <- catchmentChem %>%
     filter(rbd == basin)
   
-  # Add fertiliser layers
-  basinFlow[, fertLayers] <- NA
+  # Add pesticide and chemical layers
+  basinFlow[, c(fertLayers, pestLayers)] <- NA
   
 ### SET UP SEGMENT LOOP WITH IMMEDIATE NETWORK CHECK
   
@@ -238,31 +248,76 @@ for(basin in "Solway Tweed") { # for(i in basins) {
     
 ### EXTRACT FLOW VARIABLES FROM CATCHMENTS
 
-    # # If upstream of segment is entirely within England
-    # if (basinFlow$withinEngland[i] == "Yes") {
-    #   
-    #   # Extract all catchments that intersect with upstream network
-    #   iCatchment <- basinFert %>%
-    #     filter(lengths(st_intersects(.,
-    #                                  basinFlow[iNetwork,])) > 0) %>%
-    #     as.tibble # Convert to tibble
-    #   
-    #   # For every fertiliser layer
-    #   for (x in fertLayers) {
-    # 
-    #     # Sum all catchment values
-    #     basinFlow[i, x] <- iCatchment[, x] %>%
-    #       sum(., na.rm = TRUE)
-    # 
-    #   }
-    # }
-    
+    # If upstream of segment is entirely within England
+    if (basinFlow$withinEngland[i] == "Yes") {
+
+      # Extract all catchments that intersect with upstream network
+      iCatchment <- basinChem %>%
+        filter(lengths(st_intersects(.,
+                                     basinFlow[iNetwork,])) > 0) %>%
+        as_tibble # Convert to tibble
+
+      # For every fertiliser and pesticide layer
+      for (x in c(fertLayers,
+                  pestLayers)) {
+        # Assign upstream application per area for segment i
+        basinFlow[i, x] <-
+          iCatchment[, x] %>% # Collate upstream catchment layer values
+          sum(., na.rm = TRUE) # Sum
+      }
   }
+  
+  # Save basin
+  saveRDS(basinFlow, 
+          file = paste0(dataDir,
+                        "/Processed/Flow/basin_",
+                        gsub(" ", "_", basin),
+                        "_chem_data.Rds"))
+
+  }
+  
+  # Remove objects not needed
+  rm(basinFlow, segmentNetwork, upstreamNetwork, basinChem)
+  gc()
 }
-)
+))
 
-ggplot(st_as_sf(basinFlow)) +
-  geom_sf(aes(colour = withinEngland)) + 
-  theme_void()
+# COMBINE BASINS INTO SINGLE FILE-----------------------------------------------
 
-saveRDS(basinFlow, "test.Rds")
+# Create empty list
+basinFlowData <- vector(mode = "list",
+                        length = NROW(basins))
+
+# Loop through basins
+for (i in 1:length(basins)) {
+  
+  # Assign each processed basin object to single list 
+  basinFlowData[[i]] <- readRDS(file = paste0(dataDir,
+                                              "/Processed/Flow/basin_",
+                                              gsub(" ", "_", basins[i]),
+                                              "_chem_data.Rds"))
+}
+
+# Bind list of basin objects together
+flowChemData <- do.call(what = rbind,
+                        args = basinFlowData)
+
+# Save combined object
+saveRDS(flowChemData, 
+        file = paste0(dataDir,
+                             "/Processed/Flow/Flow_chem_data.Rds"))
+
+# Delete individual basin objects
+lapply(basins, function(x) {
+  
+  paste0(dataDir,
+         "/Processed/Flow/basin_",
+         gsub(" ", "_", x),
+         "_chem_data.Rds") %>%
+    unlink
+})
+
+# ggplot(st_as_sf(flowChemData)) +
+#   geom_sf(aes(colour = pesticide_Chlorotoluron)) +
+#   theme_void()
+# 
