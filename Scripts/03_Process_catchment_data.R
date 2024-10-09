@@ -145,9 +145,9 @@ gc()
 # N.B. Warning: this runs overnight
 
 # Weighted sum (missing data is treated as 0)
-# N.B. Since each 1x1km data square value is estimated amount applied per 1x1km,
+# N.B. Since each 1x1km data square value has units of kg/year,
 # a weighted sum extract function for each catchment results in estimated 
-# amount applied within that catchment
+# kg/year within that catchment
 system.time(
   
   catchmentChemData <- extract(chemData, catchmentData, exact = TRUE,
