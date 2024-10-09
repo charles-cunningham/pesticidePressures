@@ -18,6 +18,9 @@ library(parallel)
 # Check cores
 nCores <- detectCores()
 
+# Assign cores
+options("mc.cores" = nCores - 1)
+
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 
 # Set data directory
@@ -124,10 +127,10 @@ system.time(
 ### SET UP BASIN LOOP
 
 # Loop through each basin separately on  separate cores to speed up
-mclapply(basins, function(basin) {
+lapply(basins, function(basin) {
   
   # Subset to river basin
-  basinFlow <- testData[flowData$rbd == basin,] ### !!! Change for testing !!!
+  basinFlow <- flowData[flowData$rbd == basin,] ### !!! Change for testing !!!
   
   # Find all intersections between river segments within basin
   # N.B. Include 5m buffer for any misalignment errors in original flow data
@@ -135,10 +138,6 @@ mclapply(basins, function(basin) {
                                           dist = 1,
                                           remove_self = T)
 
-  
-
-
-  
   # Set up list of upstream networks for each segment
   upstreamNetwork <- vector(mode = "list",
                             length = NROW(basinFlow))
@@ -280,6 +279,7 @@ mclapply(basins, function(basin) {
   rm(basinFlow, segmentNetwork, upstreamNetwork, basinChem)
   gc()
 }
+
 ))
 
 # COMBINE BASINS INTO SINGLE FILE-----------------------------------------------
