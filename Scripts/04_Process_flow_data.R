@@ -10,6 +10,7 @@
 
 # Load packages
 library(tidyverse)
+library(terra)
 library(sf)
 library(parallel)
 
@@ -37,13 +38,10 @@ lapply(paste0(dataDir, "Processed/Flow"), function(x) {
 
 ### LOAD DATA ------------------------------------------------------------------
 
-# Read England spatVector
+# Read England spatVector, and convert to sf object for later processing
 england <- readRDS(paste0(dataDir,
-                          "Raw/Country_data/England.Rds"))
-
-# Convert England to sf object for later processing
-england <- england %>%
-  st_as_sf 
+                          "Raw/Country_data/England.Rds")) %>%
+  st_as_sf
 
 # Read catchment fertiliser data
 catchmentChem <- readRDS(paste0(dataDir,
@@ -132,22 +130,51 @@ lapply(basins, function(basin) {
   # Subset to river basin
   basinFlow <- flowData[flowData$rbd == basin,] ### !!! Change for testing !!!
   
-  # Find all intersections between river segments within basin
-  # N.B. Include 5m buffer for any misalignment errors in original flow data
-  segmentNetwork <- st_is_within_distance(basinFlow,
-                                          dist = 1,
-                                          remove_self = T)
-
-  # Set up list of upstream networks for each segment
-  upstreamNetwork <- vector(mode = "list",
-                            length = NROW(basinFlow))
+  # Add pesticide and chemical layers
+  basinFlow[, c(fertLayers, pestLayers)] <- NA
   
   # Filter catchment data to basin only
   basinChem <- catchmentChem %>%
     filter(rbd == basin)
   
-  # Add pesticide and chemical layers
-  basinFlow[, c(fertLayers, pestLayers)] <- NA
+  # Find all intersections between river segments within basin
+  # N.B. Include 5m buffer for any misalignment errors in original flow data
+  #segmentNetwork <- st_touches(basinFlow)
+  segmentNetwork <- st_is_within_distance(basinFlow,
+                                         dist = 5,
+                                         remove_self = T)
+  
+  # ######################testing
+  # 
+  # # Create 10x10 grid:
+  # basinGrid <- st_make_grid(basinFlow , n=c(10,10), square = F)
+  # 
+  # ggplot() +
+  #   geom_sf(data = basinGrid, colour = "black", fill = "NA") +
+  #   geom_sf(data = basinChem, fill = "red") +
+  #   theme_void()
+  # 
+  # # Create buffer 
+  # basinGridBuffer <- st_buffer(basinGrid, 5*2)
+  # 
+  # # Intersect buffered grid with rivers
+  # basinFlowGrid <- basinFlow %>% 
+  #   st_join(basinGridBuffer %>%
+  #             tibble::rowid_to_column('Cell'),
+  #           join=st_intersects, left=FALSE)
+  # 
+  # # Batch process:
+  # distance_nested <- basinFlowGrid %>% 
+  #   group_nest(Cell, keep=FALSE) %>% 
+  #   mutate(GroupDist=map(
+  #     data, 
+  #     ~st_is_within_distance(.x, remove_self = TRUE, dist=5))
+  #   )
+  # #################
+  
+  # Set up list of upstream networks for each segment
+  upstreamNetwork <- vector(mode = "list",
+                            length = NROW(basinFlow))
   
 ### SET UP SEGMENT LOOP WITH IMMEDIATE NETWORK CHECK
   
@@ -316,8 +343,3 @@ lapply(basins, function(x) {
          "_chem_data.Rds") %>%
     unlink
 })
-
-# ggplot(st_as_sf(flowChemData)) +
-#   geom_sf(aes(colour = pesticide_Chlorotoluron)) +
-#   theme_void()
-# 
