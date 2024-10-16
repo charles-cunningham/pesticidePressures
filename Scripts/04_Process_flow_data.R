@@ -112,9 +112,10 @@ flowData <- arrange(flowData, maxflowacc)
 #testData <- rbind(testData, flowData[flowData$rbd == basins[2],][1:10,])
 #testData <- rbind(testData, flowData[flowData$rbd == basins[3],][1:10,])
 #basins <- basins[1:3]
-#testData <- flowData[flowData$rbd == "Solway Tweed",]
+testData <- flowData[flowData$rbd == "Solway Tweed",]
 #testData <- flowData[flowData$opcatch == "Esk and Irthing",]  
 #testData <- flowData[flowData$ea_wb_id == "GB102077074190",]
+basins <- "Solway Tweed"
 ###!!!###
 #testing#
 ###!!!###
@@ -125,10 +126,10 @@ system.time(
 ### SET UP BASIN LOOP
 
 # Loop through each basin separately on  separate cores to speed up
-lapply(basins, function(basin) {
+for(i in basins) {
   
   # Subset to river basin
-  basinFlow <- flowData[flowData$rbd == basin,] ### !!! Change for testing !!!
+  basinFlow <- testData[testData$rbd == basin,] ### !!! Change for testing !!!
   
   # Add pesticide and chemical layers
   basinFlow[, c(fertLayers, pestLayers)] <- NA
@@ -139,43 +140,32 @@ lapply(basins, function(basin) {
   
   # Find all intersections between river segments within basin
   # N.B. Include 5m buffer for any misalignment errors in original flow data
-  #segmentNetwork <- st_touches(basinFlow)
-  segmentNetwork <- st_is_within_distance(basinFlow,
-                                         dist = 5,
-                                         remove_self = T)
-  
-  # ######################testing
-  # 
-  # # Create 10x10 grid:
-  # basinGrid <- st_make_grid(basinFlow , n=c(10,10), square = F)
-  # 
-  # ggplot() +
-  #   geom_sf(data = basinGrid, colour = "black", fill = "NA") +
-  #   geom_sf(data = basinChem, fill = "red") +
-  #   theme_void()
-  # 
-  # # Create buffer 
-  # basinGridBuffer <- st_buffer(basinGrid, 5*2)
-  # 
-  # # Intersect buffered grid with rivers
-  # basinFlowGrid <- basinFlow %>% 
-  #   st_join(basinGridBuffer %>%
-  #             tibble::rowid_to_column('Cell'),
-  #           join=st_intersects, left=FALSE)
-  # 
-  # # Batch process:
-  # distance_nested <- basinFlowGrid %>% 
-  #   group_nest(Cell, keep=FALSE) %>% 
-  #   mutate(GroupDist=map(
-  #     data, 
-  #     ~st_is_within_distance(.x, remove_self = TRUE, dist=5))
-  #   )
-  # #################
-  
+
+  # Create 10x10 grid:
+  basinGrid <- st_make_grid(basinChem , n=c(10,10), square = F)
+
+  # Create buffer
+  basinGridBuffer <- st_buffer(basinGrid, 5*2)
+
+  # Intersect buffered grid with rivers
+  basinFlowGrid <- basinFlow %>%
+    st_join(basinGridBuffer %>%
+              st_as_sf() %>%
+              tibble::rowid_to_column('Cell'),
+            join=st_intersects, left=FALSE)
+
+  # Batch process:
+  segmentNetwork <- basinFlowGrid %>%
+    group_nest(Cell, keep=FALSE) %>%
+    mutate(GroupDist=map(
+      data,
+      ~st_is_within_distance(.x, remove_self = TRUE, dist = 1))
+   )
+
   # Set up list of upstream networks for each segment
   upstreamNetwork <- vector(mode = "list",
                             length = NROW(basinFlow))
-  
+
 ### SET UP SEGMENT LOOP WITH IMMEDIATE NETWORK CHECK
   
   # For each segment i in the river basin
@@ -183,13 +173,42 @@ lapply(basins, function(basin) {
     
     # Set starting network as i
     iNetwork <- i
- 
-    # Which segments is segment i connected to (can be >1)?
-    checkSegments <- segmentNetwork[i][[1]]
+    
+    #
+    checkSegments <- c()
+   
+    #Extract grid row number from orginal row number
+    # N.B. these are not the same as some duplicates crated by buffer
+    iRows <- which(basinFlowGrid$permid == basinFlow$permid[i])
+    
+    for (iRow in iRows) {
+      
+      # Find cell number
+      iCellNumber <- basinFlowGrid$Cell[iRow]
+      
+      # Find all cell values (these are the numbers that the st_is_within uses)
+      iCellRows <- which(basinFlowGrid$Cell == iCellNumber)
+      
+      # Find relative position of focal row in cellRows
+      iDistanceNumber <- which(iCellRows == iRow)
+      
+      # Extract connected segments
+      iConnectedNumbers <-
+        segmentNetwork[segmentNetwork$Cell == iCellNumber,
+                       "GroupDist"][[1]][[1]][[iDistanceNumber]]
+      
+      # Relate back to basinFlow
+      basinFlowRows <- which(basinFlow$permid %in%
+                               basinFlowGrid$permid[iCellRows[iConnectedNumbers]])
+      
+      checkSegments <- c(checkSegments, basinFlowRows)
+      
+    }
     
     # Filter segments that are upstream of i (important initial check)
-    checkSegments <- checkSegments[basinFlow$maxflowacc[checkSegments] <= 
-                                           basinFlow$maxflowacc[i]]
+    checkSegments <-
+      checkSegments[basinFlow$maxflowacc[checkSegments] <=
+                      basinFlow$maxflowacc[i]]
 
 ### ESTABLISH ENTIRE CONNECTED UPSTREAM NETWORK
 
@@ -204,9 +223,33 @@ lapply(basins, function(basin) {
       
       # For every j segment to check (one value for first iteration but can be >1)
       for (j in checkSegments) {
-        
-        # Which segments is segment j connected to (can be >1)?
-        jSegmentsTouches <- segmentNetwork[j][[1]]
+  
+        # Extract grid row number from orginal row number
+        # N.B. these are not the same as some duplicates crated by buffer
+        jRows <- which(basinFlowGrid$permid == basinFlow$permid[j])
+
+        for(jRow in jRows) {
+
+          # Find cell number
+          jCellNumber <- basinFlowGrid$Cell[jRow]
+
+          # Find all cell values (these are the numbers that the st_is_within uses)
+          jCellRows <- which(basinFlowGrid$Cell == jCellNumber)
+
+          # Find relative position of focal row in cellRows
+          jDistanceNumber <- which(jCellRows == jRow)
+
+          # Extract connected segments
+          jConnectedNumbers <- segmentNetwork[segmentNetwork$Cell == jCellNumber,
+                                              "GroupDist"][[1]][[1]][[jDistanceNumber]]
+
+          # Relate back to basinFlow
+          basinFlowRows <- which(basinFlow$permid %in%
+                                   basinFlowGrid$permid[jCellRows[jConnectedNumbers]])
+
+          checkSegments <- c(checkSegments, basinFlowRows)
+
+        }
         
         # Make sure new segments are not already in network (so unidirectional)
         newSegments <- setdiff(jSegmentsTouches, iNetwork)
@@ -292,22 +335,22 @@ lapply(basins, function(basin) {
           sum(., na.rm = TRUE) # Sum
       }
   }
-  
+
   # Save basin
-  saveRDS(basinFlow, 
+  saveRDS(basinFlow,
           file = paste0(dataDir,
                         "/Processed/Flow/basin_",
                         gsub(" ", "_", basin),
                         "_chem_data.Rds"))
 
-  }
+   }
   
   # Remove objects not needed
   rm(basinFlow, segmentNetwork, upstreamNetwork, basinChem)
   gc()
 }
 
-))
+)
 
 # COMBINE BASINS INTO SINGLE FILE-----------------------------------------------
 
