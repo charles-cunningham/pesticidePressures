@@ -20,7 +20,7 @@ library(parallel)
 nCores <- detectCores()
 
 # Assign cores
-options("mc.cores" = nCores - 1)
+options("mc.cores" = 4)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 
@@ -57,7 +57,7 @@ pestLayers <- grep("pesticide", names(catchmentChem), value = TRUE)
 # FLOW DATA
 
 # Read in flow data from geopackage, with query that selects:
-# only River water catchment type, 
+# only River water catchment type,
 # and only segments with 1km flow accumulation or greater
 flowData <- read_sf(dsn = paste0(dataDir, "Raw/Flow_data/Flow_data.gpkg"),
                     query = "
@@ -96,7 +96,7 @@ allEnglishBasins <- c("Anglian",
                       "South West",
                       "Thames")
 
-# Add column indicating whether upsteam network is entirely within England 
+# Add column indicating whether upstream network is entirely within England 
 flowData$withinEngland <- if_else(flowData$rbd %in% allEnglishBasins,
                                   "Yes",
                                   NA)
@@ -112,24 +112,21 @@ flowData <- arrange(flowData, maxflowacc)
 #testData <- rbind(testData, flowData[flowData$rbd == basins[2],][1:10,])
 #testData <- rbind(testData, flowData[flowData$rbd == basins[3],][1:10,])
 #basins <- basins[1:3]
-testData <- flowData[flowData$rbd == "Solway Tweed",]
+#testData <- flowData[flowData$rbd == "Solway Tweed",]
 #testData <- flowData[flowData$opcatch == "Esk and Irthing",]  
 #testData <- flowData[flowData$ea_wb_id == "GB102077074190",]
-basins <- "Solway Tweed"
+#basins <- "Solway Tweed"
 ###!!!###
 #testing#
 ###!!!###
 
-# start system time
-system.time(
-
 ### SET UP BASIN LOOP
 
-# Loop through each basin separately on  separate cores to speed up
-for(i in basins) {
+# Apply function to each basin separately on separate cores to speed up
+mclapply(basins, function(basin) {
   
   # Subset to river basin
-  basinFlow <- testData[testData$rbd == basin,] ### !!! Change for testing !!!
+  basinFlow <- flowData[flowData$rbd == basin,] ### !!! Change for testing !!!
   
   # Add pesticide and chemical layers
   basinFlow[, c(fertLayers, pestLayers)] <- NA
@@ -138,77 +135,46 @@ for(i in basins) {
   basinChem <- catchmentChem %>%
     filter(rbd == basin)
   
-  # Find all intersections between river segments within basin
-  # N.B. Include 5m buffer for any misalignment errors in original flow data
-
-  # Create 10x10 grid:
-  basinGrid <- st_make_grid(basinChem , n=c(10,10), square = F)
-
-  # Create buffer
-  basinGridBuffer <- st_buffer(basinGrid, 5*2)
-
-  # Intersect buffered grid with rivers
-  basinFlowGrid <- basinFlow %>%
-    st_join(basinGridBuffer %>%
-              st_as_sf() %>%
-              tibble::rowid_to_column('Cell'),
-            join=st_intersects, left=FALSE)
-
-  # Batch process:
-  segmentNetwork <- basinFlowGrid %>%
-    group_nest(Cell, keep=FALSE) %>%
-    mutate(GroupDist=map(
-      data,
-      ~st_is_within_distance(.x, remove_self = TRUE, dist = 1))
-   )
-
   # Set up list of upstream networks for each segment
   upstreamNetwork <- vector(mode = "list",
                             length = NROW(basinFlow))
 
-### SET UP SEGMENT LOOP WITH IMMEDIATE NETWORK CHECK
+### FIND ALL SEGMENT INTERSECTIONS WITHIN BASIN
+  # N.B. Use st_is_within_distance rather than st_touches for any misalignment
+  # errors in original flow data. This takes much longer and so a grid 
+  # iteration workflow is needed to speed up
+
+  # Create 10x10 hexagonal grid, and (2 x search distance) buffer
+  basinGrid <- st_make_grid(basinFlow, n=c(10,10), square = F) %>%
+    st_buffer(., 2)
+
+  # Intersect buffered grid with rivers
+  basinFlowGrid <- basinFlow %>%
+    st_join(basinGrid %>%
+              st_as_sf() %>%
+              tibble::rowid_to_column('Cell'),
+            join=st_intersects, left = FALSE)
+
+  # Use data.table to iterate st_is_within_distance over each grid cell
+  segmentNetwork <- basinFlowGrid %>%
+    group_nest(Cell, keep=FALSE) %>%
+    mutate(segmentNeighbours = map(
+      data,
+      ~st_is_within_distance(.x,
+                             remove_self = TRUE,
+                             dist = 1)) # Distance of 1m
+   )
+
+### SET UP SEGMENT LOOP
   
   # For each segment i in the river basin
   for(i in 1:NROW(basinFlow)) {
     
-    # Set starting network as i
-    iNetwork <- i
-    
-    #
-    checkSegments <- c()
-   
-    #Extract grid row number from orginal row number
-    # N.B. these are not the same as some duplicates crated by buffer
-    iRows <- which(basinFlowGrid$permid == basinFlow$permid[i])
-    
-    for (iRow in iRows) {
-      
-      # Find cell number
-      iCellNumber <- basinFlowGrid$Cell[iRow]
-      
-      # Find all cell values (these are the numbers that the st_is_within uses)
-      iCellRows <- which(basinFlowGrid$Cell == iCellNumber)
-      
-      # Find relative position of focal row in cellRows
-      iDistanceNumber <- which(iCellRows == iRow)
-      
-      # Extract connected segments
-      iConnectedNumbers <-
-        segmentNetwork[segmentNetwork$Cell == iCellNumber,
-                       "GroupDist"][[1]][[1]][[iDistanceNumber]]
-      
-      # Relate back to basinFlow
-      basinFlowRows <- which(basinFlow$permid %in%
-                               basinFlowGrid$permid[iCellRows[iConnectedNumbers]])
-      
-      checkSegments <- c(checkSegments, basinFlowRows)
-      
-    }
-    
-    # Filter segments that are upstream of i (important initial check)
-    checkSegments <-
-      checkSegments[basinFlow$maxflowacc[checkSegments] <=
-                      basinFlow$maxflowacc[i]]
+    # Set empty starting network
+    iNetwork <- c()
+  
+    # Reset segments to check as i
+    checkSegments <- i
 
 ### ESTABLISH ENTIRE CONNECTED UPSTREAM NETWORK
 
@@ -218,50 +184,58 @@ for(i in basins) {
       # Add segments to check to network
       iNetwork <- c(iNetwork, checkSegments)
 
-      # Reset allNewSegments (new segments that are added)
+      # Reset allNewSegments (all new segments that are added)
       allNewSegments <- c()
       
       # For every j segment to check (one value for first iteration but can be >1)
       for (j in checkSegments) {
-  
-        # Extract grid row number from orginal row number
+        
+        # Reset jSegmentsTouches (new segments that are added for each j)
+        jSegmentsTouches <- c()
+
+        # Extract grid row number from original row number
         # N.B. these are not the same as some duplicates crated by buffer
         jRows <- which(basinFlowGrid$permid == basinFlow$permid[j])
 
+        # Loop through every matching row (in case >1 in buffer areas)
         for(jRow in jRows) {
 
           # Find cell number
           jCellNumber <- basinFlowGrid$Cell[jRow]
 
-          # Find all cell values (these are the numbers that the st_is_within uses)
+          # Find all row numbers (these are the rows that the st_is_within uses)
           jCellRows <- which(basinFlowGrid$Cell == jCellNumber)
 
-          # Find relative position of focal row in cellRows
+          # Find relative position of focal row in jCellRows
           jDistanceNumber <- which(jCellRows == jRow)
 
           # Extract connected segments
           jConnectedNumbers <- segmentNetwork[segmentNetwork$Cell == jCellNumber,
-                                              "GroupDist"][[1]][[1]][[jDistanceNumber]]
+                                              "segmentNeighbours"][[1]][[1]][[jDistanceNumber]]
 
           # Relate back to basinFlow
           basinFlowRows <- which(basinFlow$permid %in%
                                    basinFlowGrid$permid[jCellRows[jConnectedNumbers]])
 
-          checkSegments <- c(checkSegments, basinFlowRows)
+          # Add to all segments to check
+          jSegmentsTouches <- c(jSegmentsTouches, basinFlowRows)
 
         }
         
-        # Make sure new segments are not already in network (so unidirectional)
-        newSegments <- setdiff(jSegmentsTouches, iNetwork)
+        # Make sure new segments are upstream of segment j
+        newSegments <-
+          jSegmentsTouches[basinFlow$maxflowacc[jSegmentsTouches] <=
+                          basinFlow$maxflowacc[j]]
         
         # Running tally of all new added segments
         allNewSegments <- c(allNewSegments, newSegments)
         
       }
       
-      # Make sure all new segments are unique
-      allNewSegments <- unique(allNewSegments)
- 
+      # Make sure new segments are unique, and not already in network
+      allNewSegments <- unique(allNewSegments) %>%
+        setdiff(., iNetwork)
+
       # Reset checkSegments (segments to check on next iteration)
       checkSegments <- c()
       
@@ -287,8 +261,6 @@ for(i in basins) {
     upstreamNetwork[[i]] <- iNetwork
 
 ### CHECK IF WITHIN ENGLAND
-# N.B. The st_interests function takes a while for a large stream network,
-# hence prior if statements to reduce number of times this is needed
 
   # If entire river basin is not in England (NA), we need to check upstream...
   if (is.na(basinFlow$withinEngland[i])) {
@@ -299,7 +271,7 @@ for(i in basins) {
       # If so, assign "No"
       basinFlow$withinEngland[i] <- "No"
 
-      # Otherwise need to check manually
+      # Otherwise, need to check manually
       } else {
 
         # Count number of iNetwork segments contained within England
@@ -334,8 +306,21 @@ for(i in basins) {
           iCatchment[, x] %>% # Collate upstream catchment layer values
           sum(., na.rm = TRUE) # Sum
       }
-  }
+    }
 
+### END SEGMENT AND BASIN LOOPS AND SAVE
+    
+    # Print update every 100 segments
+    if (i %% 100 == 0) {
+      
+      paste("Segment", i, "of", NROW(basinFlow),
+            "for",  basin, "basin complete") %>%
+        print
+    }
+    
+  # End segment loop
+  }
+  
   # Save basin
   saveRDS(basinFlow,
           file = paste0(dataDir,
@@ -343,14 +328,11 @@ for(i in basins) {
                         gsub(" ", "_", basin),
                         "_chem_data.Rds"))
 
-   }
-  
   # Remove objects not needed
   rm(basinFlow, segmentNetwork, upstreamNetwork, basinChem)
   gc()
-}
 
-)
+})
 
 # COMBINE BASINS INTO SINGLE FILE-----------------------------------------------
 
@@ -386,3 +368,9 @@ lapply(basins, function(x) {
          "_chem_data.Rds") %>%
     unlink
 })
+
+
+# ggplot() +
+#   geom_sf(data = basinFlow, aes(colour = withinEngland)) +
+#   theme_void()
+
