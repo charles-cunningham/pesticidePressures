@@ -20,7 +20,7 @@ library(parallel)
 nCores <- detectCores()
 
 # Assign cores
-options("mc.cores" = 4)
+options("mc.cores" = 8)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 
@@ -189,9 +189,9 @@ mclapply(basins, function(basin) {
       
       # For every j segment to check (one value for first iteration but can be >1)
       for (j in checkSegments) {
-        
-        # Reset jSegmentsTouches (new segments that are added for each j)
-        jSegmentsTouches <- c()
+
+        # Reset jTouches (new segments that are added for each j)
+        jTouches <- c()
 
         # Extract grid row number from original row number
         # N.B. these are not the same as some duplicates crated by buffer
@@ -218,14 +218,16 @@ mclapply(basins, function(basin) {
                                    basinFlowGrid$permid[jCellRows[jConnectedNumbers]])
 
           # Add to all segments to check
-          jSegmentsTouches <- c(jSegmentsTouches, basinFlowRows)
+          jTouches <- c(jTouches, basinFlowRows)
 
         }
         
         # Make sure new segments are upstream of segment j
+        # (belt and braces to avoid any errors in dataset -
+        # either max flow accumulation is lower, or startz is higher)
         newSegments <-
-          jSegmentsTouches[basinFlow$maxflowacc[jSegmentsTouches] <=
-                          basinFlow$maxflowacc[j]]
+          jTouches[basinFlow$maxflowacc[jTouches] < basinFlow$maxflowacc[j] |
+                     basinFlow$startz[jTouches] > basinFlow$startz[j]]
         
         # Running tally of all new added segments
         allNewSegments <- c(allNewSegments, newSegments)
@@ -312,10 +314,10 @@ mclapply(basins, function(basin) {
     
     # Print update every 100 segments
     if (i %% 100 == 0) {
-      
-      paste("Segment", i, "of", NROW(basinFlow),
-            "for",  basin, "basin complete") %>%
-        print
+
+      system(sprintf('echo "\n%s\n"', 
+                     paste("Segment", i, "of", NROW(basinFlow),
+                           "for",  basin, "basin complete")))
     }
     
   # End segment loop
