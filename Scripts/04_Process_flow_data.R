@@ -20,7 +20,7 @@ library(parallel)
 nCores <- detectCores()
 
 # Assign cores
-options("mc.cores" = 8)
+options("mc.cores" = 4)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 
@@ -47,6 +47,9 @@ england <- readRDS(paste0(dataDir,
 catchmentChem <- readRDS(paste0(dataDir,
                                 "/Processed/Catchments/Catchment_chem_data.Rds")) %>%
   st_as_sf
+
+# Add row ID column for catchmentChem
+catchmentChem$ID <- 1:NROW(catchmentChem)
 
 # List fertiliser and pesticide layer names
 fertLayers <- grep("fertiliser", names(catchmentChem), value = TRUE)
@@ -112,10 +115,10 @@ flowData <- arrange(flowData, maxflowacc)
 #testData <- rbind(testData, flowData[flowData$rbd == basins[2],][1:10,])
 #testData <- rbind(testData, flowData[flowData$rbd == basins[3],][1:10,])
 #basins <- basins[1:3]
-#testData <- flowData[flowData$rbd == "Solway Tweed",]
+#testData <- flowData[flowData$rbd == "Solway Tweed",] 
 #testData <- flowData[flowData$opcatch == "Esk and Irthing",]  
 #testData <- flowData[flowData$ea_wb_id == "GB102077074190",]
-#basins <- "Solway Tweed"
+#basin <- "Solway Tweed"
 ###!!!###
 #testing#
 ###!!!###
@@ -145,9 +148,16 @@ mclapply(basins, function(basin) {
   # iteration workflow is needed to speed up
 
   # Create 10x10 hexagonal grid, and (2 x search distance) buffer
-  basinGrid <- st_make_grid(basinFlow, n=c(10,10), square = F) %>%
+  basinGrid <- st_make_grid(basinChem, n=c(10,10), square = F) %>%
     st_buffer(., 2)
-
+  
+  # Intersect buffered grid with catchments
+  basinChemGrid <- basinChem %>%
+    st_join(basinGrid %>%
+              st_as_sf() %>%
+              tibble::rowid_to_column('Cell'),
+            join=st_intersects, left = FALSE)
+  
   # Intersect buffered grid with rivers
   basinFlowGrid <- basinFlow %>%
     st_join(basinGrid %>%
@@ -203,7 +213,7 @@ mclapply(basins, function(basin) {
           # Find cell number
           jCellNumber <- basinFlowGrid$Cell[jRow]
 
-          # Find all row numbers (these are the rows that the st_is_within uses)
+          # Find all row numbers (these are rows that st_is_within uses)
           jCellRows <- which(basinFlowGrid$Cell == jCellNumber)
 
           # Find relative position of focal row in jCellRows
@@ -223,7 +233,7 @@ mclapply(basins, function(basin) {
         }
         
         # Make sure new segments are upstream of segment j
-        # (belt and braces to avoid any errors in dataset -
+        # (belt and braces to avoid any errors (which exist!) in dataset -
         # either max flow accumulation is lower, or startz is higher)
         newSegments <-
           jTouches[basinFlow$maxflowacc[jTouches] < basinFlow$maxflowacc[j] |
@@ -293,13 +303,31 @@ mclapply(basins, function(basin) {
 
     # If upstream of segment is entirely within England
     if (basinFlow$withinEngland[i] == "Yes") {
+      
+      # Identify basinFlowGrid rows within iNetwork so that we can iterate cells
+      basinGridNetwork <- basinFlowGrid %>%
+        filter(permid %in% basinFlow[iNetwork,]$permid)
+ 
+      # Iterate through all cells that iNetwork occupies
+      cellCatchments <- lapply(unique(basinGridNetwork$Cell), function(x) {
 
-      # Extract all catchments that intersect with upstream network
-      iCatchment <- basinChem %>%
-        filter(lengths(st_intersects(.,
-                                     basinFlow[iNetwork,])) > 0) %>%
+        # Filter basinChemGrid to cell x 
+        basinChemGridCell <- basinChemGrid[basinChemGrid$Cell == x,]
+        
+        # Intersect all catchments within cell x and iNetwork within cell x
+        overlaps <- st_intersects(basinChemGridCell,
+                      basinGridNetwork[basinGridNetwork$Cell == x,]) %>%
+          lengths # Convert to number of intersections per catchment 
+        
+        # Return basinChemGridCell rows with any overlaps
+        return(basinChemGridCell[overlaps > 0,])
+        
+      }) %>% bind_rows # Join together (duplicates from overlapping cells included)
+      
+      # Use cellCatchments row IDs to identify unique basinChem catchments
+      iCatchment <- basinChem[basinChem$ID %in% cellCatchments$ID,] %>%
         as_tibble # Convert to tibble
-
+      
       # For every fertiliser and pesticide layer
       for (x in c(fertLayers,
                   pestLayers)) {
@@ -308,7 +336,7 @@ mclapply(basins, function(basin) {
           iCatchment[, x] %>% # Collate upstream catchment layer values
           sum(., na.rm = TRUE) # Sum
       }
-    }
+}
 
 ### END SEGMENT AND BASIN LOOPS AND SAVE
     
@@ -371,8 +399,6 @@ lapply(basins, function(x) {
     unlink
 })
 
-
 # ggplot() +
 #   geom_sf(data = basinFlow, aes(colour = withinEngland)) +
 #   theme_void()
-
