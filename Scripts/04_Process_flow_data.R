@@ -109,7 +109,7 @@ flowData <- arrange(flowData, maxflowacc)
 
 # EXTRACT CATCHMENT DATA TO RIVER SEGMENTS (BASIN LOOP) ------------------------
 
-###!!!###
+###!!!####testing#
 #create testing dataset
 #testData <- flowData[flowData$rbd == basins[1],][1:10,]
 #testData <- rbind(testData, flowData[flowData$rbd == basins[2],][1:10,])
@@ -119,8 +119,6 @@ flowData <- arrange(flowData, maxflowacc)
 #testData <- flowData[flowData$opcatch == "Esk and Irthing",]  
 #testData <- flowData[flowData$ea_wb_id == "GB102077074190",]
 #basin <- "Solway Tweed"
-###!!!###
-#testing#
 ###!!!###
 
 ### SET UP BASIN LOOP
@@ -340,12 +338,13 @@ mclapply(basins, function(basin) {
 
 ### END SEGMENT AND BASIN LOOPS AND SAVE
     
-    # Print update every 100 segments
-    if (i %% 100 == 0) {
+    # Print update every 1000 segments
+    if (i %% 1000 == 0) {
 
       system(sprintf('echo "\n%s\n"', 
-                     paste("Segment", i, "of", NROW(basinFlow),
-                           "for",  basin, "basin complete")))
+                     paste0(basin, " basin ",
+                           ( i / NROW(basinFlow) ) * 100,
+                           "% complete")))
     }
     
   # End segment loop
@@ -388,16 +387,6 @@ flowChemData <- do.call(what = rbind,
 saveRDS(flowChemData, 
         file = paste0(dataDir,
                              "/Processed/Flow/Flow_chem_data.Rds"))
-
-# Delete individual basin objects
-lapply(basins, function(x) {
-  
-  paste0(dataDir,
-         "/Processed/Flow/basin_",
-         gsub(" ", "_", x),
-         "_chem_data.Rds") %>%
-    unlink
-})
 
 # ggplot() +
 #   geom_sf(data = basinFlow, aes(colour = withinEngland)) +
