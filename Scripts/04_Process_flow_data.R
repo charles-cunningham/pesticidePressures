@@ -353,9 +353,9 @@ mclapply(basins, function(basin) {
   # Save basin
   saveRDS(basinFlow,
           file = paste0(dataDir,
-                        "/Processed/Flow/",
+                        "/Processed/Flow/basin_",
                         gsub(" ", "_", basin),
-                        "_basin_chem_data.Rds"))
+                        "_chem_data.Rds"))
 
   # Remove objects not needed
   rm(basinFlow, segmentNetwork, upstreamNetwork, basinChem)
@@ -374,9 +374,9 @@ for (i in 1:length(basins)) {
   
   # Assign each processed basin object to single list 
   basinFlowData[[i]] <- readRDS(file = paste0(dataDir,
-                                              "/Processed/Flow/",
+                                              "/Processed/Flow/basin_",
                                               gsub(" ", "_", basins[i]),
-                                              "_basin_chem_data.Rds"))
+                                              "_chem_data.Rds"))
 }
 
 # Bind list of basin objects together
