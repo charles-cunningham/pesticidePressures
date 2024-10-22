@@ -352,7 +352,7 @@ mclapply(basins, function(basin) {
                             i, " of ",  NROW(basinFlow), ")")))
     }
    
-### END SEGMENT LOOP,  SAVE, AND END BASIN LOOP
+### END SEGMENT LOOP, SAVE, AND END BASIN LOOP
      
   # End segment loop
   }
@@ -394,7 +394,3 @@ flowChemData <- do.call(what = rbind,
 saveRDS(flowChemData, 
         file = paste0(dataDir,
                              "/Processed/Flow/Flow_chem_data.Rds"))
-
-# ggplot() +
-#   geom_sf(data = basinFlow, aes(colour = withinEngland)) +
-#   theme_void()
