@@ -19,8 +19,8 @@ library(parallel)
 # Check cores
 nCores <- detectCores()
 
-# Assign cores
-options("mc.cores" = 8)
+# Assign cores to most efficient number (speed vs memory)
+options("mc.cores" = 5)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 
@@ -348,7 +348,8 @@ mclapply(basins, function(basin) {
 
       # Print
       system(sprintf('echo "\n%s\n"', 
-                     paste0(basin, " basin ", percentComplete, "% complete")))
+                     paste0(basin, " basin ", percentComplete, "% complete (",
+                            i, " of ",  NROW(basinFlow), ")")))
     }
    
 ### END SEGMENT LOOP,  SAVE, AND END BASIN LOOP
