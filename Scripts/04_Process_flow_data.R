@@ -61,12 +61,14 @@ pestLayers <- grep("pesticide", names(catchmentChem), value = TRUE)
 
 # Read in flow data from geopackage, with query that selects:
 # only River water catchment type,
+# only segments that end above sea level,
 # and only segments with 1km flow accumulation or greater
 flowData <- read_sf(dsn = paste0(dataDir, "Raw/Flow_data/Flow_data.gpkg"),
                     query = "
                 SELECT *
                 FROM ea_probable_overland_flow_pathways
-                WHERE water_cat >= 'River'
+                WHERE water_cat = 'River'
+                AND endz > 0
                 AND ( flowacccl = '1Km' OR flowacccl = '10Km' )
                 ")
 
