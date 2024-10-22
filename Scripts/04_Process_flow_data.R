@@ -20,7 +20,7 @@ library(parallel)
 nCores <- detectCores()
 
 # Assign cores
-options("mc.cores" = 4)
+options("mc.cores" = 8)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 
@@ -145,8 +145,8 @@ mclapply(basins, function(basin) {
   # errors in original flow data. This takes much longer and so a grid 
   # iteration workflow is needed to speed up
 
-  # Create 10x10 hexagonal grid, and (2 x search distance) buffer
-  basinGrid <- st_make_grid(basinChem, n=c(10,10), square = F) %>%
+  # Create 100x100 hexagonal grid, and (2 x search distance) buffer
+  basinGrid <- st_make_grid(basinChem, n=c(100,100), square = F) %>%
     st_buffer(., 2)
   
   # Intersect buffered grid with catchments
@@ -353,9 +353,9 @@ mclapply(basins, function(basin) {
   # Save basin
   saveRDS(basinFlow,
           file = paste0(dataDir,
-                        "/Processed/Flow/basin_",
+                        "/Processed/Flow/",
                         gsub(" ", "_", basin),
-                        "_chem_data.Rds"))
+                        "_basin_chem_data.Rds"))
 
   # Remove objects not needed
   rm(basinFlow, segmentNetwork, upstreamNetwork, basinChem)
@@ -374,9 +374,9 @@ for (i in 1:length(basins)) {
   
   # Assign each processed basin object to single list 
   basinFlowData[[i]] <- readRDS(file = paste0(dataDir,
-                                              "/Processed/Flow/basin_",
+                                              "/Processed/Flow/",
                                               gsub(" ", "_", basins[i]),
-                                              "_chem_data.Rds"))
+                                              "_basin_chem_data.Rds"))
 }
 
 # Bind list of basin objects together
