@@ -146,7 +146,7 @@ mclapply(basins, function(basin) {
   # iteration workflow is needed to speed up
 
   # Create 100x100 hexagonal grid, and (2 x search distance) buffer
-  basinGrid <- st_make_grid(basinChem, n=c(100,100), square = F) %>%
+  basinGrid <- st_make_grid(basinChem, n=c(20,20), square = F) %>%
     st_buffer(., 2)
   
   # Intersect buffered grid with catchments
