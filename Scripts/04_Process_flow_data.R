@@ -336,17 +336,23 @@ mclapply(basins, function(basin) {
       }
 }
 
-### END SEGMENT AND BASIN LOOPS AND SAVE
+### PRINT UPDATE
     
-    # Print update every 1000 segments
+    # Every 1000 segments
     if (i %% 1000 == 0) {
+      
+      # Calculate percentage complete
+      percentComplete <- ( i / NROW(basinFlow) ) %>%
+        `*` (100) %>%
+        round(., digits = 1) # Round to 1 decimal place
 
+      # Print
       system(sprintf('echo "\n%s\n"', 
-                     paste0(basin, " basin ",
-                           ( i / NROW(basinFlow) ) * 100,
-                           "% complete")))
+                     paste0(basin, " basin ", percentComplete, "% complete")))
     }
-    
+   
+### END SEGMENT LOOP,  SAVE, AND END BASIN LOOP
+     
   # End segment loop
   }
   
