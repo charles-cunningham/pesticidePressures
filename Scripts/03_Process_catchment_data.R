@@ -150,9 +150,9 @@ gc()
 # kg/year within that catchment
 system.time(
   
-  catchmentChemData <- extract(chemData, catchmentData, exact = TRUE,
-                              fun = sum, na.rm = TRUE,
-                              ID = FALSE, bind = TRUE)
+  catchmentChemData <- terra::extract(chemData, catchmentData, exact = TRUE,
+                                      fun = sum, na.rm = TRUE,
+                                      ID = FALSE, bind = TRUE)
   )
 
 # Save
