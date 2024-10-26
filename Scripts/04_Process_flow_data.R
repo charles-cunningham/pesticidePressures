@@ -20,7 +20,7 @@ library(parallel)
 nCores <- detectCores()
 
 # Assign cores to most efficient number (speed vs memory)
-options("mc.cores" = 5)
+options("mc.cores" = 4)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 
