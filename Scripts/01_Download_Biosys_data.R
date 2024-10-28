@@ -33,7 +33,7 @@ if (!file.exists(dataDir)) {
 # Dataset documentation available here:
 # https://www.data.gov.uk/dataset/3faf10d7-04bc-49e0-8377-61f75186d21d/freshwater-river-macroinvertebrate-surveys-biosys
 
-# SURVEY DATA
+### SURVEY DATA
 
 # Set download url
 url <- "https://environment.data.gov.uk/ecology/explorer/downloads/INV_OPEN_DATA.zip"
@@ -48,7 +48,7 @@ download.file(url = url, destfile = paste0(dataDir, file_name, ".zip"), sep = ""
 # "INV_OPEN_DATA_SITE.csv", "INV_OPEN_DATA_TAXA.csv")
 unzip(paste0(dataDir, "/", file_name, ".zip"), exdir = dataDir)
 
-# TAXON INFO
+### TAXON INFO
 
 # Set download url
 url <- "https://environment.data.gov.uk/ecology/explorer/downloads/OPEN_DATA_TAXON_INFO.zip"
@@ -103,7 +103,7 @@ invData <-
 rm(invMetrics, invSite, invTaxa, taxonInfo)
 gc()
 
-### SAVE BIOSYS DATA --------------------------------------------------------
+### SAVE BIOSYS DATA -----------------------------------------------------------
 
 # Save file
 saveRDS(invData, file = paste0(dataDir, "invData.Rds"))
