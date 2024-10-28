@@ -41,3 +41,13 @@ dataDir <- "../Data/Raw/Biosys/"
 invData <- readRDS(paste0(dataDir, "invData.Rds"))
 
 ###        ---------------------------------------------------------------------
+
+
+test <- invData %>%
+  mutate(SAMPLE_DATE = as.POSIXct(SAMPLE_DATE, format = "%d/%m/%Y"))
+
+test$year <- test$SAMPLE_DATE %>%
+  format(., format="%Y") %>% 
+  as.numeric(.)
+
+
