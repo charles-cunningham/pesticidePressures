@@ -9,6 +9,7 @@
 ### TODO
 # - Replace SQL counrty select query qith spatial sf intersects function due 
 # to error found inoriginal data where english catchments are marks as Wales
+# - Add other varaibles to extract to catchment, i.e. land cover
 
 ### LOAD LIBRARIES -------------------------------------------------------------
 
