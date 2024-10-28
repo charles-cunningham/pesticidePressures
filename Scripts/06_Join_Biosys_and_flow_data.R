@@ -2,22 +2,7 @@
 #
 # Author: Charles Cunningham
 # 
-# Script Name: Join flow and Biosys data
-#
-# Script Description:
-
-# LOAD LIBRARIES ---------------------------------------------------------------
-
-# Load packages
-library(tidyverse)
-library(terra)
-library(sf)
-
-# HEADER -----------------------------------------------------------------------
-#
-# Author: Charles Cunningham
-# 
-# Script Name: Aggregate pesticide data
+# Script Name: Join Biosys and flow data
 #
 # Script Description:
 
@@ -25,7 +10,6 @@ library(sf)
 
 # Load packages
 library(tidyverse)
-library(terra)
 library(sf)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -49,44 +33,35 @@ invData_sf <- readRDS(file = paste0(dataDir, "Raw/Biosys/invData.Rds")) %>%
 
 ### JOIN PESTICIDE SUMMARY FLOW DATA TO BIOSYS DATA ----------------------------
 
-# loop through every unique site location, not location, to save time
-#if any within 50m, 
-# get nearest segment
-# extract pesticide load and div to columns of biosys
-
 testData <- invData_sf[invData_sf$CATCHMENT %>% grep("DEE",.,
                                                      ignore.case = TRUE),]
 
 # Add columns to populate to Biosys data
 testData$pesticideLoad <- testData$pesticideDiv <- NA
 
-system.time(
 
+# 
 for(i in unique(st_geometry(testData))) {
-
-  # Filter to geometry i
-    iSite <-  testData %>%
-      filter(lengths(st_equals(testData, i)) == 1)
-    
+  
   # Check if any points are within 100m
-    if (lengths(st_is_within_distance(i, flowChemData, dist = 100)) > 0 ) {
-      
-      # Find nearest feature
-      nearestSegment <- flowChemData[st_nearest_feature(iSite[1,],
-                                                        flowChemData),]
-      
-      # Assign values
-      testData[lengths(st_equals(testData, i)) == 1, "pesticideLoad" ] <-
-      nearestSegment$pesticideLoad
-      testData[lengths(st_equals(testData, i)) == 1, "pesticideDiv" ] <-
-        nearestSegment$pesticideDiv
-
-    } # else leave as NA
+  if (lengths(st_is_within_distance(i, flowChemData, dist = 100)) > 0) {
     
+    # Find nearest feature
+    nearestSegment <- flowChemData[st_nearest_feature(i,
+                                                      flowChemData,
+                                                      check_crs = FALSE), ]
+    
+    # Assign values
+    testData[lengths(st_equals(testData, i)) == 1, "pesticideLoad"] <-
+      nearestSegment$pesticideLoad
+    testData[lengths(st_equals(testData, i)) == 1, "pesticideDiv"] <-
+      nearestSegment$pesticideDiv
+    
+  } # Else, leave as NA
 }
-)
 
 ggplot() +
   geom_sf(data = testData, colour = "red") +
   geom_sf(data = flowChemData) +
   theme_void()
+
