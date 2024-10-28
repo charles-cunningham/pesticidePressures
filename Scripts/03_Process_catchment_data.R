@@ -57,7 +57,7 @@ saveRDS(catchmentData,
 rm(catchmentData)
 gc()
 
-# READ IN CATCHMENT, FERTILISER AND PESTICIDE DATA -----------------------------  
+### READ IN CATCHMENT, FERTILISER AND PESTICIDE DATA ---------------------------  
 
 ### READ IN CATCHMENT DATA
 
@@ -132,7 +132,7 @@ pestData <- lapply(pestFiles, function(x) {
   # Combine together
   rast
 
-# JOIN FERTILISER AND PESTICIDE DATA TOGETHER ----------------------------------
+### JOIN FERTILISER AND PESTICIDE DATA TOGETHER --------------------------------
 
 # Join fertliser and pesticide spatRasters into single combined spatRaster
 chemData <- c(fertData, pestData)
@@ -141,7 +141,7 @@ chemData <- c(fertData, pestData)
 rm(fertData, pestData)
 gc()
 
-# EXTRACT DATA TO CATCHMENTS ---------------------------------------------------
+### EXTRACT DATA TO CATCHMENTS -------------------------------------------------
 # N.B. Warning: this runs overnight
 
 # Weighted sum (missing data is treated as 0)
