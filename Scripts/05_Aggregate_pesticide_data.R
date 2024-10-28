@@ -10,7 +10,6 @@
 
 # Load packages
 library(tidyverse)
-library(terra)
 library(sf)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
