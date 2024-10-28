@@ -19,7 +19,7 @@ library(terra)
 # If working locally: "../Data/Raw/"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/Raw/"
 
-# Manual dataset download folders
+### MANUAL DATASET DOWNLOAD FOLDERS
 
 # Specify directory for pesticide data
 pestDir <-  paste0(dataDir, "Pesticide_data/")
@@ -30,7 +30,7 @@ flowDir <- paste0(dataDir, "Flow_data/")
 # Specify directory for land cover data
 landDir <-  paste0(dataDir, "Land_cover_data/")
 
-# Automated dataset download folders
+### AUTOMATED DATASET DOWNLOAD FOLDERS
 
 # Specify directory for catchment data
 catchmentDir <- paste0(dataDir, "Catchment_data/")
