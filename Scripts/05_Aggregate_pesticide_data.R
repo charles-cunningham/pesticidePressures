@@ -37,7 +37,6 @@ pestLayers <- grep("pesticide", names(flowChemData), value = TRUE)
 
 # Create pesticide load column as sum of all pesticide applications
 flowChemData <- flowChemData %>% 
-  as_tibble %>%
   mutate(pesticideLoad = rowSums(across(starts_with('pesticide_')),
          na.rm = TRUE))
 
@@ -47,10 +46,12 @@ flowChemData <- flowChemData %>%
 
 # Create pesticide diversity column as count of all pesticide applications
 flowChemData <- flowChemData %>% 
-  as_tibble %>%
   mutate(pesticideDiv = rowSums(across(starts_with('pesticide_'),
                                        ~ .x > 0),
                                 na.rm = TRUE))
 
 ### SAVE -----------------------------------------------------------------------
+
+#...
+
 
