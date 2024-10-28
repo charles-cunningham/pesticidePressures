@@ -57,8 +57,6 @@ pestLayers <- grep("pesticide", names(catchmentChem), value = TRUE)
 
 ### FILTER AND SEPARATE FLOW DATA ----------------------------------------------
 
-# FLOW DATA
-
 # Read in flow data from geopackage, with query that selects:
 # only River water catchment type,
 # only segments that end above sea level,
@@ -85,7 +83,7 @@ saveRDS(flowData,
 rm(flowData)
 gc()
 
-# SET FLOW AND BASIN DATA ------------------------------------------------------
+### SET FLOW AND BASIN DATA ----------------------------------------------------
 
 # Read in flow data
 flowData <- readRDS(file = paste0(dataDir, "/Processed/Flow/Flow_data_only.Rds"))
@@ -109,19 +107,7 @@ flowData$withinEngland <- if_else(flowData$rbd %in% allEnglishBasins,
 # Important - sort data from smallest to largest flow to speed up later steps
 flowData <- arrange(flowData, maxflowacc)
 
-# EXTRACT CATCHMENT DATA TO RIVER SEGMENTS (BASIN LOOP) ------------------------
-
-###!!!####testing#
-#create testing dataset
-#testData <- flowData[flowData$rbd == basins[1],][1:10,]
-#testData <- rbind(testData, flowData[flowData$rbd == basins[2],][1:10,])
-#testData <- rbind(testData, flowData[flowData$rbd == basins[3],][1:10,])
-#basins <- basins[1:3]
-#testData <- flowData[flowData$rbd == "Solway Tweed",] 
-#testData <- flowData[flowData$opcatch == "Esk and Irthing",]  
-#testData <- flowData[flowData$ea_wb_id == "GB102077074190",]
-#basin <- "Solway Tweed"
-###!!!###
+### EXTRACT CATCHMENT DATA TO RIVER SEGMENTS (BASIN LOOP) ----------------------
 
 ### SET UP BASIN LOOP
 
@@ -372,7 +358,7 @@ mclapply(basins, function(basin) {
 
 })
 
-# COMBINE BASINS INTO SINGLE FILE-----------------------------------------------
+### COMBINE BASINS INTO SINGLE FILE---------------------------------------------
 
 # Create empty list
 basinFlowData <- vector(mode = "list",
