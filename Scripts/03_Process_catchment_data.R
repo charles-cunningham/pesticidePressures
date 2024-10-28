@@ -6,6 +6,10 @@
 #
 # Script Description:
 
+### TODO
+# - Replace SQL counrty select query qith spatial sf intersects function due 
+# to error found inoriginal data where english catchments are marks as Wales
+
 ### LOAD LIBRARIES -------------------------------------------------------------
 
 # Load packages
