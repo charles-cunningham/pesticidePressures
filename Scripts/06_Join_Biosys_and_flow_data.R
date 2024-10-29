@@ -19,6 +19,13 @@ library(sf)
 # If working locally: "../Data/"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 
+# Create processed Biosys data folder
+lapply(paste0(dataDir, "Processed/Biosys"), function(x) {
+  if (!file.exists(x)) {
+    dir.create(x, recursive = TRUE)
+  }
+})
+
 ### LOAD DATA ------------------------------------------------------------------
 
 # Read Biosys data, and convert to sf object
@@ -28,22 +35,24 @@ invData_sf <- readRDS(file = paste0(dataDir, "Raw/Biosys/invData.Rds")) %>%
            crs = 27700)
 
 # Read processed flow data
-# flowChemData <- readRDS(paste0(dataDir, ...)
-
+flowChemData <- readRDS(file = paste0(dataDir,
+                                      "/Processed/Flow/Flow_aggregated_data.Rds"))
 
 ### JOIN PESTICIDE SUMMARY FLOW DATA TO BIOSYS DATA ----------------------------
 
+# Subset for testing 
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 testData <- invData_sf[invData_sf$CATCHMENT %>% grep("DEE",.,
                                                      ignore.case = TRUE),]
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 # Add columns to populate to Biosys data
 testData$pesticideLoad <- testData$pesticideDiv <- NA
 
-
-# 
+# Loop through unique geometries (individual sites)
 for(i in unique(st_geometry(testData))) {
   
-  # Check if any points are within 100m
+  # Check if any flow segments are within 100m
   if (lengths(st_is_within_distance(i, flowChemData, dist = 100)) > 0) {
     
     # Find nearest feature
@@ -51,7 +60,7 @@ for(i in unique(st_geometry(testData))) {
                                                       flowChemData,
                                                       check_crs = FALSE), ]
     
-    # Assign values
+    # Transfer aggregated pesticide values from nearest segment to site
     testData[lengths(st_equals(testData, i)) == 1, "pesticideLoad"] <-
       nearestSegment$pesticideLoad
     testData[lengths(st_equals(testData, i)) == 1, "pesticideDiv"] <-
@@ -60,8 +69,9 @@ for(i in unique(st_geometry(testData))) {
   } # Else, leave as NA
 }
 
-ggplot() +
-  geom_sf(data = testData, colour = "red") +
-  geom_sf(data = flowChemData) +
-  theme_void()
+### SAVE -----------------------------------------------------------------------
 
+# Save processed invData ready for modelling
+saveRDS(testData,
+        file = paste0(dataDir,
+                      "/Processed/Biosys/invDataSpatial.Rds"))
