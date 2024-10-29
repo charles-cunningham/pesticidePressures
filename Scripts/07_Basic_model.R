@@ -30,15 +30,17 @@
 
 # Load packages
 library(tidyverse)
+library(INLA)
+library(terra)
 
 ### DATA MANAGEMENT ------------------------------------------------------------
 # Set data directory
-# If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/Raw/Biosys/"
-# If working locally: "../Data/Raw/Biosys/"
-dataDir <- "../Data/Raw/Biosys/"
+# If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/Processed/Biosys/"
+# If working locally: "../Data/Processed/Biosys/"
+dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/Processed/Biosys/"
 
 # Load Biosys data
-invData <- readRDS(paste0(dataDir, "invData.Rds"))
+invData <- readRDS(paste0(dataDir, "invDataSpatial.Rds"))
 
 ###        ---------------------------------------------------------------------
 
