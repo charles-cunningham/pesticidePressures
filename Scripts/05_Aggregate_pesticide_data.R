@@ -39,7 +39,7 @@ flowChemData <- flowChemData %>%
   mutate(pesticideLoad = rowSums(across(starts_with('pesticide_')),
          na.rm = TRUE))
 
-### CREATE PESTICIDE DIVERSITY METRIC ------------------------------------------
+### CREATE PESTICIDE RICHNESS METRIC ------------------------------------------
 # N.B. This is a placeholder for now. Currently just total number, but need 
 # to introduce diversity metric describing evenness of pesticide applications
 
@@ -51,6 +51,7 @@ flowChemData <- flowChemData %>%
 
 ### SAVE -----------------------------------------------------------------------
 
-#...
-
-
+# Save processed flow data
+saveRDS(flowChemData,
+        file = paste0(dataDir,
+                      "/Processed/Flow/Flow_aggregated_data.Rds"))
