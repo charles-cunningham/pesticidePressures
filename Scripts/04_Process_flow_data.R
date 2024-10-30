@@ -89,7 +89,11 @@ gc()
 flowData <- readRDS(file = paste0(dataDir, "/Processed/Flow/Flow_data_only.Rds"))
 
 # Set river basin districts
-basins <- flowData$rbd %>% unique
+# N.B. If using 4 cores, quicker to move largest basin (Anglian) to position 3
+basins <- flowData$rbd %>% 
+  unique %>%
+  fct_relevel("Anglian", after = 2) %>%
+  levels
 
 # Set basins entirely within England
 allEnglishBasins <- c("Anglian",
