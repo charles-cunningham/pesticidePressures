@@ -6,23 +6,22 @@
 #
 # Script Description: 
 
-# INSTALL NON-CRAN PACKAGES -----------------------------------
+# INSTALL INLA AND INLABRU PACKAGES --------------------------------------------
 
-#Run this code once
-
+# # Update matrix package first if using R version 4.2.2
+# install.packages("https://cran.r-project.org/src/contrib/Archive/Matrix/Matrix_1.6-5.tar.gz",
+#                  repos=NULL, type="source")
+# 
 # # Install INLA
 # install.packages("INLA",
 #                  repos=c(getOption("repos"),INLA="http://inla.r-inla-download.org/R/stable"),
 #                  dep=TRUE)
 # 
+# # Needed to run on LINUX machine
+# INLA::inla.binary.install()
+# 
 # # Install inlabru
 # install.packages("inlabru")
-# 
-# # Install BRCmap
-# devtools::install_github("colinharrower/BRCmap")
-# 
-# # Needed to run on HPC
-# inla.binary.install()
 # 
 # # Other packages as required from CRAN, i.e install.packages()
 
@@ -31,7 +30,8 @@
 # Load packages
 library(tidyverse)
 library(INLA)
-library(terra)
+library(inlabru)
+library(sf)
 
 ### DATA MANAGEMENT ------------------------------------------------------------
 # Set data directory
