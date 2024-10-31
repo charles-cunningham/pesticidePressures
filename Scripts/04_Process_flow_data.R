@@ -30,7 +30,7 @@ options("mc.cores" = 4)
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 
 # Create processed flow data folder
-lapply(paste0(dataDir, "Processed/Flow"), function(x) {
+lapply(paste0(dataDir, "Processed/Flow/Basins"), function(x) {
   if (!file.exists(x)) {
     dir.create(x, recursive = TRUE)
   }
@@ -224,11 +224,12 @@ mclapply(basins, function(basin) {
         
         # Make sure new segments are upstream of segment j
         # (belt and braces to avoid any errors (which exist!) in dataset -
-        # either max flow accumulation is lower, or startz is higher)
+        # either max flow accumulation is "<=", or startz/endz is ">=")
         newSegments <-
-          jTouches[basinFlow$maxflowacc[jTouches] < basinFlow$maxflowacc[j] |
-                     basinFlow$startz[jTouches] > basinFlow$startz[j]]
-        
+          jTouches[basinFlow$maxflowacc[jTouches] <= basinFlow$maxflowacc[j] |
+                     basinFlow$startz[jTouches] >= basinFlow$startz[j] |
+                     basinFlow$endz[jTouches] >= basinFlow$endz[j]]
+          
         # Running tally of all new added segments
         allNewSegments <- c(allNewSegments, newSegments)
         
@@ -352,7 +353,7 @@ mclapply(basins, function(basin) {
   # Save basin
   saveRDS(basinFlow,
           file = paste0(dataDir,
-                        "/Processed/Flow/basin_",
+                        "/Processed/Flow/Basins/",
                         gsub(" ", "_", basin),
                         "_chem_data.Rds"))
 
@@ -373,7 +374,7 @@ for (i in 1:length(basins)) {
   
   # Assign each processed basin object to single list 
   basinFlowData[[i]] <- readRDS(file = paste0(dataDir,
-                                              "/Processed/Flow/basin_",
+                                              "/Processed/Flow/Basins/",
                                               gsub(" ", "_", basins[i]),
                                               "_chem_data.Rds"))
 }
