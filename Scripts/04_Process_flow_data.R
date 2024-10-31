@@ -227,8 +227,7 @@ mclapply(basins, function(basin) {
         # either max flow accumulation is "<=", or startz/endz is ">=")
         newSegments <-
           jTouches[basinFlow$maxflowacc[jTouches] <= basinFlow$maxflowacc[j] |
-                     basinFlow$startz[jTouches] >= basinFlow$startz[j] |
-                     basinFlow$endz[jTouches] >= basinFlow$endz[j]]
+                     basinFlow$startz[jTouches] >= basinFlow$startz[j]]
           
         # Running tally of all new added segments
         allNewSegments <- c(allNewSegments, newSegments)
