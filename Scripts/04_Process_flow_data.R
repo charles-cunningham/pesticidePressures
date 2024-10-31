@@ -75,7 +75,7 @@ flowData <- flowData %>%
 
 # Save
 saveRDS(flowData,
-        file = paste0(dataDir, "/Processed/Flow/Flow_data_only.Rds"))
+        file = paste0(dataDir, "Processed/Flow/Flow_data_only.Rds"))
 
 # Remove objects and clear memory
 rm(flowData)
@@ -84,7 +84,7 @@ gc()
 ### SET FLOW AND BASIN DATA ----------------------------------------------------
 
 # Read in flow data
-flowData <- readRDS(file = paste0(dataDir, "/Processed/Flow/Flow_data_only.Rds"))
+flowData <- readRDS(file = paste0(dataDir, "Processed/Flow/Flow_data_only.Rds"))
 
 # Set river basin districts
 # N.B. If using 4 cores, quicker to move largest basin (Anglian) to position 3
@@ -352,7 +352,7 @@ mclapply(basins, function(basin) {
   # Save basin
   saveRDS(basinFlow,
           file = paste0(dataDir,
-                        "/Processed/Flow/Basins/",
+                        "Processed/Flow/Basins/",
                         gsub(" ", "_", basin),
                         "_chem_data.Rds"))
 
@@ -373,7 +373,7 @@ for (i in 1:length(basins)) {
   
   # Assign each processed basin object to single list 
   basinFlowData[[i]] <- readRDS(file = paste0(dataDir,
-                                              "/Processed/Flow/Basins/",
+                                              "Processed/Flow/Basins/",
                                               gsub(" ", "_", basins[i]),
                                               "_chem_data.Rds"))
 }
@@ -385,4 +385,4 @@ flowChemData <- do.call(what = rbind,
 # Save combined object
 saveRDS(flowChemData, 
         file = paste0(dataDir,
-                      "/Processed/Flow/Flow_chem_data.Rds"))
+                      "Processed/Flow/Flow_chem_data.Rds"))
