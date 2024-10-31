@@ -7,8 +7,8 @@
 # Script Description:
 
 ### TODO
-# - Replace SQL counrty select query qith spatial sf intersects function due 
-# to error found inoriginal data where english catchments are marks as Wales
+# - Replace SQL country select query qith spatial sf intersects function due 
+# to error found in original data where English catchments are marks as Wales
 # - Add other varaibles to extract to catchment, i.e. land cover
 
 ### LOAD LIBRARIES -------------------------------------------------------------
@@ -35,6 +35,11 @@ lapply(paste0(dataDir, "Processed/Catchments"), function(x) {
   }
 })
 
+# Read England spatVector, and convert to sf object for later processing
+england <- readRDS(paste0(dataDir,
+                          "Raw/Country_data/England.Rds")) %>%
+  st_as_sf
+
 ### SEPARATE, FILTER AND SAVE CATCHMENT DATA -----------------------------------
 
 # Read in catchment data from geopackage, with query that selects:
@@ -45,13 +50,17 @@ catchmentData <- read_sf(dsn = paste0(dataDir, "Raw/Flow_data/Flow_data.gpkg"),
                          SELECT *
                          FROM ea_detailed_watersheds
                          WHERE watercat = 'River'
-                         AND country = 'England'
                          ")
 
 # Drop columns not needed, and set standardised crs
 catchmentData <- catchmentData %>%
   select (!c(country, watercat, shape_length, shape_area)) %>%
   st_set_crs("EPSG:27700")
+
+# Filter catchments to those which intersect with England country boundary
+# N.B. Cannot use original data column "country" as unreliable at Welsh border
+catchmentData <- catchmentData %>%
+  filter(st_intersects(., england, sparse = FALSE)[,1])
 
 # Save
 saveRDS(catchmentData,
@@ -87,7 +96,7 @@ fertData <- lapply(fertFiles, function(x) {
   
   # Return
   return(i_R)
-
+  
 }) %>% 
   
   # Combine together
@@ -131,7 +140,7 @@ pestData <- lapply(pestFiles, function(x) {
   
   # Return
   return(i_R)
-
+  
 }) %>% 
   
   # Combine together
@@ -158,7 +167,7 @@ system.time(
   catchmentChemData <- terra::extract(chemData, catchmentData, exact = TRUE,
                                       fun = sum, na.rm = TRUE,
                                       ID = FALSE, bind = TRUE)
-  )
+)
 
 # Save
 saveRDS(catchmentChemData,
