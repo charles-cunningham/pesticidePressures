@@ -131,12 +131,12 @@ mclapply(basins, function(basin) {
   # Set up list of upstream networks for each segment
   upstreamNetwork <- vector(mode = "list",
                             length = NROW(basinFlow))
-
-### FIND ALL SEGMENT INTERSECTIONS WITHIN BASIN
+  
+  ### FIND ALL SEGMENT INTERSECTIONS WITHIN BASIN
   # N.B. Use st_is_within_distance rather than st_touches for any misalignment
   # errors in original flow data. This takes much longer and so a grid 
   # iteration workflow is needed to speed up
-
+  
   # Create 100x100 hexagonal grid, and (2 x search distance) buffer
   basinGrid <- st_make_grid(basinChem, n=c(20,20), square = F) %>%
     st_buffer(., 2)
@@ -154,7 +154,7 @@ mclapply(basins, function(basin) {
               st_as_sf() %>%
               tibble::rowid_to_column('Cell'),
             join=st_intersects, left = FALSE)
-
+  
   # Use data.table to iterate st_is_within_distance over each grid cell
   segmentNetwork <- basinFlowGrid %>%
     group_nest(Cell, keep=FALSE) %>%
@@ -163,63 +163,63 @@ mclapply(basins, function(basin) {
       ~st_is_within_distance(.x,
                              remove_self = TRUE,
                              dist = 1)) # Distance of 1m
-   )
-
-### SET UP SEGMENT LOOP
+    )
+  
+  ### SET UP SEGMENT LOOP
   
   # For each segment i in the river basin
   for(i in 1:NROW(basinFlow)) {
     
     # Set empty starting network
     iNetwork <- c()
-  
+    
     # Reset segments to check as i
     checkSegments <- i
-
-### ESTABLISH ENTIRE CONNECTED UPSTREAM NETWORK
-
+    
+    ### ESTABLISH ENTIRE CONNECTED UPSTREAM NETWORK
+    
     # While there are still new segments to check
     while (!is.null(checkSegments)) {
       
       # Add segments to check to network
       iNetwork <- c(iNetwork, checkSegments)
-
+      
       # Reset allNewSegments (all new segments that are added)
       allNewSegments <- c()
       
       # For every j segment to check (one value for first iteration but can be >1)
       for (j in checkSegments) {
-
+        
         # Reset jTouches (new segments that are added for each j)
         jTouches <- c()
-
+        
         # Extract grid row number from original row number
         # N.B. these are not the same as some duplicates crated by buffer
         jRows <- which(basinFlowGrid$permid == basinFlow$permid[j])
-
+        
         # Loop through every matching row (in case >1 in buffer areas)
         for(jRow in jRows) {
-
+          
           # Find cell number
           jCellNumber <- basinFlowGrid$Cell[jRow]
-
+          
           # Find all row numbers (these are rows that st_is_within uses)
           jCellRows <- which(basinFlowGrid$Cell == jCellNumber)
-
+          
           # Find relative position of focal row in jCellRows
           jDistanceNumber <- which(jCellRows == jRow)
-
+          
           # Extract connected segments
           jConnectedNumbers <- segmentNetwork[segmentNetwork$Cell == jCellNumber,
                                               "segmentNeighbours"][[1]][[1]][[jDistanceNumber]]
-
+          
           # Relate back to basinFlow
           basinFlowRows <- which(basinFlow$permid %in%
                                    basinFlowGrid$permid[jCellRows[jConnectedNumbers]])
-
+          
           # Add to all segments to check
           jTouches <- c(jTouches, basinFlowRows)
-
+          
         }
         
         # Make sure new segments are upstream of segment j
@@ -228,7 +228,7 @@ mclapply(basins, function(basin) {
         newSegments <-
           jTouches[basinFlow$maxflowacc[jTouches] <= basinFlow$maxflowacc[j] |
                      basinFlow$startz[jTouches] >= basinFlow$startz[j]]
-          
+        
         # Running tally of all new added segments
         allNewSegments <- c(allNewSegments, newSegments)
         
@@ -237,7 +237,7 @@ mclapply(basins, function(basin) {
       # Make sure new segments are unique, and not already in network
       allNewSegments <- unique(allNewSegments) %>%
         setdiff(., iNetwork)
-
+      
       # Reset checkSegments (segments to check on next iteration)
       checkSegments <- c()
       
@@ -246,67 +246,69 @@ mclapply(basins, function(basin) {
         
         # If upstream network for k has not been filled in yet...
         if (is.null(upstreamNetwork[[k]])) {
-
+          
           # Add k to list of segments to check for next iteration
           checkSegments <- c(checkSegments, k)
           
-          } else {
-            
-            # Add that upstream network to the existing network
-            iNetwork <- c(iNetwork, upstreamNetwork[[k]]) %>%
-              unique
-          }
+        } else {
+          
+          # Add that upstream network to the existing network
+          iNetwork <- c(iNetwork, upstreamNetwork[[k]]) %>%
+            unique
+        }
       }
     }
-
+    
     # Save iNetwork in upstreamNetwork list
     upstreamNetwork[[i]] <- iNetwork
-
-### CHECK IF WITHIN ENGLAND
-
-  # If entire river basin is not in England (NA), we need to check upstream...
-  if (is.na(basinFlow$withinEngland[i])) {
-
-    # Check if any upstream segments have already been classified as non-English
-    if(any(basinFlow[iNetwork,]$withinEngland == "No", na.rm = TRUE)) {
-
-      # If so, assign "No"
-      basinFlow$withinEngland[i] <- "No"
-
-      # Otherwise, need to check manually
+    
+    ### CHECK IF WITHIN ENGLAND
+    
+    # If entire river basin is not in England (NA), we need to check upstream...
+    if (is.na(basinFlow$withinEngland[i])) {
+      
+      # Check if any upstream segments have already been classified as non-English
+      if(any(basinFlow[iNetwork,]$withinEngland == "No", na.rm = TRUE)) {
+        
+        # If so, assign "No"
+        basinFlow$withinEngland[i] <- "No"
+        
+        # Otherwise, need to check manually
       } else {
-
+        
         # Count number of iNetwork segments contained within England
         englishSegmentsN <- st_contains(england,
                                         basinFlow[iNetwork,],)[[1]] %>%
           length
-
+        
         # Does number in englishSegmentsN match iNetwork (i.e. all English)
         basinFlow$withinEngland[i] <- if_else(
           englishSegmentsN == length(iNetwork),
           "Yes",
           "No")
       }
-  }
+    }
     
-### EXTRACT FLOW VARIABLES FROM CATCHMENTS
+    ### EXTRACT FLOW VARIABLES FROM CATCHMENTS
 
-    # If upstream of segment is entirely within England
-    if (basinFlow$withinEngland[i] == "Yes") {
+    # If upstream of segment is entirely within England,
+    # and all upstream segments are above sea level
+    if (basinFlow$withinEngland[i] == "Yes" &
+        all(basinFlow[iNetwork,]$endz > 0)) {
       
       # Identify basinFlowGrid rows within iNetwork so that we can iterate cells
       basinGridNetwork <- basinFlowGrid %>%
         filter(permid %in% basinFlow[iNetwork,]$permid)
- 
+      
       # Iterate through all cells that iNetwork occupies
       cellCatchments <- lapply(unique(basinGridNetwork$Cell), function(x) {
-
+        
         # Filter basinChemGrid to cell x 
         basinChemGridCell <- basinChemGrid[basinChemGrid$Cell == x,]
         
         # Intersect all catchments within cell x and iNetwork within cell x
         overlaps <- st_intersects(basinChemGridCell,
-                      basinGridNetwork[basinGridNetwork$Cell == x,]) %>%
+                                  basinGridNetwork[basinGridNetwork$Cell == x,]) %>%
           lengths # Convert to number of intersections per catchment 
         
         # Return basinChemGridCell rows with any overlaps
@@ -326,9 +328,9 @@ mclapply(basins, function(basin) {
           iCatchment[, x] %>% # Collate upstream catchment layer values
           sum(., na.rm = TRUE) # Sum
       }
-}
-
-### PRINT UPDATE
+    }
+    
+    ### PRINT UPDATE
     
     # Every 1000 segments
     if (i %% 1000 == 0) {
@@ -337,16 +339,16 @@ mclapply(basins, function(basin) {
       percentComplete <- ( i / NROW(basinFlow) ) %>%
         `*` (100) %>%
         round(., digits = 1) # Round to 1 decimal place
-
+      
       # Print
       system(sprintf('echo "\n%s\n"', 
                      paste0(basin, " basin ", percentComplete, "% complete (",
                             i, " of ",  NROW(basinFlow), ")")))
     }
-   
-### END SEGMENT LOOP, SAVE, AND END BASIN LOOP
-     
-  # End segment loop
+    
+    ### END SEGMENT LOOP, SAVE, AND END BASIN LOOP
+    
+    # End segment loop
   }
   
   # Save basin
@@ -359,7 +361,7 @@ mclapply(basins, function(basin) {
   # Remove objects not needed
   rm(basinFlow, segmentNetwork, upstreamNetwork, basinChem)
   gc()
-
+  
 })
 
 ### COMBINE BASINS INTO SINGLE FILE---------------------------------------------
@@ -385,4 +387,4 @@ flowChemData <- do.call(what = rbind,
 # Save combined object
 saveRDS(flowChemData, 
         file = paste0(dataDir,
-                             "/Processed/Flow/Flow_chem_data.Rds"))
+                      "/Processed/Flow/Flow_chem_data.Rds"))
