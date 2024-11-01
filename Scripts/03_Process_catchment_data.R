@@ -17,6 +17,7 @@
 library(tidyverse)
 library(terra)
 library(sf)
+library(gstat)
 
 # Set terra options to speed up
 terraOptions(memfrac = 0.9)
@@ -65,7 +66,7 @@ catchmentData <- catchmentData %>%
 # Save
 saveRDS(catchmentData,
         file = paste0(dataDir,
-                      "/Processed/Catchments/Catchment_data_only.Rds"))
+                      "Processed/Catchments/Catchment_data_only.Rds"))
 
 # Remove objects and clear memory
 rm(catchmentData)
@@ -77,7 +78,7 @@ gc()
 
 # Read catchment .Rds
 catchmentData <- readRDS(paste0(dataDir,
-                                "/Processed/Catchments/Catchment_data_only.Rds"))
+                                "Processed/Catchments/Catchment_data_only.Rds"))
 
 ### READ IN FERTILISER DATA
 
@@ -151,9 +152,54 @@ pestData <- lapply(pestFiles, function(x) {
 # Join fertliser and pesticide spatRasters into single combined spatRaster
 chemData <- c(fertData, pestData)
 
+# Save layer names
+chemNames <- names(chemData)
+
 # Remove separate objects
 rm(fertData, pestData)
 gc()
+
+### INTERPOLATE RASTER DATA WITHIN CATCHMENTS ----------------------------------
+
+# Rasterise all cells that touch catchments which intersect with England
+# N.B. There are some gaps in the Land Cover Plus data to interpolate
+catchment_R <- vect(catchmentData) %>%
+  rasterize(., chemData, touches = TRUE)
+
+system.time(
+# For each layer name, i.e. each chemical
+chemDataInterp<- lapply(layerNames, function(i) {
+  
+  # Create 'x,y,z' data frame of chemical i (coordinates and values) 
+  chemData_df <- as.points(chemData[[i]]) %>%
+    data.frame(crds(.), . )
+  
+  # Create a basic inverse distance weighted gstat interpolation formula
+  iInterpModel <- gstat(formula = get(i) ~ 1, # Only use location
+                      locations = ~ x + y, # Location based on x, y
+                      data = chemData_df, 
+                      nmax = 5) # Only use nearest 5 points
+
+  # Interpolate using gstat formula for chemical i
+  iInterp <- interpolate(catchment_R,
+                         iInterpModel,
+                         na.rm = TRUE)[["var1.pred"]]
+
+}) %>% rast() # Join all layers together into one spatRast
+
+)
+
+# Revert to original names
+names(chemDataInterp) <- chemNames
+
+# Remove objects no longer needed
+# rm(chemData, catchment_R)
+# gc()
+
+# write to check
+writeRaster(chemData, paste0(dataDir, "testChem.asc"))
+writeRaster(chemDataInterp, paste0(dataDir, "testChemInterp.asc"))         
+
 
 ### EXTRACT DATA TO CATCHMENTS -------------------------------------------------
 # N.B. Warning: this runs overnight
@@ -162,14 +208,12 @@ gc()
 # N.B. Since each 1x1km data square value has units of kg/year,
 # a weighted sum extract function for each catchment results in estimated 
 # kg/year within that catchment
-system.time(
-  
-  catchmentChemData <- terra::extract(chemData, catchmentData, exact = TRUE,
+catchmentChemData <- terra::extract(chemDataInterp, catchmentData, 
+                                      exact = TRUE,
                                       fun = sum, na.rm = TRUE,
                                       ID = FALSE, bind = TRUE)
-)
 
 # Save
 saveRDS(catchmentChemData,
         file = paste0(dataDir,
-                      "/Processed/Catchments/Catchment_chem_data.Rds"))
+                      "Processed/Catchments/Catchment_chem_data.Rds"))
