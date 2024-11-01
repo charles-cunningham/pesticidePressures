@@ -144,7 +144,7 @@ boundaryUK <- paste0(countryDir,
   vect
 
 # Filter to England only
-boundaryEngland <- boundaryUK[boundaryUK$CTRY23NM == "England",]
+boundaryEngland <- boundaryUK[boundaryUK$CTRY22NM == "England",]
 
 # Project to British National Grid
 boundaryEngland <- project(boundaryEngland, "EPSG:27700")
