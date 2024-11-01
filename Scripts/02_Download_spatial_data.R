@@ -19,7 +19,7 @@ library(terra)
 # If working locally: "../Data/Raw/"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/Raw/"
 
-### MANUAL DATASET DOWNLOAD FOLDERS
+# Manual dataset download folders
 
 # Specify directory for pesticide data
 pestDir <-  paste0(dataDir, "Pesticide_data/")
@@ -30,7 +30,7 @@ flowDir <- paste0(dataDir, "Flow_data/")
 # Specify directory for land cover data
 landDir <-  paste0(dataDir, "Land_cover_data/")
 
-### AUTOMATED DATASET DOWNLOAD FOLDERS
+# Automated dataset download folders
 
 # Specify directory for catchment data
 catchmentDir <- paste0(dataDir, "Catchment_data/")
@@ -123,10 +123,10 @@ unlink(paste0(catchmentDir, "Catchment_data.zip"), recursive = TRUE)
 ### DOWNLOAD AND PROCESS ENGLAND BOUNDARY FOR ANALYSIS [AUTOMATED] -------------
 
 # Information on data here:
-# https://www.data.gov.uk/dataset/fac1d8f9-e8ab-47ac-b37a-5640a29634f9/countries-december-2023-boundaries-uk-bsc
+# https://www.data.gov.uk/dataset/a651c64b-e987-4ff5-85ee-5e28f37fc4f5/countries-december-2022-boundaries-uk-bgc
 
 # Set download url
-url <- "https://open-geography-portalx-ons.hub.arcgis.com/api/download/v1/items/2a0af0a1ecfe473e98e13c7fb8457013/shapefile?layers=0"
+url <- "https://open-geography-portalx-ons.hub.arcgis.com/api/download/v1/items/12956add811a4bcb83a465810267b22a/shapefile?layers=0"
 
 # Download
 download.file(url = url,
@@ -140,7 +140,7 @@ unzip(paste0(countryDir, "England.zip"),
 
 # Read in boundary
 boundaryUK <- paste0(countryDir,
-                     "EnglandUnzip/CTRY_DEC_2023_UK_BSC.shp") %>%
+                     "EnglandUnzip/CTRY_DEC_2022_UK_BGC.shp") %>%
   vect
 
 # Filter to England only
