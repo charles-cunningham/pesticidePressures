@@ -7,8 +7,6 @@
 # Script Description:
 
 ### TODO
-# - Replace SQL country select query qith spatial sf intersects function due 
-# to error found in original data where English catchments are marks as Wales
 # - Add other varaibles to extract to catchment, i.e. land cover
 
 ### LOAD LIBRARIES -------------------------------------------------------------
@@ -168,14 +166,17 @@ catchment_R <- vect(catchmentData) %>%
 
 system.time(
 # For each layer name, i.e. each chemical
-chemDataInterp<- lapply(layerNames, function(i) {
-  
+chemDataInterp <- lapply(chemNames[1:4], function(i) {
+
   # Create 'x,y,z' data frame of chemical i (coordinates and values) 
   chemData_df <- as.points(chemData[[i]]) %>%
     data.frame(crds(.), . )
   
+  # Rename chimcal column to standardized name to avoid errors- "z"
+  names(chemData_df) <- c("x", "y", "z")
+  
   # Create a basic inverse distance weighted gstat interpolation formula
-  iInterpModel <- gstat(formula = get(i) ~ 1, # Only use location
+  iInterpModel <- gstat(formula = z ~ 1, # Only use location
                       locations = ~ x + y, # Location based on x, y
                       data = chemData_df, 
                       nmax = 5) # Only use nearest 5 points
@@ -184,13 +185,17 @@ chemDataInterp<- lapply(layerNames, function(i) {
   iInterp <- interpolate(catchment_R,
                          iInterpModel,
                          na.rm = TRUE)[["var1.pred"]]
+  
+  # Change name back
+  names(iInterp) <- i
+  
+  # Return
+  return(iInterp)
 
 }) %>% rast() # Join all layers together into one spatRast
 
 )
 
-# Revert to original names
-names(chemDataInterp) <- chemNames
 
 # Remove objects no longer needed
 # rm(chemData, catchment_R)
