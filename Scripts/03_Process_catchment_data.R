@@ -7,7 +7,7 @@
 # Script Description:
 
 ### TODO
-# - Add other varaibles to extract to catchment, i.e. land cover
+# - Add other variables to extract to catchment, i.e. land cover
 
 ### LOAD LIBRARIES -------------------------------------------------------------
 
@@ -157,22 +157,22 @@ chemNames <- names(chemData)
 rm(fertData, pestData)
 gc()
 
-### INTERPOLATE RASTER DATA WITHIN CATCHMENTS ----------------------------------
+### INTERPOLATE RASTER DATA  ---------------------------------------------------
 
 # Rasterise all cells that touch catchments which intersect with England
-# N.B. There are some gaps in the Land Cover Plus data to interpolate
+# N.B. There are some gaps in the Land Cover Plus data to interpolate such as
+# catchments along England/Wales border
 catchment_R <- vect(catchmentData) %>%
   rasterize(., chemData, touches = TRUE)
 
-system.time(
 # For each layer name, i.e. each chemical
-chemDataInterp <- lapply(chemNames[1:4], function(i) {
+chemDataInterp <- lapply(chemNames, function(i) {
 
   # Create 'x,y,z' data frame of chemical i (coordinates and values) 
   chemData_df <- as.points(chemData[[i]]) %>%
     data.frame(crds(.), . )
   
-  # Rename chimcal column to standardized name to avoid errors- "z"
+  # Rename chemical column to standardized name to avoid errors- "z"
   names(chemData_df) <- c("x", "y", "z")
   
   # Create a basic inverse distance weighted gstat interpolation formula
@@ -194,17 +194,18 @@ chemDataInterp <- lapply(chemNames[1:4], function(i) {
 
 }) %>% rast() # Join all layers together into one spatRast
 
-)
-
-
 # Remove objects no longer needed
-# rm(chemData, catchment_R)
-# gc()
+rm(chemData, catchment_R)
+gc()
 
-# write to check
-writeRaster(chemData, paste0(dataDir, "testChem.asc"))
-writeRaster(chemDataInterp, paste0(dataDir, "testChemInterp.asc"))         
+### REMOVE EXTREMELY LOW ESTIMATE APPLICATIONS ---------------------------------
+# Interpolation will overestimate the presence of extremely low applications
+# which are more likely to be genuine absence, i.e. in National Parks
 
+# Conservatively reassign values < 0.001 (less than 1 gram/km^2/year) to NA
+chemDataInterp <- clamp(chemDataInterp,
+                        0.001, # 1 gram/km^2/year
+                        values  = FALSE) # Set NAs below value
 
 ### EXTRACT DATA TO CATCHMENTS -------------------------------------------------
 # N.B. Warning: this runs overnight
@@ -213,10 +214,10 @@ writeRaster(chemDataInterp, paste0(dataDir, "testChemInterp.asc"))
 # N.B. Since each 1x1km data square value has units of kg/year,
 # a weighted sum extract function for each catchment results in estimated 
 # kg/year within that catchment
-catchmentChemData <- terra::extract(chemDataInterp, catchmentData, 
-                                      exact = TRUE,
-                                      fun = sum, na.rm = TRUE,
-                                      ID = FALSE, bind = TRUE)
+catchmentChemData <- terra::extract(chemDataInterp, catchmentData,
+                                    exact = TRUE,
+                                    fun = sum, na.rm = TRUE,
+                                    ID = FALSE, bind = TRUE)
 
 # Save
 saveRDS(catchmentChemData,
