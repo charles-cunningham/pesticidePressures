@@ -204,7 +204,7 @@ gc()
 
 # Conservatively reassign values < 0.001 (less than 1 gram/km^2/year) to NA
 chemDataInterp <- clamp(chemDataInterp,
-                        0.001, # 1 gram/km^2/year
+                        lower = 0.001, # 1 gram/km^2/year
                         values  = FALSE) # Set NAs below value
 
 ### EXTRACT DATA TO CATCHMENTS -------------------------------------------------
