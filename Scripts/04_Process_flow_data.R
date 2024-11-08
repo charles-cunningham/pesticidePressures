@@ -135,7 +135,7 @@ mclapply(basins, function(basin) {
   # errors in original flow data. This takes much longer and so a grid 
   # iteration workflow is needed to speed up
   
-  # Create 100x100 hexagonal grid, and (2 x search distance) buffer
+  # Create 20x20 hexagonal grid, and (2 x search distance) buffer
   basinGrid <- st_make_grid(basinChem, n=c(20,20), square = F) %>%
     st_buffer(., 2)
   
