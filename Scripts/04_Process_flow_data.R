@@ -292,7 +292,7 @@ mclapply(basins, function(basin) {
     # If upstream of segment is entirely within England,
     # and segment is above sea level
     if (basinFlow$withinEngland[i] == "Yes" &
-        basinFlow$endz[i] > 0)) {
+        basinFlow$endz[i] > 0) {
       
       # Identify basinFlowGrid rows within iNetwork so that we can iterate cells
       basinGridNetwork <- basinFlowGrid %>%
