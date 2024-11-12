@@ -135,9 +135,9 @@ mclapply(basins, function(basin) {
   # errors in original flow data. This takes much longer and so a grid 
   # iteration workflow is needed to speed up
   
-  # Create 20x20 hexagonal grid, and (2 x search distance) buffer
+  # Create 20x20 hexagonal grid, and (2 x 20m search distance) buffer
   basinGrid <- st_make_grid(basinChem, n=c(20,20), square = F) %>%
-    st_buffer(., 2)
+    st_buffer(., 40)
   
   # Intersect buffered grid with catchments
   basinChemGrid <- basinChem %>%
@@ -160,7 +160,7 @@ mclapply(basins, function(basin) {
       data,
       ~st_is_within_distance(.x,
                              remove_self = TRUE,
-                             dist = 1)) # Distance of 1m
+                             dist = 20)) # Search distance of 20m
     )
   
   ### SET UP SEGMENT LOOP
@@ -290,9 +290,9 @@ mclapply(basins, function(basin) {
     ### EXTRACT FLOW VARIABLES FROM CATCHMENTS
 
     # If upstream of segment is entirely within England,
-    # and all upstream segments are above sea level
+    # and segment is above sea level
     if (basinFlow$withinEngland[i] == "Yes" &
-        all(basinFlow[iNetwork,]$endz > 0)) {
+        basinFlow$endz[i] > 0)) {
       
       # Identify basinFlowGrid rows within iNetwork so that we can iterate cells
       basinGridNetwork <- basinFlowGrid %>%
