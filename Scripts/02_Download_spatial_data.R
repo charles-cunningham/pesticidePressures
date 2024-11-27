@@ -38,6 +38,8 @@ catchmentDir <- paste0(dataDir, "Catchment_data/")
 countryDir <- paste0(dataDir, "Country_data/")
 # Specify directory for farming archetype data
 farmDir <-  paste0(dataDir, "Farm_archetype_data/")
+# Specify directory for water quality monitoring data
+screenDir <- paste0(dataDir, "Monitoring_screen_data/")
 # Specify directory for topographic data
 topoDir <- paste0(dataDir, "Topographic_data/")
 
@@ -49,6 +51,7 @@ c(pestDir,
   catchmentDir,
   countryDir,
   farmDir,
+  screenDir,
   topoDir) %>%
   lapply(., function(x) {
     if (!file.exists(x)) {
@@ -205,6 +208,27 @@ download.file(url = "https://catalogue.ceh.ac.uk/datastore/eidchub/3b44375a-cbe6
 download.file(url = "https://catalogue.ceh.ac.uk/datastore/eidchub/3b44375a-cbe6-468c-9395-41471054d0f3/tier3archetypesengland.tif",
               destfile = paste0(farmDir, "tier3.tif"),
               sep = "")
+
+### PROCESS WATER QUALITY MONITORING SCREEN DATA -------------------------------
+
+# Bulk downloads for entire dataset here:
+# https://www.data.gov.uk/dataset/0c63b33e-0e34-45bb-a779-16a8c3a4b3f7/water-quality-monitoring-data-gc-ms-and-lc-ms-semi-quantitative-screen
+
+# Set download url
+url <- "https://environment.data.gov.uk/api/file/download?fileDataSetId=909441cf-aae0-457e-a581-e933050a3ff1&fileName=Water_quality_monitoring_data_GCMS_LCMS_Semiquantitative.zip"
+
+# Download
+download.file(url = url,
+              destfile = paste0(screenDir, "Screen_data.zip"),
+              sep = "")
+
+# Unzip data directory and licence.txt to topoDir
+unzip(paste0(screenDir, "Screen_data.zip"),
+      exdir = screenDir,
+      overwrite = TRUE)
+
+# Delete .zip file as no longer needed
+unlink(paste0(screenDir, "Screen_data.zip"), recursive = TRUE)
 
 ### DOWNLOAD TOPOGRAPHIC DATA [AUTOMATED] --------------------------------------
 
