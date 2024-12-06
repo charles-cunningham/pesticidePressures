@@ -58,14 +58,17 @@ pestLayers <- grep("pesticide", names(catchmentChem), value = TRUE)
 ### FILTER AND SEPARATE FLOW DATA ----------------------------------------------
 
 # Read in flow data from geopackage, with query that selects:
-# only River water catchment type,
-# and only segments with 1km flow accumulation or greater
+# - only River water catchment type,
+# - only segments with 1km flow accumulation or greater,
+# - only segments below the maximum value of flow accumulation (as this value is
+# capped it causes values in the upstream search algorithm)
 flowData <- read_sf(dsn = paste0(dataDir, "Raw/Flow_data/Flow_data.gpkg"),
                     query = "
                 SELECT *
                 FROM ea_probable_overland_flow_pathways
                 WHERE water_cat = 'River'
                 AND ( flowacccl = '1Km' OR flowacccl = '10Km' )
+                AND maxflowacc < 2147483646
                 ")
 
 # Drop columns not needed, and set standardised crs
@@ -93,7 +96,7 @@ basins <- flowData$rbd %>%
   fct_relevel("Anglian", after = 2) %>%
   levels
 
-# Set basins entirely within England
+# Set basins entirely within England (saves time later)
 allEnglishBasins <- c("Anglian",
                       "Humber",
                       "North West",
@@ -117,7 +120,7 @@ flowData <- arrange(flowData, maxflowacc)
 mclapply(basins, function(basin) {
   
   # Subset to river basin
-  basinFlow <- flowData[flowData$rbd == basin,] ### !!! Change for testing !!!
+  basinFlow <- flowData[flowData$rbd == basin,]
   
   # Add pesticide and chemical layers
   basinFlow[, c(fertLayers, pestLayers)] <- NA
@@ -185,14 +188,14 @@ mclapply(basins, function(basin) {
       # Reset allNewSegments (all new segments that are added)
       allNewSegments <- c()
       
-      # For every j segment to check (one value for first iteration but can be >1)
+      # For every j segment to check (1 value for 1st iteration but can be >1)
       for (j in checkSegments) {
         
         # Reset jTouches (new segments that are added for each j)
         jTouches <- c()
         
         # Extract grid row number from original row number
-        # N.B. these are not the same as some duplicates crated by buffer
+        # N.B. these are not the same as some duplicates created by buffer
         jRows <- which(basinFlowGrid$permid == basinFlow$permid[j])
         
         # Loop through every matching row (in case >1 in buffer areas)
@@ -224,8 +227,8 @@ mclapply(basins, function(basin) {
         # (belt and braces to avoid any errors (which exist!) in dataset -
         # either max flow accumulation is "<=", or startz/endz is ">=")
         newSegments <-
-          jTouches[basinFlow$maxflowacc[jTouches] <= basinFlow$maxflowacc[j] |
-                     basinFlow$startz[jTouches] >= basinFlow$startz[j]]
+          jTouches[basinFlow$maxflowacc[jTouches] <= basinFlow$maxflowacc[j] ] # |
+                     # basinFlow$startz[jTouches] >= basinFlow$startz[j]] # !!!!! TESTING (IS THIS NEEDED?) !!!!!
         
         # Running tally of all new added segments
         allNewSegments <- c(allNewSegments, newSegments)
@@ -289,10 +292,14 @@ mclapply(basins, function(basin) {
     
     ### EXTRACT FLOW VARIABLES FROM CATCHMENTS
 
-    # If upstream of segment is entirely within England,
-    # and segment is above sea level
+    # If:
+    # - upstream of segment is entirely within England,
+    # - segment is above the highest astronomical tide in England (this is 8.4m
+    #   above Ordnance Datum Newlyn [sea level] from correspondence with UK 
+    #   Hydrographic Office) to remove high uncertainty near sea level segments
+    # - not maximum value
     if (basinFlow$withinEngland[i] == "Yes" &
-        basinFlow$endz[i] > 0) {
+        basinFlow$endz[i] > 8.4) {
       
       # Identify basinFlowGrid rows within iNetwork so that we can iterate cells
       basinGridNetwork <- basinFlowGrid %>%
