@@ -227,8 +227,7 @@ mclapply(basins, function(basin) {
         # (belt and braces to avoid any errors (which exist!) in dataset -
         # either max flow accumulation is "<=", or startz/endz is ">=")
         newSegments <-
-          jTouches[basinFlow$maxflowacc[jTouches] <= basinFlow$maxflowacc[j] ] # |
-                     # basinFlow$startz[jTouches] >= basinFlow$startz[j]] # !!!!! TESTING (IS THIS NEEDED?) !!!!!
+          jTouches[basinFlow$maxflowacc[jTouches] <= basinFlow$maxflowacc[j] ]
         
         # Running tally of all new added segments
         allNewSegments <- c(allNewSegments, newSegments)
@@ -297,7 +296,6 @@ mclapply(basins, function(basin) {
     # - segment is above the highest astronomical tide in England (this is 8.4m
     #   above Ordnance Datum Newlyn [sea level] from correspondence with UK 
     #   Hydrographic Office) to remove high uncertainty near sea level segments
-    # - not maximum value
     if (basinFlow$withinEngland[i] == "Yes" &
         basinFlow$endz[i] > 8.4) {
       
