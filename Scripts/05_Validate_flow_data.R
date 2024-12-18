@@ -66,33 +66,80 @@ screenData <- screenData %>%
   filter(year >=2010 & year < 2020)
 
 # REMOVE COLUMNS NOT NEEDED
+screenData <- screenData %>%
+  select(!c(SMPT_TYPE,
+            SPT_DESC,
+            SAMP_MATERIAL,
+            SMC_DESC,
+            SAMP_PURPOSE_CODE,
+            ARE_CODE,
+            Latitude,
+            Longitude,
+            COUNTRY))
 
-Sample_Site_ID keep
-SMPT_TYPE remove
-SPT_DESC filter then remove
-SAMP_ID keep
-SAMP_MATERIAL remove
-SMC_DESC filter and remove
-SAMP_PURPOSE_CODE remove
-PURP_DESC keep
-MEAS_DETERMINAND_CODE
-ARE_CODE remove 
-ARE_DESC
-Sample_datetime
-year
-Screening_Method_Details
-CAS_Number
-unit
-Concentration
-Spectral_Fit
-Compound_Name
-LOD
-method
-less_than
-SMPT_LONG_NAME
-SMPT_EASTING keep
-SMPT_NORTHING keep 
-Latitude remove
-Longitude remove
-OPCATNAME keep
-COUNTRY remove (all england)
+# CREATE SPATIAL OBJECT
+
+screenData <- st_as_sf(screenData,
+                       coords = c("SMPT_EASTING", "SMPT_NORTHING"),
+                       crs = 27700)
+
+### APPEND FLOW DATA TO SCREEN DATA ------------------------------------------
+
+# Extract pesticide names
+pesticides <- names(flowChemData) %>%
+  .[grepl("pesticide_", .)] %>%
+  gsub("pesticide_", "", .)
+
+# Add columns to populate in screen data
+screenData$MODELLED_APPLICATION <- screenData$MODELLED_CONCENTRATION <- NA
+
+# Loop through every sampling site (unique screen data geometry)
+for(i in unique(st_geometry(screenData))) {
+  
+  #i <- unique(st_geometry(screenData))[[102]]
+  
+  # Check if any flow segments are within 100m (only use these sites)
+  if (lengths(st_is_within_distance(i, flowChemData, dist = 100)) > 0) {
+    
+    # Find nearest feature, and extract pesticide values
+    iNearestSegment <- flowChemData[st_nearest_feature(i,
+                                                      flowChemData,
+                                                      check_crs = FALSE), ]
+    
+    # Find flow accumulation for later application per area calculation
+    iMaxflowacc <- iNearestSegment$maxflowacc
+    
+    # Select pesticide layers
+    iNearestSegment <- iNearestSegment %>%
+      select(.,contains("pesticide_")) %>%
+      tibble
+    
+    # Check if there are any integer values in nearest segment, i.e. not a 
+    # maximum value river or a river that has upstream segment outside England
+    if (any(!is.na(iNearestSegment))) {
+      
+      # Loop through every sample at site (screen data rows with same geometry)
+      for (j in which(lengths(st_equals(screenData, i)) == 1)) {
+
+        jPesticide <- grep(screenData[j,]$Compound_Name,
+                           pesticides)
+        
+        if (length(jPesticide) > 0) {
+          
+        # Assign application
+        screenData[j,
+                   "MODELLED_APPLICATION"] <- iNearestSegment[,jPesticide]
+        
+        # Assign per area application
+        screenData[j, 
+                   "MODELLED_CONCENTRATION"] <- screenData[j,
+                                                           "MODELLED_APPLICATION"] /
+          iMaxflowacc
+        }
+      }
+    }
+    
+  } # Else, leave as NA
+}
+
+
