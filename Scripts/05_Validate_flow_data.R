@@ -54,9 +54,7 @@ rm(lcms, gcms)
 
 ### PROCESS SCREEN DATA --------------------------------------------------------
 
-# FILTER DATA
-
-# Filter:
+# Filter data:
 # - sampling material to rivers and running freshwater
 # - sampling type to freshwater only
 # - year to only 2010-2019 to be in similar time frame to flow data
@@ -65,7 +63,7 @@ screenData <- screenData %>%
   filter(grepl("FRESHWATER",.$SPT_DESC)) %>%
   filter(year >=2010 & year < 2020)
 
-# REMOVE COLUMNS NOT NEEDED
+# Remove columns not needed
 screenData <- screenData %>%
   select(!c(SMPT_TYPE,
             SPT_DESC,
@@ -77,58 +75,77 @@ screenData <- screenData %>%
             Longitude,
             COUNTRY))
 
-# CREATE SPATIAL OBJECT
-
+# Create spatial object
 screenData <- st_as_sf(screenData,
                        coords = c("SMPT_EASTING", "SMPT_NORTHING"),
                        crs = 27700)
 
-### APPEND FLOW DATA TO SCREEN DATA ------------------------------------------
+### APPEND FLOW DATA TO SCREEN DATA --------------------------------------------
 
-# Extract pesticide names
-pesticides <- names(flowChemData) %>%
+# Extract simplified pesticide names from flowChemData (remove punctuation)
+pesticideNames <- names(flowChemData) %>%
   .[grepl("pesticide_", .)] %>%
-  gsub("pesticide_", "", .)
+  gsub("pesticide_", "", .) %>%
+  gsub("\\.", "", .) 
 
 # Add columns to populate in screen data
 screenData$MODELLED_APPLICATION <- screenData$MODELLED_CONCENTRATION <- NA
 
-# Loop through every sampling site (unique screen data geometry)
+# Loop through every sampling site (unique screenData geometry)
 for(i in unique(st_geometry(screenData))) {
-  
-  #i <- unique(st_geometry(screenData))[[102]]
-  
-  # Check if any flow segments are within 100m (only use these sites)
+
+  # IF any flow segments are within 100m (only use these sites)
   if (lengths(st_is_within_distance(i, flowChemData, dist = 100)) > 0) {
     
-    # Find nearest feature, and extract pesticide values
+    # Find nearest feature
     iNearestSegment <- flowChemData[st_nearest_feature(i,
-                                                      flowChemData,
-                                                      check_crs = FALSE), ]
+                                                       flowChemData,
+                                                       check_crs = FALSE),]
     
-    # Find flow accumulation for later application per area calculation
+    # Find flow accumulation for later 'concentration' calculation
     iMaxflowacc <- iNearestSegment$maxflowacc
     
-    # Select pesticide layers
+    # Convert iNearestSegment to tibble, then subset to pesticide columns only
+    # (to align with pesticideNames)
     iNearestSegment <- iNearestSegment %>%
-      select(.,contains("pesticide_")) %>%
-      tibble
+      as_tibble %>%
+      select(.,contains("pesticide_"))
     
-    # Check if there are any integer values in nearest segment, i.e. not a 
+    # IF there are any integer values in iNearestSegment, i.e. not a 
     # maximum value river or a river that has upstream segment outside England
     if (any(!is.na(iNearestSegment))) {
       
-      # Loop through every sample at site (screen data rows with same geometry)
+      # Loop through every sample j at site i 
+      # (screenData rows with same geometry as i)
       for (j in which(lengths(st_equals(screenData, i)) == 1)) {
 
-        jPesticide <- grep(screenData[j,]$Compound_Name,
-                           pesticides)
+        # Remove all punctuation from sample j chemical
+        nameCheck <- screenData[j,]$Compound_Name %>%
+          gsub("\\(", "", .) %>%
+          gsub("\\)", "", .) %>%
+          gsub("\\[", "", .) %>%
+          gsub("\\]", "", .) %>%
+          gsub("\\-", "", .) %>%
+          gsub("\\,", "", .) %>%
+          gsub("\\.", "", .) %>%
+          gsub("\\/", "", .) %>%
+          gsub("\\&", "", .) %>%
+          gsub("\\'", "", .) %>%
+          gsub(" ", "", .)
         
+        # Find whether any of the pesticideNames match, then extract column
+        jPesticide <- lapply(pesticideNames, function(x) {
+          grepl(x, nameCheck, ignore.case = TRUE)
+          }) %>% 
+          unlist %>% 
+          which
+
+        # If one of the pesticideNames matches the chemical...
         if (length(jPesticide) > 0) {
           
         # Assign application
         screenData[j,
-                   "MODELLED_APPLICATION"] <- iNearestSegment[,jPesticide]
+                   "MODELLED_APPLICATION"] <- iNearestSegment[, jPesticide]
         
         # Assign per area application
         screenData[j, 
@@ -138,8 +155,10 @@ for(i in unique(st_geometry(screenData))) {
         }
       }
     }
-    
-  } # Else, leave as NA
-}
+  }
+} # All other values are left as NA
 
-
+# Considerations
+# Filter bad matches post hoc
+# LCMS and GCMS values - carry out lm separately
+# Remove NAs? - ?
