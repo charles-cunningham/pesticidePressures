@@ -38,7 +38,6 @@ lcms <- paste0(dataDir,
   read.csv()
 
 # Load GC-MS (gas chromatography-mass spectrometry) screen data
-
 gcms <- paste0(dataDir,
                "Raw/Monitoring_screen_data/GCMS Target and Non-Targeted Screening.csv") %>%
   read.csv()
@@ -89,7 +88,9 @@ pesticideNames <- names(flowChemData) %>%
   gsub("\\.", "", .) 
 
 # Add columns to populate in screen data
-screenData$MODELLED_APPLICATION <- screenData$MODELLED_CONCENTRATION <- NA
+screenData$PESTICIDE_MOD <- 
+  screenData$APPLICATION_MOD <- 
+  screenData$CONCENTRATION_MOD <- NA
 
 # Loop through every sampling site (unique screenData geometry)
 for(i in unique(st_geometry(screenData))) {
@@ -140,17 +141,18 @@ for(i in unique(st_geometry(screenData))) {
           unlist %>% 
           which
 
-        # If one of the pesticideNames matches the chemical...
-        if (length(jPesticide) > 0) {
+        # If one of the pesticideNames matches exactly one chemical name...
+        if (length(jPesticide) == 1) {
           
-        # Assign application
-        screenData[j,
-                   "MODELLED_APPLICATION"] <- iNearestSegment[, jPesticide]
-        
-        # Assign per area application
-        screenData[j, 
-                   "MODELLED_CONCENTRATION"] <- screenData[j,
-                                                           "MODELLED_APPLICATION"] /
+          # Assign pesticideName
+          screenData[j,
+                     "PESTICIDE_MOD"] <- pesticideNames[jPesticide]
+          # Assign application
+          screenData[j,
+                     "APPLICATION_MOD"] <- iNearestSegment[, jPesticide]
+          # Assign per area application
+          screenData[j, 
+                     "CONCENTRATION_MOD"] <- screenData[ j, ]$APPLICATION_MOD /
           iMaxflowacc
         }
       }
@@ -158,7 +160,30 @@ for(i in unique(st_geometry(screenData))) {
   }
 } # All other values are left as NA
 
+### TESTING
+
 # Considerations
 # Filter bad matches post hoc
 # LCMS and GCMS values - carry out lm separately
 # Remove NAs? - ?
+
+testData <- screenData[!is.na(screenData$APPLICATION_MOD), ]
+testData <- testData[testData$method == "LCMS",]
+
+ggplot(data = testData,
+       aes(x = log(Concentration), 
+           y = log(CONCENTRATION_MOD))) +
+  geom_point()
+testMod <- lm( Concentration ~ APPLICATION_MOD, data = testData)
+summary(testMod)
+
+testModMixed = lmer(Concentration ~ log(CONCENTRATION_MOD) + 
+                      (1 | Compound_Name) +
+                      (1 | OPCAT_NAME) +
+                      (1 | OPCAT_NAME:Sample_Site_ID ),
+                    data = testData) 
+
+
+summary(testModMixed)
+hist(log(testData$MODELLED_APPLICATION))
+hist(log(testData$MODELLED_CONCENTRATION))
