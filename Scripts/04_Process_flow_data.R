@@ -223,9 +223,8 @@ mclapply(basins, function(basin) {
           
         }
         
-        # Make sure new segments are upstream of segment j
-        # (belt and braces to avoid any errors (which exist!) in dataset -
-        # either max flow accumulation is "<=", or startz/endz is ">=")
+        # Make sure new segments are upstream of segment j -
+        #  max flow accumulation is "<=" than segment j
         newSegments <-
           jTouches[basinFlow$maxflowacc[jTouches] <= basinFlow$maxflowacc[j] ]
         
