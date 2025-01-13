@@ -40,30 +40,39 @@ flowChemData <- readRDS(file = paste0(dataDir,
 
 ### JOIN PESTICIDE SUMMARY FLOW DATA TO BIOSYS DATA ----------------------------
 
-# Subset for testing 
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-testData <- invData_sf[invData_sf$CATCHMENT %>% grep("DEE",.,
-                                                     ignore.case = TRUE),]
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 # Add columns to populate to Biosys data
-testData$pesticideLoad <- testData$pesticideDiv <- NA
+invData_sf$pesticideLoad <- invData_sf$pesticideDiv <- NA
 
 # Loop through unique geometries (individual sites)
-for(i in unique(st_geometry(testData))) {
+for(i in unique(st_geometry(invData_sf))) {
+
+  # Find waterbody ID of i; first identify rows that match geometry
+  iWaterbody <- invData_sf[lengths(st_equals(invData_sf, i)) == 1,
+                           "WFD_WATERBODY_ID"] %>%  # 
+    # Then take unique waterbody ID (summarise many rows with same ID)
+    unique %>% 
+    .[[1]]
+
+  # Filter flowChemData to waterbody i (both datasets have this information)
+  waterbodyFlowData <- flowChemData[flowChemData$ea_wb_id == iWaterbody,]
   
-  # Check if any flow segments are within 100m
-  if (lengths(st_is_within_distance(i, flowChemData, dist = 100)) > 0) {
-    
+  # Find any segments nearby (within 100m)
+  nearbyGeometry <- st_is_within_distance(i, waterbodyFlowData, dist = 100) %>%
+    .[[1]] %>%
+    flowChemData[.,]
+
+  # If any flow segments are within 100m...
+  if (NROW(nearbyGeometry) > 0) {
+ 
     # Find nearest feature
-    nearestSegment <- flowChemData[st_nearest_feature(i,
-                                                      flowChemData,
-                                                      check_crs = FALSE), ]
+    nearestSegment <- nearbyGeometry[st_nearest_feature(i,
+                                                        nearbyGeometry,
+                                                        check_crs = FALSE), ]
     
     # Transfer aggregated pesticide values from nearest segment to site
-    testData[lengths(st_equals(testData, i)) == 1, "pesticideLoad"] <-
+    invData_sf[lengths(st_equals(invData_sf, i)) == 1, "pesticideLoad"] <-
       nearestSegment$pesticideLoad
-    testData[lengths(st_equals(testData, i)) == 1, "pesticideDiv"] <-
+    invData_sf[lengths(st_equals(invData_sf, i)) == 1, "pesticideDiv"] <-
       nearestSegment$pesticideDiv
     
   } # Else, leave as NA
@@ -72,6 +81,6 @@ for(i in unique(st_geometry(testData))) {
 ### SAVE -----------------------------------------------------------------------
 
 # Save processed invData ready for modelling
-saveRDS(testData,
+saveRDS(invData_sf,
         file = paste0(dataDir,
                       "/Processed/Biosys/invDataSpatial.Rds"))
