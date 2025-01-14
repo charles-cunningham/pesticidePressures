@@ -48,13 +48,13 @@ for(i in unique(st_geometry(invData_sf))) {
 
   # Find waterbody ID of i; first identify rows that match geometry
   iWaterbody <- invData_sf[lengths(st_equals(invData_sf, i)) == 1,
-                           "WFD_WATERBODY_ID"] %>%  # 
-    # Then take unique waterbody ID (summarise many rows with same ID)
+                           "WFD_WATERBODY_ID"] %>%
+    # Then take unique waterbody IDs (summarise many rows with same ID)
     unique %>% 
     .[[1]]
 
-  # Filter flowChemData to waterbody i (both datasets have this information)
-  waterbodyFlowData <- flowChemData[flowChemData$ea_wb_id == iWaterbody,]
+  # Filter flowChemData to waterbodies for i (both datasets have this)
+  waterbodyFlowData <- flowChemData[flowChemData$ea_wb_id %in% iWaterbody,]
   
   # Find any segments nearby (within 100m)
   nearbyGeometry <- st_is_within_distance(i, waterbodyFlowData, dist = 100) %>%
