@@ -4,7 +4,7 @@
 # 
 # Script Name: Join Biosys and flow data
 #
-# Script Description:
+# Script Description: Runs overnight
 
 ### LOAD LIBRARIES -------------------------------------------------------------
 
@@ -39,43 +39,57 @@ flowChemData <- readRDS(file = paste0(dataDir,
                                       "/Processed/Flow/Flow_aggregated_data.Rds"))
 
 ### JOIN PESTICIDE SUMMARY FLOW DATA TO BIOSYS DATA ----------------------------
+test <- flowChemData[, c("pesticideLoad", "pesticideDiv")]
 
 # Add columns to populate to Biosys data
 invData_sf$pesticideLoad <- invData_sf$pesticideDiv <- NA
 
-# Loop through unique geometries (individual sites)
-for(i in unique(st_geometry(invData_sf))) {
+# Loop through individual sites
+for(i in unique(invData_sf$SITE_ID)) {
 
-  # Find waterbody ID of i; first identify rows that match geometry
-  iWaterbody <- invData_sf[lengths(st_equals(invData_sf, i)) == 1,
-                           "WFD_WATERBODY_ID"] %>%
-    # Then take unique waterbody IDs (summarise many rows with same ID)
+  # Find site rows in invData_sf
+  siteRows <- which(invData_sf$SITE_ID == i)
+  
+  # Find site geometries for all site rows, then take unique values
+  siteGeometry <- st_geometry(invData_sf[siteRows,]) %>%
+    unique()
+  
+  # Make sure only one geometry per site (only one unique geometry value)
+  if (length(siteGeometry) > 1) {
+    stop("Site has more than one geometry")   
+  }
+
+  # Find waterbody ID for site rows...
+  iWaterbody <- invData_sf[siteRows, "WFD_WATERBODY_ID"] %>%
+    # ...then take unique values
     unique %>% 
     .[[1]]
-
+  
   # Filter flowChemData to waterbodies for i (both datasets have this)
   waterbodyFlowData <- flowChemData[flowChemData$ea_wb_id %in% iWaterbody,]
   
-  # Find any segments nearby (within 100m)
-  nearbyGeometry <- st_is_within_distance(i, waterbodyFlowData, dist = 100) %>%
-    .[[1]] %>%
-    flowChemData[.,]
+  # Find any waterbody segments nearby (within 100m)
+  nearbySegements <- st_is_within_distance(siteGeometry[[1]], 
+                                          waterbodyFlowData,
+                                          dist = 100)[[1]] %>%
+    waterbodyFlowData[. ,]
 
   # If any flow segments are within 100m...
-  if (NROW(nearbyGeometry) > 0) {
+  if (NROW(nearbySegements) > 0) {
  
-    # Find nearest feature
-    nearestSegment <- nearbyGeometry[st_nearest_feature(i,
-                                                        nearbyGeometry,
+    # Find nearest feature from nearby segments
+    nearestSegment <- nearbySegements[st_nearest_feature(siteGeometry[[1]],
+                                                        nearbySegements,
                                                         check_crs = FALSE), ]
     
     # Transfer aggregated pesticide values from nearest segment to site
-    invData_sf[lengths(st_equals(invData_sf, i)) == 1, "pesticideLoad"] <-
+    invData_sf[siteRows, "pesticideLoad"] <-
       nearestSegment$pesticideLoad
-    invData_sf[lengths(st_equals(invData_sf, i)) == 1, "pesticideDiv"] <-
+    invData_sf[siteRows, "pesticideDiv"] <-
       nearestSegment$pesticideDiv
     
   } # Else, leave as NA
+  
 }
 
 ### SAVE -----------------------------------------------------------------------
