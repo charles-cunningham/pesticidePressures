@@ -22,32 +22,40 @@ dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 ### LOAD DATA ------------------------------------------------------------------
 
 # Read processed flow data
-# flowChemData <- readRDS(paste0(dataDir,
-#                                "/Processed/Flow/Flow_chem_data.Rds"))
 flowChemData <- readRDS(paste0(dataDir,
-                               "/Processed/Flow/basin_Dee_chem_data.Rds"))
-
-# Find pesticide layers
-pestLayers <- grep("pesticide", names(flowChemData), value = TRUE)
+                               "/Processed/Flow/Flow_chem_data.Rds"))
 
 ### CREATE TOTAL PESTICIDE LOAD METRIC -----------------------------------------
 # N.B. This is a placeholder for now. Currently just sum, but need to introduce 
 # weighted sum using toxicity
 
-# Create pesticide load column as sum of all pesticide applications
-flowChemData <- flowChemData %>% 
-  mutate(pesticideLoad = rowSums(across(starts_with('pesticide_')),
-         na.rm = TRUE))
-
+# Create pesticide load column as sum of all pesticide application
+flowChemData <- flowChemData %>%
+  mutate(pesticideLoad =
+           # If any pesticide layers are not NA ...
+           # (needed otherwise all NA rows become 0)
+           case_when(if_any(starts_with('pesticide_'),
+                            complete.cases)
+                     # Sum all pesticide values
+                     ~ rowSums(across(starts_with('pesticide_')), 
+                               na.rm = TRUE)))
+    
 ### CREATE PESTICIDE RICHNESS METRIC ------------------------------------------
-# N.B. This is a placeholder for now. Currently just total number, but need 
-# to introduce diversity metric describing evenness of pesticide applications
+# N.B. This is a placeholder for now. Currently just total number above
+# threshold, but need to introduce diversity metric describing evenness of 
+# pesticide applications
 
-# Create pesticide diversity column as count of all pesticide applications
-flowChemData <- flowChemData %>% 
-  mutate(pesticideDiv = rowSums(across(starts_with('pesticide_'),
-                                       ~ .x > 0),
-                                na.rm = TRUE))
+# Create pesticideDiv column as count of all pesticide applications
+flowChemData <- flowChemData %>%
+  mutate(pesticideDiv =
+           # If any pesticide layers are not NA...
+           case_when(if_any(starts_with('pesticide_'),
+                            complete.cases)
+                     # Count all pesticide values above threshold
+                     ~ rowSums(across(starts_with('pesticide_'),
+                                      ~ .x > 0),
+                               na.rm = TRUE)
+  ))
 
 ### SAVE -----------------------------------------------------------------------
 
