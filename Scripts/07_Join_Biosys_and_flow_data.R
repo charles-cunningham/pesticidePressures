@@ -39,7 +39,6 @@ flowChemData <- readRDS(file = paste0(dataDir,
                                       "/Processed/Flow/Flow_aggregated_data.Rds"))
 
 ### JOIN PESTICIDE SUMMARY FLOW DATA TO BIOSYS DATA ----------------------------
-test <- flowChemData[, c("pesticideLoad", "pesticideDiv")]
 
 # Add columns to populate to Biosys data
 invData_sf$pesticideLoad <- invData_sf$pesticideDiv <- NA
@@ -89,7 +88,6 @@ for(i in unique(invData_sf$SITE_ID)) {
       nearestSegment$pesticideDiv
     
   } # Else, leave as NA
-  
 }
 
 ### SAVE -----------------------------------------------------------------------
