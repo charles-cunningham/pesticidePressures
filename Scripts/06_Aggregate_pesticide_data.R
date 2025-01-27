@@ -23,13 +23,61 @@ dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 
 # Read processed flow data
 flowChemData <- readRDS(paste0(dataDir,
-                               "/Processed/Flow/Flow_chem_data.Rds"))
+                               "Processed/Flow/Flow_chem_data.Rds"))
+
+# Read pesticide data
+pestData <- read.csv(paste0(dataDir,
+                            "Raw/Pesticide_data/Pesticide_properties.csv"))
 
 ### CREATE TOTAL PESTICIDE LOAD METRIC -----------------------------------------
-# N.B. This is a placeholder for now. Currently just sum, but need to introduce 
-# weighted sum using toxicity
 
-# Create pesticide load column as sum of all pesticide application
+# CREATE TOXICITY WEIGHTS
+
+# Create toxicity column to be used for weighted sum  (inverse of NOEC)
+pestData$Toxicity <- 1/
+  pestData$Toxicity_.Temperate_Freshwater_Aquatic_invertebrates_Chronic_21_day_NOEC_.mgl.1..
+
+# Replace NAs with min toxicity value (max NOEC)
+pestData$Toxicity[is.na(pestData$Toxicity)] <- min(pestData$Toxicity,
+                                                   na.rm = TRUE)
+
+# CHECK ORDER FOR WEIGHTED SUM
+# (flowData columns have to be in same order as pestData rows to match up)
+
+# pestData; Create simple pesticide name for matching
+pestData$SimpleName <- pestData$Pesticide %>%
+  gsub("\\(", "", .) %>%
+  gsub("\\)", "", .) %>%
+  gsub("\\[", "", .) %>%
+  gsub("\\]", "", .) %>%
+  gsub("\\-", "", .) %>%
+  gsub("\\,", "", .) %>%
+  gsub("\\.", "", .) %>%
+  gsub("\\/", "", .) %>%
+  gsub("\\&", "", .) %>%
+  gsub("\\'", "", .) %>%
+  gsub(" ", "", .)
+
+# flowData: Create simple name
+pestData$FlowName <- names(flowChemData) %>%
+  .[grepl("pesticide_", .)] %>%
+  gsub("pesticide_", "", .) %>%
+  gsub("\\.", "", .)
+
+# Check that both match
+if (identical(pestData$SimpleName, pestData$FlowName)) {
+  print("pestData columns match")
+} else {
+  print("not okay")
+}
+
+# Remove cloumns as no longer needed
+pestData$SimpleName <-
+  pestData$FlowName <- NULL
+
+# WEIGHTED SUM
+
+# Create pesticideLoad column as sum of all pesticide application
 flowChemData <- flowChemData %>%
   mutate(pesticideLoad =
            # If any pesticide layers are not NA ...
@@ -37,25 +85,24 @@ flowChemData <- flowChemData %>%
            case_when(if_any(starts_with('pesticide_'),
                             complete.cases)
                      # Sum all pesticide values
-                     ~ rowSums(across(starts_with('pesticide_')), 
+                     ~ rowSums(across(starts_with('pesticide_')) * 
+                                        pestData$Toxicity,
                                na.rm = TRUE)))
-    
-### CREATE PESTICIDE RICHNESS METRIC ------------------------------------------
-# N.B. This is a placeholder for now. Currently just total number above
-# threshold, but need to introduce diversity metric describing evenness of 
-# pesticide applications
 
-# Create pesticideDiv column as count of all pesticide applications
+### CREATE PESTICIDE DIVERSITY METRICS ------------------------------------------
+
+# Create diversity indices
 flowChemData <- flowChemData %>%
-  mutate(pesticideDiv =
-           # If any pesticide layers are not NA...
-           case_when(if_any(starts_with('pesticide_'),
-                            complete.cases)
-                     # Count all pesticide values above threshold
-                     ~ rowSums(across(starts_with('pesticide_'),
-                                      ~ .x > 0),
-                               na.rm = TRUE)
-  ))
+  
+  # Create pesticideDiv column as Shannon diversity index
+  mutate(pesticideShannon =
+           vegan::diversity(across(starts_with('pesticide_')),
+                            index = "shannon")) %>%
+  
+  # Create pesticideDiv column as Simpson diversity index
+  mutate(pesticideSimpson =
+           vegan::diversity(across(starts_with('pesticide_')),
+                            index = "Simpson"))
 
 ### SAVE -----------------------------------------------------------------------
 
