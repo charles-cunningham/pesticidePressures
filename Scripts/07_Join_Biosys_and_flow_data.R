@@ -41,7 +41,13 @@ flowChemData <- readRDS(file = paste0(dataDir,
 ### JOIN PESTICIDE SUMMARY FLOW DATA TO BIOSYS DATA ----------------------------
 
 # Add columns to populate to Biosys data
-invData_sf$pesticideLoad <- invData_sf$pesticideDiv <- NA
+invData_sf$pesticideLoad <- 
+  invData_sf$pesticideToxicLoad <- 
+  invData_sf$pesticideShannon <-
+  invData_sf$pesticideSimpson <- 
+  invData_sf$fertiliser_k <-
+  invData_sf$fertiliser_n <-
+  invData_sf$fertiliser_p <- NA
 
 # Loop through individual sites
 for(i in unique(invData_sf$SITE_ID)) {
@@ -84,9 +90,19 @@ for(i in unique(invData_sf$SITE_ID)) {
     # Transfer aggregated pesticide values from nearest segment to site
     invData_sf[siteRows, "pesticideLoad"] <-
       nearestSegment$pesticideLoad
-    invData_sf[siteRows, "pesticideDiv"] <-
-      nearestSegment$pesticideDiv
-    
+    invData_sf[siteRows, "pesticideToxicLoad"] <-
+      nearestSegment$pesticideToxicLoad
+    invData_sf[siteRows, "pesticideShannon"] <-
+      nearestSegment$pesticideShannon
+    invData_sf[siteRows, "pesticideSimpson"] <-
+      nearestSegment$pesticideSimpson
+    invData_sf[siteRows, "fertiliser_k"] <-
+      nearestSegment$fertiliser_k
+    invData_sf[siteRows, "fertiliser_n"] <-
+      nearestSegment$fertiliser_n
+    invData_sf[siteRows, "fertiliser_p"] <-
+      nearestSegment$fertiliser_p
+
   } # Else, leave as NA
 }
 
