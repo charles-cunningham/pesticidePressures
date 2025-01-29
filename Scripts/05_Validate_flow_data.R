@@ -160,7 +160,16 @@ for(i in unique(st_geometry(screenData))) {
   }
 } # All other values are left as NA
 
-### TESTING
+# Save processed screen data
+saveRDS(screenData,
+        file = paste0(dataDir,
+                      "/Processed/Screen/Screen_data.Rds"))
+
+### VALIDATE FLOW DATA WITH SCREEN DATA ----------------------------------------
+
+# Load SCREEN data
+flowChemData <- readRDS(paste0(dataDir,
+                               "/Processed/Screen/Screen_data.Rds"))
 
 # Considerations
 # Filter bad matches post hoc
