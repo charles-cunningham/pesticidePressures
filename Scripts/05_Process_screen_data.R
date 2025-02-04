@@ -79,13 +79,37 @@ screenData <- st_as_sf(screenData,
                        coords = c("SMPT_EASTING", "SMPT_NORTHING"),
                        crs = 27700)
 
-### APPEND FLOW DATA TO SCREEN DATA --------------------------------------------
+### CHECK FLOW DATA AND SCREEN DATA NAME MATCHES -------------------------------
 
 # Extract simplified pesticide names from flowChemData (remove punctuation)
-pesticideNames <- names(flowChemData) %>%
+flowPestNames <- names(flowChemData) %>%
   .[grepl("pesticide_", .)] %>%
   gsub("pesticide_", "", .) %>%
   gsub("\\.", "", .) 
+
+# Extract simplified pesticide names from screenData (remove punctuation)
+screenPestNames <- screenData$Compound_Name %>%
+  unique() %>%
+  gsub("\\(", "", .) %>%
+  gsub("\\)", "", .) %>%
+  gsub("\\[", "", .) %>%
+  gsub("\\]", "", .) %>%
+  gsub("\\-", "", .) %>%
+  gsub("\\,", "", .) %>%
+  gsub("\\.", "", .) %>%
+  gsub("\\/", "", .) %>%
+  gsub("\\&", "", .) %>%
+  gsub("\\'", "", .) %>%
+  gsub(" ", "", .)
+
+# Check exact matches (only use these in analysis)
+matchNames <- flowPestNames[flowPestNames %in% screenPestNames] %>%
+  sort
+
+# Subset screenData to only chemicals which have a direct name match in flowData
+screenData <- screenData[screenData$Compound_Name %in% matchNames,]
+
+### APPEND FLOW DATA TO SCREEN DATA --------------------------------------------
 
 # Add columns to populate in screen data
 screenData$PESTICIDE_MOD <- 
@@ -107,7 +131,7 @@ for(i in unique(st_geometry(screenData))) {
     iMaxflowacc <- iNearestSegment$maxflowacc
     
     # Convert iNearestSegment to tibble, then subset to pesticide columns only
-    # (to align with pesticideNames)
+    # (to align with flowPestNames)
     iNearestSegment <- iNearestSegment %>%
       as_tibble %>%
       select(.,contains("pesticide_"))
@@ -134,19 +158,19 @@ for(i in unique(st_geometry(screenData))) {
           gsub("\\'", "", .) %>%
           gsub(" ", "", .)
         
-        # Find whether any of the pesticideNames match, then extract column
-        jPesticide <- lapply(pesticideNames, function(x) {
+        # Find whether any of the flowPestNames match, then extract column
+        jPesticide <- lapply(flowPestNames, function(x) {
           grepl(x, nameCheck, ignore.case = TRUE)
           }) %>% 
           unlist %>% 
           which
 
-        # If one of the pesticideNames matches exactly one chemical name...
+        # If one of the flowPestNames matches exactly one chemical name...
         if (length(jPesticide) == 1) {
           
           # Assign pesticideName
           screenData[j,
-                     "PESTICIDE_MOD"] <- pesticideNames[jPesticide]
+                     "PESTICIDE_MOD"] <- flowPestNames[jPesticide]
           # Assign application
           screenData[j,
                      "APPLICATION_MOD"] <- iNearestSegment[, jPesticide]
@@ -165,34 +189,3 @@ saveRDS(screenData,
         file = paste0(dataDir,
                       "/Processed/Screen/Screen_data.Rds"))
 
-### VALIDATE FLOW DATA WITH SCREEN DATA ----------------------------------------
-
-# Load SCREEN data
-flowChemData <- readRDS(paste0(dataDir,
-                               "/Processed/Screen/Screen_data.Rds"))
-
-# Considerations
-# Filter bad matches post hoc
-# LCMS and GCMS values - carry out lm separately
-# Remove NAs? - ?
-
-testData <- screenData[!is.na(screenData$APPLICATION_MOD), ]
-testData <- testData[testData$method == "LCMS",]
-
-ggplot(data = testData,
-       aes(x = log(Concentration), 
-           y = log(CONCENTRATION_MOD))) +
-  geom_point()
-testMod <- lm( Concentration ~ APPLICATION_MOD, data = testData)
-summary(testMod)
-
-testModMixed = lmer(Concentration ~ log(CONCENTRATION_MOD) + 
-                      (1 | Compound_Name) +
-                      (1 | OPCAT_NAME) +
-                      (1 | OPCAT_NAME:Sample_Site_ID ),
-                    data = testData) 
-
-
-summary(testModMixed)
-hist(log(testData$MODELLED_APPLICATION))
-hist(log(testData$MODELLED_CONCENTRATION))
