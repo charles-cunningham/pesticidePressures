@@ -46,50 +46,110 @@ lcmsData <- screenData[screenData$method == "LCMS",]
 # GCMS 
 
 # For every compound, aggregate all concentrations at every site by the median
-gcmsSummary <- lcmsData %>%
-  group_by(Sample_Site_ID, PESTICIDE_MOD, OPCAT_NAME, APPLICATION_MOD) %>% 
+gcmsSummary <- gcmsData %>%
+  group_by(Sample_Site_ID, PESTICIDE_MOD, OPCAT_NAME, APP_PER_AREA_MOD) %>% 
   summarise(ConcentrationMedian = median(Concentration)) %>%
   ungroup()
-
 
 # Plot relationship
 ggplot(data = gcmsSummary,
        aes(x = log(ConcentrationMedian), 
-           y = log(APPLICATION_MOD))) +
+           y = log(APP_PER_AREA_MOD))) +
   geom_point()
 
-cor(gcmsSummary$ConcentrationMedian, gcmsSummary$APPLICATION_MOD)
-
-gcmsModMixed <- lme4::glmer(ConcentrationMedian ~ log(APPLICATION_MOD) + 
+# Fit mixed model with concentration as response
+gcmsModMixed <- lme4::glmer(ConcentrationMedian ~ 
+                              # Fixed log-transformed estimated application
+                              log(APP_PER_AREA_MOD) + 
+                              # Pesticide name random effect
                               (1 | PESTICIDE_MOD) +
+                              # Catchment random effect
                               (1 | OPCAT_NAME) ,
                             family = Gamma(link = "log"),
                             data = gcmsSummary) 
 
-
+# Checl R^2 values
 MuMIn::r.squaredGLMM(gcmsModMixed)
 
+# Check fixed effect
 summary(gcmsModMixed)
-
-gcmsData$Compound_Name %>% unique() %>% sort()
-gcmsData$PESTICIDE_MOD %>% unique() %>% sort()
-gcmsData[gcmsData$Compound_Name == "2,4-Dichlorophenol",]
-
 
 # LCMS
 
+# For every compound, aggregate all concentrations at every site by the median
+lcmsSummary <- lcmsData %>%
+  group_by(Sample_Site_ID, PESTICIDE_MOD, OPCAT_NAME, APP_PER_AREA_MOD) %>% 
+  summarise(ConcentrationMedian = median(Concentration)) %>%
+  ungroup()
 
-# names not matching well
+# Plot relationship
+ggplot(data = lcmsSummary,
+       aes(x = log(ConcentrationMedian), 
+           y = log(APP_PER_AREA_MOD))) +
+  geom_point()
+
+# Fit mixed model with concentration as response
+lcmsModMixed <- lme4::glmer(Concentration ~ 
+                              # Fixed log-transformed estimated application
+                              log(APP_PER_AREA_MOD) + 
+                              # Pesticide name random effect
+                              (1 | PESTICIDE_MOD) +
+                              # Catchment random effect
+                              (1 | OPCAT_NAME) ,
+                            family = Gamma(link = "log"),
+                            data = lcmsData) 
+
+# Check R^2 values
+MuMIn::r.squaredGLMM(lcmsModMixed)
+
+# Check fixed effect
+summary(lcmsModMixed)
 
 
 
 # Analysis 2
 
 
+# Filter all records to a single value for each visit
+visitData <- gcmsSummary %>%
+  complete(Sample_Site_ID,PESTICIDE_MOD,
+           fill = list(ConcentrationMedian=0))
+
+
+ggplot(data = visitData,
+       aes(x = log(ConcentrationMedian), 
+           y = log(APP_PER_AREA_MOD))) +
+  geom_point()
+
+
+test <- glmmTMB::glmmTMB(formula = ConcentrationMedian ~ log(APP_PER_AREA_MOD) + (1|PESTICIDE_MOD),
+                 zi = ~ (1|PESTICIDE_MOD),
+                 family = Gamma(link = "log"),
+                 data = visitData)
+
+
+# Check R^2 values
+MuMIn::r.squaredGLMM(test)
+
+# Check fixed effect
+summary(test)
 
 
 
 
+cor(lcmsData$Concentration, lcmsData$APPLICATION_MOD)
+
+
+
+
+test <- lm(log(ConcentrationMedian) ~ log(APP_PER_AREA_MOD),
+           data = visitData)
+summary(test)
+
+test2 <- glm(Concentration ~ log(APPLICATION_MOD),
+             family = Gamma(link = "log"),
+             data = lcmsData[lcmsData$Compound_Name == "Acetamiprid",])
+summary(test2)
 
 
 
