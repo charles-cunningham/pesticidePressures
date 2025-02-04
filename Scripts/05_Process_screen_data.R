@@ -2,9 +2,10 @@
 #
 # Author: Charles Cunningham
 # 
-# Script Name: Validate overland flow data
+# Script Name: Process screen data
 #
-# Script Description:
+# Script Description: Process screen data for use in validating flow data in
+# next script
 
 ### LOAD LIBRARIES -------------------------------------------------------------
 
@@ -60,7 +61,7 @@ rm(lcms, gcms)
 screenData <- screenData %>%
   filter(SMC_DESC == "RIVER / RUNNING SURFACE WATER") %>%
   filter(grepl("FRESHWATER",.$SPT_DESC)) %>%
-  filter(year >=2010 & year < 2020)
+  filter(year >= 2010 & year < 2020)
 
 # Remove columns not needed
 screenData <- screenData %>%
@@ -81,14 +82,14 @@ screenData <- st_as_sf(screenData,
 
 ### CHECK FLOW DATA AND SCREEN DATA NAME MATCHES AND FILTER --------------------
 
-# Extract simplified pesticide names from flowChemData (remove punctuation)
+# Create simplified pesticide names from flowChemData (remove punctuation)
 flowPestNames <- names(flowChemData) %>%
   .[grepl("pesticide_", .)] %>%
   gsub("pesticide_", "", .) %>%
   gsub("\\.", "", .) 
 
-# Extract simplified pesticide names from screenData (remove punctuation)
-screenPestNames <- screenData$Compound_Name %>%
+# Create simplified screenData comound name column (remove punctuation)
+screenData$nameCheck <- screenData$Compound_Name %>%
   gsub("\\(", "", .) %>%
   gsub("\\)", "", .) %>%
   gsub("\\[", "", .) %>%
@@ -102,13 +103,13 @@ screenPestNames <- screenData$Compound_Name %>%
   gsub(" ", "", .)
 
 # Check exact matches (only use these in analysis)
-matchNames <- flowPestNames[flowPestNames %in% screenPestNames] %>%
+matchNames <- flowPestNames[ flowPestNames %in% screenData$nameCheck ] %>%
   unique %>%
   sort
 
 # Filter screen data to only rows containing pesticides found in flowData
 screenData <- screenData %>%
-  filter(Compound_Name %in% matchNames)
+  filter(nameCheck %in% matchNames)
 
 # Check what proportion of pesticides we are validating
 (length(matchNames) / length(flowPestNames) * 100) %>%
@@ -118,23 +119,23 @@ screenData <- screenData %>%
 
 ### APPEND FLOW DATA TO SCREEN DATA --------------------------------------------
 
-# Add columns to populate in screen data
+# Add columns to populate with modelled data in screenData
 screenData$PESTICIDE_MOD <- 
   screenData$APPLICATION_MOD <- 
-  screenData$CONCENTRATION_MOD <- NA
+  screenData$APP_PER_AREA_MOD <- NA
 
 # Loop through every sampling site (use unique screenData geometry)
 for(i in unique(st_geometry(screenData))) {
-
-  # IF any flow segments are within 100m (only use these sites)
-  if (lengths(st_is_within_distance(i, flowChemData, dist = 100)) > 0) {
+  
+  # Find nearest flowData segment to screenData sampling site
+  iNearestSegment <- flowChemData[st_nearest_feature(i,
+                                                     flowChemData,
+                                                     check_crs = FALSE),]
+  
+  # IF nearest feature is within 100m (only use these sites)
+  if (lengths(st_is_within_distance(i, iNearestSegment, dist = 100)) == 1) {
     
-    # Find nearest feature
-    iNearestSegment <- flowChemData[st_nearest_feature(i,
-                                                       flowChemData,
-                                                       check_crs = FALSE),]
-    
-    # Find flow accumulation for later 'concentration' calculation
+    # Find flow accumulation for later per area calculation
     iMaxflowacc <- iNearestSegment$maxflowacc
     
     # Convert iNearestSegment to tibble, then subset to pesticide columns only
@@ -144,43 +145,44 @@ for(i in unique(st_geometry(screenData))) {
       select(.,contains("pesticide_"))
     
     # IF there are any integer values in iNearestSegment, i.e. not a 
-    # maximum value river or a river that has upstream segment outside England
+    # maximum flowaccl value river or river with upstream segment outside England
     if (any(!is.na(iNearestSegment))) {
       
       # Loop through every sample j at site i 
       # (screenData rows with same geometry as i)
       for (j in which(lengths(st_equals(screenData, i)) == 1)) {
 
-        # Remove all punctuation from sample j chemical
-        nameCheck <- screenPestNames[j]
-        
-        # Find whether any of the flowPestNames match, then extract column
+        # Find which of the flowPestNames match, then extract column
+        # N.B. Order of flowPestNames matches pesticide columns, so can use
+        # order to find column
         jPesticide <- lapply(flowPestNames, function(x) {
-          grepl(x, nameCheck, ignore.case = TRUE)
+          grepl(x, screenData$nameCheck[j], ignore.case = TRUE)
           }) %>% 
           unlist %>% 
           which
           
-        # Assign pesticideName
+        # Assign pesticide name for sense check
         screenData[j,
                    "PESTICIDE_MOD"] <- flowPestNames[jPesticide]
         
-        # Assign application
+        # Assign total estimated application per year
         screenData[j,
                    "APPLICATION_MOD"] <-
           iNearestSegment[, jPesticide]
         
-        # Assign per area application
+        # Assign total estimated application per year per m^2
         screenData[j,
-                   "CONCENTRATION_MOD"] <-
+                   "APP_PER_AREA_MOD"] <-
           screenData[j,]$APPLICATION_MOD / iMaxflowacc
       }
     }
   }
 } # All other values are left as NA
 
+# Remove screenData nameCheck column
+screenData$nameCheck <- NULL
+
 # Save processed screen data
 saveRDS(screenData,
         file = paste0(dataDir,
                       "/Processed/Screen/Screen_data.Rds"))
-
