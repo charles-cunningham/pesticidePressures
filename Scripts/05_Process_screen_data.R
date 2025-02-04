@@ -79,7 +79,7 @@ screenData <- st_as_sf(screenData,
                        coords = c("SMPT_EASTING", "SMPT_NORTHING"),
                        crs = 27700)
 
-### CHECK FLOW DATA AND SCREEN DATA NAME MATCHES -------------------------------
+### CHECK FLOW DATA AND SCREEN DATA NAME MATCHES AND FILTER --------------------
 
 # Extract simplified pesticide names from flowChemData (remove punctuation)
 flowPestNames <- names(flowChemData) %>%
@@ -89,7 +89,6 @@ flowPestNames <- names(flowChemData) %>%
 
 # Extract simplified pesticide names from screenData (remove punctuation)
 screenPestNames <- screenData$Compound_Name %>%
-  unique() %>%
   gsub("\\(", "", .) %>%
   gsub("\\)", "", .) %>%
   gsub("\\[", "", .) %>%
@@ -104,10 +103,18 @@ screenPestNames <- screenData$Compound_Name %>%
 
 # Check exact matches (only use these in analysis)
 matchNames <- flowPestNames[flowPestNames %in% screenPestNames] %>%
+  unique %>%
   sort
 
-# Subset screenData to only chemicals which have a direct name match in flowData
-screenData <- screenData[screenData$Compound_Name %in% matchNames,]
+# Filter screen data to only rows containing pesticides found in flowData
+screenData <- screenData %>%
+  filter(Compound_Name %in% matchNames)
+
+# Check what proportion of pesticides we are validating
+(length(matchNames) / length(flowPestNames) * 100) %>%
+  round(., digits = 2) %>%
+  paste(., "% of total Land Cover Plus pesticides included in validation") %>%
+  print
 
 ### APPEND FLOW DATA TO SCREEN DATA --------------------------------------------
 
@@ -116,7 +123,7 @@ screenData$PESTICIDE_MOD <-
   screenData$APPLICATION_MOD <- 
   screenData$CONCENTRATION_MOD <- NA
 
-# Loop through every sampling site (unique screenData geometry)
+# Loop through every sampling site (use unique screenData geometry)
 for(i in unique(st_geometry(screenData))) {
 
   # IF any flow segments are within 100m (only use these sites)
@@ -145,18 +152,7 @@ for(i in unique(st_geometry(screenData))) {
       for (j in which(lengths(st_equals(screenData, i)) == 1)) {
 
         # Remove all punctuation from sample j chemical
-        nameCheck <- screenData[j,]$Compound_Name %>%
-          gsub("\\(", "", .) %>%
-          gsub("\\)", "", .) %>%
-          gsub("\\[", "", .) %>%
-          gsub("\\]", "", .) %>%
-          gsub("\\-", "", .) %>%
-          gsub("\\,", "", .) %>%
-          gsub("\\.", "", .) %>%
-          gsub("\\/", "", .) %>%
-          gsub("\\&", "", .) %>%
-          gsub("\\'", "", .) %>%
-          gsub(" ", "", .)
+        nameCheck <- screenPestNames[j]
         
         # Find whether any of the flowPestNames match, then extract column
         jPesticide <- lapply(flowPestNames, function(x) {
@@ -164,21 +160,20 @@ for(i in unique(st_geometry(screenData))) {
           }) %>% 
           unlist %>% 
           which
-
-        # If one of the flowPestNames matches exactly one chemical name...
-        if (length(jPesticide) == 1) {
           
-          # Assign pesticideName
-          screenData[j,
-                     "PESTICIDE_MOD"] <- flowPestNames[jPesticide]
-          # Assign application
-          screenData[j,
-                     "APPLICATION_MOD"] <- iNearestSegment[, jPesticide]
-          # Assign per area application
-          screenData[j, 
-                     "CONCENTRATION_MOD"] <- screenData[ j, ]$APPLICATION_MOD /
-          iMaxflowacc
-        }
+        # Assign pesticideName
+        screenData[j,
+                   "PESTICIDE_MOD"] <- flowPestNames[jPesticide]
+        
+        # Assign application
+        screenData[j,
+                   "APPLICATION_MOD"] <-
+          iNearestSegment[, jPesticide]
+        
+        # Assign per area application
+        screenData[j,
+                   "CONCENTRATION_MOD"] <-
+          screenData[j,]$APPLICATION_MOD / iMaxflowacc
       }
     }
   }
