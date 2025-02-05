@@ -151,16 +151,13 @@ for(i in unique(st_geometry(screenData))) {
       # Loop through every sample j at site i 
       # (screenData rows with same geometry as i)
       for (j in which(lengths(st_equals(screenData, i)) == 1)) {
-
-        # Find which of the flowPestNames match, then extract column
+        
+        # Find which of the flowPestNames match, then extract column number
         # N.B. Order of flowPestNames matches pesticide columns, so can use
         # order to find column
-        jPesticide <- lapply(flowPestNames, function(x) {
-          grepl(x, screenData$nameCheck[j], ignore.case = TRUE)
-          }) %>% 
-          unlist %>% 
-          which
-          
+        jPesticide <- flowPestNames %in% screenData$nameCheck[j] %>%
+          which()
+        
         # Assign pesticide name for sense check
         screenData[j,
                    "PESTICIDE_MOD"] <- flowPestNames[jPesticide]
