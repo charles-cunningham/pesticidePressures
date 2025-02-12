@@ -45,12 +45,12 @@ dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 invData <- readRDS(paste0(dataDir, "invDataSpatial.Rds"))
 
 #####TESTING
-invData <- invData %>%
+testData <- invData %>%
   filter(CATCHMENT == "OUSE (ST NEOTS)")
 
 #####
 hist(invData$pesticideLoad)
-hist(scale(log(invData$pesticideLoad)))
+hist(scale(invData$pesticideLoad))
 
 ### (TEMPORALLY) FILTER DATA ---------------------------------------------------
 
@@ -65,9 +65,23 @@ invData$YEAR <- invData$SAMPLE_DATE %>%
   format(., format="%Y") %>% 
   as.numeric(.)
 
-# Create month column
-invData$MONTH <- invData$SAMPLE_DATE %>%
+# Create month name column
+invData$MONTH_NAME <- invData$SAMPLE_DATE %>%
   format(., format="%B")
+
+# Create month integer column
+invData$MONTH_NUM <- invData$SAMPLE_DATE %>%
+  format(., format="%m") %>%
+  as.numeric()
+invData$MONTH_NUM <- invData$MONTH_NUM - (min(invData$MONTH_NUM) - 1)
+
+hist(invData$MONTH_NUM)
+
+# Create week column
+invData$WEEK <- invData$SAMPLE_DATE %>%
+  format(., format="%V") %>%
+  as.numeric() %>%
+  
 
 # FILTER DATES
 
@@ -77,6 +91,7 @@ invData <- invData %>%
   filter(YEAR >= 2010 & YEAR < 2020) %>%
   # Filter to spring and summer (March, April, May, June, July, August)
   filter(MONTH %in% c("March", "April", "May", "June", "July", "August"))
+
 
 # FILTER ON OTHER VARIABLES ----------------------------------------------------
 
@@ -90,40 +105,40 @@ invData <- invData %>%
 ### todo: TO BE CREATED USING WILKES METHODOLOGY!!!!!!!!!!
 
 
-
-
-
-
 ### SEPARATE INTO SEPERATE SPECIES ---------------------------------------------
 
 # Start loop here
-for( i in unique(invData$TAXON_GROUP_NAME)[1]) {
+for( i in unique(invData$TAXON_GROUP_NAME)[4]) {
 
   taxaData <- invData %>%
     filter(TAXON_GROUP_NAME == i)
 
 ### ZIP MODEL 
 
-
+  # Priors for random effects
+  seasonHyper <- list(theta = list(prior="pc.prec",
+                                   param=c(0.5, 0.01)))
   
-  comps <- ~ pesticideDiv(taxaData$pesticideDiv, model = "linear") +
-    pesticideLoad(taxaData$pesticideLoad, model = "linear") +
+  comps <-  TOTAL_ABUNDANCE~ 
+    pesticideDiv(pesticideShannon, model = "linear") +
+    pesticideLoad(log(pesticideToxicLoad), model = "linear") +
+    N(log(fertiliser_n), model = "linear") +
+    P(log(fertiliser_p), model = "linear") +
+    K(log(fertiliser_k), model = "linear") +
+    month(main = MONTH_NUM,
+         model = "seasonal",
+         season.length = 6,
+         hyper = randomHyper) +
+    wb(WATER_BODY, model = "iid") +
     Intercept(1)
   
-  fit_zip <- bru(
-    comps,
-    bru_obs(
-      family = "zeroinflatedpoisson1", data = taxaData,
-      formula = TOTAL_ABUNDANCE ~ 
-        Intercept +
-        pesticideDiv + 
-        pesticideLoad
-    )
-  )
-  
-  
-  }
+  model <- bru( components = comps,
+      family = "poisson", 
+      data = taxaData,
+      options=list(control.compute = list(waic = TRUE,
+                                          dic = TRUE,
+                                          cpo = TRUE),
+                   verbose = TRUE))
 
-
-###########
+}
 
