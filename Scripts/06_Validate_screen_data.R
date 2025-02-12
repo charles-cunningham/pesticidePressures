@@ -25,14 +25,14 @@ dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 screenData <- readRDS(paste0(dataDir,
                              "/Processed/Screen/Screen_data.Rds"))
 
-### VALIDATE FLOW DATA WITH SCREEN DATA ----------------------------------------
-
-# FILTER SCREEN DATA
+### FILTER SCREEN DATA ---------------------------------------------------------
 
 # Filter missing values, and convert to tibble
 screenData <- screenData %>%
   # Remove sites with no name matched modelled data
   filter(!is.na(PESTICIDE_MOD)) %>%
+  # Remove sites with no Limit of Detection data
+  filter(!is.na(LOD)) %>%
   # Remove sites with concentrations below detection level
   filter(less_than == FALSE) %>%
   as_tibble()
@@ -41,30 +41,84 @@ screenData <- screenData %>%
 gcmsData <- screenData[screenData$method == "GCMS",]
 lcmsData <- screenData[screenData$method == "LCMS",]
 
-# MIXED-EFFECTS GLM
+# DESCRIPTIVE STATS ------------------------------------------------------------
+
+# GCMS
+
+# Plot relationship between concentration and application per area
+ggplot(data = gcmsData,
+       aes(x = log(Concentration), 
+           y = log(APPLICATION_MOD))) +
+  geom_point()
+
+# Check correlation
+cor(gcmsData$Concentration, gcmsData$APPLICATION_MOD)
+
+# LCMS
+
+# Plot relationship between concentration and application per area
+ggplot(data = lcmsSummary,
+       aes(x = log(ConcentrationMedian), 
+           y = log(APPLICATION_MOD))) +
+  geom_point()
+
+# Check correlation
+cor(lcmsData$Concentration, lcmsData$APPLICATION_MOD)
+
+# TRUNCATED DATA MODEL ---------------------------------------------------------
 
 # GCMS 
 
+#
+gcmsTruncated<- gcmsData %>%
+  mutate(truncatedConc = ifelse(Concentration> LOD,
+                                Concentration,
+                                LOD))
+
+gcmsTruncModel <- crch::trch ( truncatedConc ~ log(APPLICATION_MOD),
+                     truncated = TRUE,
+                     left =  gcmsTruncated$LOD,
+                     link.scale = "log",
+                     data = gcmsTruncated)
+
+
+summary(gcmsTruncModel)
+
+# LCMS
+
+#
+lcmsTruncated <- lcmsData %>%
+  mutate(truncatedConc = ifelse(Concentration > LOD,
+                                Concentration,
+                                LOD))
+
+lcmsTruncModel <- crch::trch ( truncatedConc ~ log(APPLICATION_MOD),
+                               truncated = TRUE,
+                               left =  lcmsTruncated$LOD,
+                               link.scale = "log",
+                               data = lcmsTruncated)
+
+
+summary(lcmsTruncModel)
+
+
+### MIXED-EFFECTS MODEL --------------------------------------------------------
+
 # For every compound, aggregate all concentrations at every site by the median
 gcmsSummary <- gcmsData %>%
-  group_by(Sample_Site_ID, PESTICIDE_MOD, OPCAT_NAME, APP_PER_AREA_MOD) %>% 
+  group_by(Sample_Site_ID, PESTICIDE_MOD, OPCAT_NAME, APPLICATION_MOD) %>%
   summarise(ConcentrationMedian = median(Concentration)) %>%
   ungroup()
 
-# Plot relationship
-ggplot(data = gcmsSummary,
-       aes(x = log(ConcentrationMedian), 
-           y = log(APP_PER_AREA_MOD))) +
-  geom_point()
 
 # Fit mixed model with concentration as response
 gcmsModMixed <- lme4::glmer(ConcentrationMedian ~ 
                               # Fixed log-transformed estimated application
-                              log(APP_PER_AREA_MOD) + 
+                              log(APPLICATION_MOD) + 
                               # Pesticide name random effect
-                              (1 | PESTICIDE_MOD) +
-                              # Catchment random effect
-                              (1 | OPCAT_NAME) ,
+                              (1| PESTICIDE_MOD) +
+                              # # Site random effect
+                               (1 | Sample_Site_ID) ,
                             family = Gamma(link = "log"),
                             data = gcmsSummary) 
 
@@ -78,85 +132,25 @@ summary(gcmsModMixed)
 
 # For every compound, aggregate all concentrations at every site by the median
 lcmsSummary <- lcmsData %>%
-  group_by(Sample_Site_ID, PESTICIDE_MOD, OPCAT_NAME, APP_PER_AREA_MOD) %>% 
+  group_by(Sample_Site_ID, PESTICIDE_MOD, OPCAT_NAME, APPLICATION_MOD) %>%
   summarise(ConcentrationMedian = median(Concentration)) %>%
   ungroup()
 
-# Plot relationship
-ggplot(data = lcmsSummary,
-       aes(x = log(ConcentrationMedian), 
-           y = log(APP_PER_AREA_MOD))) +
-  geom_point()
 
 # Fit mixed model with concentration as response
-lcmsModMixed <- lme4::glmer(Concentration ~ 
+lcmsModMixed <- lme4::glmer(ConcentrationMedian ~ 1 +
                               # Fixed log-transformed estimated application
-                              log(APP_PER_AREA_MOD) + 
+                              log(APPLICATION_MOD) + 
                               # Pesticide name random effect
-                              (1 | PESTICIDE_MOD) +
-                              # Catchment random effect
-                              (1 | OPCAT_NAME) ,
+                              (1| PESTICIDE_MOD) +
+                              # Site random effect
+                              (1 | Sample_Site_ID) ,
                             family = Gamma(link = "log"),
-                            data = lcmsData) 
+                            data = lcmsSummary) 
+
 
 # Check R^2 values
 MuMIn::r.squaredGLMM(lcmsModMixed)
 
 # Check fixed effect
 summary(lcmsModMixed)
-
-
-
-# Analysis 2
-
-
-# Filter all records to a single value for each visit
-visitData <- gcmsSummary %>%
-  complete(Sample_Site_ID,PESTICIDE_MOD,
-           fill = list(ConcentrationMedian=0))
-
-
-ggplot(data = visitData,
-       aes(x = log(ConcentrationMedian), 
-           y = log(APP_PER_AREA_MOD))) +
-  geom_point()
-
-
-test <- glmmTMB::glmmTMB(formula = ConcentrationMedian ~ log(APP_PER_AREA_MOD) + (1|PESTICIDE_MOD),
-                 zi = ~ (1|PESTICIDE_MOD),
-                 family = Gamma(link = "log"),
-                 data = visitData)
-
-
-# Check R^2 values
-MuMIn::r.squaredGLMM(test)
-
-# Check fixed effect
-summary(test)
-
-
-
-
-cor(lcmsData$Concentration, lcmsData$APPLICATION_MOD)
-
-
-
-
-test <- lm(log(ConcentrationMedian) ~ log(APP_PER_AREA_MOD),
-           data = visitData)
-summary(test)
-
-test2 <- glm(Concentration ~ log(APPLICATION_MOD),
-             family = Gamma(link = "log"),
-             data = lcmsData[lcmsData$Compound_Name == "Acetamiprid",])
-summary(test2)
-
-
-
-
-summary(testModMixed)
-hist(log(testData$MODELLED_APPLICATION))
-hist(log(testData$MODELLED_CONCENTRATION))
-
-testData[testData$Concentration == 3070, ]
-testData$unit %>% unique()
