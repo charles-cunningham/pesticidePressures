@@ -12,7 +12,6 @@
 library(tidyverse)
 library(terra)
 library(sf)
-library(gstat)
 
 # Set terra options to speed up
 terraOptions(memfrac = 0.9)
@@ -33,21 +32,17 @@ lapply(paste0(dataDir, "Processed/Catchments"), function(x) {
 
 ### READ IN CATCHMENT AND LAND COVER DATA --------------------------------------
 
-### READ IN CATCHMENT DATA
-
-# Read catchment .Rds
-catchmentData <- readRDS(paste0(dataDir,
-                                "Processed/Catchments/Catchment_chem_data.Rds"))
-
 ### READ IN LAND COVER DATA
 
-# Read land cover spatRast
-lcm2015 <- rast(paste0(dataDir, "Raw/Land_cover_data/lcm2015gb25m.tif"))[[1]]
+# Read land cover data as spatRast file (first layer is land cover class)
+lcm2015 <- paste0(dataDir, "Raw/Land_cover_data/lcm2015gb25m.tif") %>%
+  rast() %>%
+  .[[1]]
 
-# Rename land cover spatRast
-names(LCM2021) <- "Identifier"
+# Rename lcm2015 spatRast layer
+names(lcm2015) <- "Identifier"
 
-# Specify the LCM classes, add on "No Data"
+# Specify the LCM classes, add on "No Data" for NA values
 classLCM <- c(
   "Deciduous woodland",
   "Coniferous woodland",
@@ -79,51 +74,73 @@ LCM_df <- data.frame("Identifier" = c(1:(length(classLCM) - 1),
                                       NA),
                      "Class" = classLCM)
 
-# EXTRACT COVERAGE -----------------------------------------
+### READ IN CATCHMENT DATA
 
+# Read catchment .Rds
+catchmentData <- readRDS(paste0(dataDir,
+                                "Processed/Catchments/Catchment_data_only.Rds"))
+
+# Create data frame from catchmentData
+# N.B Assigning values later using this tibble speeds up significantly
+catchment_tibble <-  matrix(ncol = length(classLCM),
+                            nrow = NROW(catchmentData)) %>%
+  data.frame() %>%
+  setNames(., classLCM)
+
+
+# Find columns that match to LCM classes
+colNumsLCM <- names(catchment_tibble) %in% classLCM %>%
+  which(.)
+
+# Add total area column (in 25x25m cells)
+catchment_tibble[, "totalArea"] <- NA
+
+# EXTRACT COVERAGE (IN 25x25M CELLS) -------------------------------------------
 
 # Create progress bar
 progressBar = txtProgressBar(
   min = 0,
-  max = NROW(SSSI_df),
+  max = NROW(catchmentData),
   initial = 0,
   style = 3
 )
 
-# Start loop iterating through every SSSI
-for (j in 1:NROW(SSSI_df)) {
-  # Find all SSSI vect objects with same unique ID (part of SSSI 'j')
-  SSSI_j <- subset(SSSI,
-                   subset = values(SSSI)[, uniqueID] == SSSI_df[j, uniqueID])
-  
-  # Extract all 25m cells for each land cover class present for SSSI 'j'
-  SSSIcells <- terra::extract(LCM2021, SSSI_j)
+# Start loop iterating through every catchment_tibble row
+for (i in 1:NROW(catchment_tibble)) { # (Same row numbers as catchmentData)
+
+  # Extract all 25x25m cells for each land cover class present for catchment i
+  # N.B. This is how rows are connected
+  catchmentCells <- terra::extract(lcm2015, catchmentData[i,])
   
   # Count number of cells for each class
   # N.B. some classes may not be included as count is 0
-  SSSIcount <- count(SSSIcells, Identifier)
-  
-  # Create percentage cover column from count
-  SSSIcount$PercentCover <- SSSIcount$n / sum(SSSIcount$n) * 100
-  
+  catchmentCount <- count(catchmentCells, Identifier, name = "Cover")
+
   # Add class names by joining coverage values to LCM data frame
-  SSSIcount <- full_join(LCM_df, SSSIcount, by = "Identifier") %>%
-    replace_na(list(PercentCover = 0)) # Convert PercentCover NAs to 0
+  catchmentCount <- full_join(LCM_df, catchmentCount, by = "Identifier") %>%
+    replace_na(list(Cover = 0)) # Convert 'Cover' NAs to 0
   
-  # Add proportion coverage for each class to SSSI data frame (row j)
-  SSSI_df[j, colNumsLCM] <- SSSIcount$PercentCover
+  # Add coverage for each class to catchment_tibble  (row i)
+  catchment_tibble[i, colNumsLCM] <- catchmentCount$Cover
+  
+  # Add total cover
+  catchment_tibble[i, "totalArea"] <- sum(catchmentCount$Cover)
   
   # Iterate progress bar
-  setTxtProgressBar(progressBar, j)
+  setTxtProgressBar(progressBar, i)
   
 }
 
 # Close progress bar
 close(progressBar)
 
+# Garbage clean
+gc()
+
+# Bind together catchmentData and catchment_tibble (rows are connected)
+catchmentData <- cbind(catchmentData, catchment_tibble)
 
 # Save
-saveRDS(catchmentLandData,
+saveRDS(catchmentData,
         file = paste0(dataDir,
-                      "Processed/Catchments/Catchment__data.Rds"))
-
+                      "Processed/Catchments/Catchment_data.Rds"))
