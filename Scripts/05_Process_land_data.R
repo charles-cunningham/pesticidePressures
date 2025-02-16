@@ -23,14 +23,14 @@ terraOptions(memfrac = 0.9)
 # If working locally: "../Data/"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 
-# Create processed catchement data folder
-lapply(paste0(dataDir, "Processed/Catchments"), function(x) {
+# Create processed watershed data folder
+lapply(paste0(dataDir, "Processed/Watersheds"), function(x) {
   if (!file.exists(x)) {
     dir.create(x, recursive = TRUE)
   }
 })
 
-### READ IN CATCHMENT AND LAND COVER DATA --------------------------------------
+### READ IN WATERSHED AND LAND COVER DATA --------------------------------------
 
 ### READ IN LAND COVER DATA
 
@@ -74,57 +74,57 @@ LCM_df <- data.frame("Identifier" = c(1:(length(classLCM) - 1),
                                       NA),
                      "Class" = classLCM)
 
-### READ IN CATCHMENT DATA
+### READ IN WATERSHED DATA
 
-# Read catchment .Rds
-catchmentData <- readRDS(paste0(dataDir,
-                                "Processed/Catchments/Catchment_chem_data.Rds"))
+# Read watershed .Rds
+watershedData <- readRDS(paste0(dataDir,
+                                "Processed/Watersheds/Watershed_data.Rds"))
 
-# Create data frame from catchmentData
+# Create data frame from watershedData
 # N.B Assigning values later using this tibble speeds up significantly
-catchment_tibble <-  matrix(ncol = length(classLCM),
-                            nrow = NROW(catchmentData)) %>%
+watershed_tibble <-  matrix(ncol = length(classLCM),
+                            nrow = NROW(watershedData)) %>%
   data.frame() %>%
   setNames(., classLCM)
 
 
 # Find columns that match to LCM classes
-colNumsLCM <- names(catchment_tibble) %in% classLCM %>%
+colNumsLCM <- names(watershed_tibble) %in% classLCM %>%
   which(.)
 
 # Add total area column (in 25x25m cells)
-catchment_tibble[, "totalArea"] <- NA
+watershed_tibble[, "totalArea"] <- NA
 
 # EXTRACT COVERAGE (IN 25x25M CELLS) -------------------------------------------
 
 # Create progress bar
 progressBar = txtProgressBar(
   min = 0,
-  max = NROW(catchmentData),
+  max = NROW(watershedData),
   initial = 0,
   style = 3
 )
 
-# Start loop iterating through every catchment_tibble row
-for (i in 1:NROW(catchment_tibble)) { # (Same row numbers as catchmentData)
+# Start loop iterating through every watershed_tibble row
+for (i in 1:NROW(watershed_tibble)) { # (Same row numbers as watershedData)
 
-  # Extract all 25x25m cells for each land cover class present for catchment i
+  # Extract all 25x25m cells for each land cover class present for watershed i
   # N.B. This is how rows are connected
-  catchmentCells <- terra::extract(lcm2015, catchmentData[i,])
+  watershedCells <- terra::extract(lcm2015, watershedData[i,])
   
   # Count number of cells for each class
   # N.B. some classes may not be included as count is 0
-  catchmentCount <- count(catchmentCells, Identifier, name = "Cover")
+  watershedCount <- count(watershedCells, Identifier, name = "Cover")
 
   # Add class names by joining coverage values to LCM data frame
-  catchmentCount <- full_join(LCM_df, catchmentCount, by = "Identifier") %>%
+  watershedCount <- full_join(LCM_df, watershedCount, by = "Identifier") %>%
     replace_na(list(Cover = 0)) # Convert 'Cover' NAs to 0
   
-  # Add coverage for each class to catchment_tibble  (row i)
-  catchment_tibble[i, colNumsLCM] <- catchmentCount$Cover
+  # Add coverage for each class to watershed_tibble  (row i)
+  watershed_tibble[i, colNumsLCM] <- watershedCount$Cover
   
   # Add total cover
-  catchment_tibble[i, "totalArea"] <- sum(catchmentCount$Cover)
+  watershed_tibble[i, "totalArea"] <- sum(watershedCount$Cover)
   
   # Iterate progress bar
   setTxtProgressBar(progressBar, i)
@@ -134,13 +134,7 @@ for (i in 1:NROW(catchment_tibble)) { # (Same row numbers as catchmentData)
 # Close progress bar
 close(progressBar)
 
-# Garbage clean
-gc()
-
-# Bind together catchmentData and catchment_tibble (rows are connected)
-catchmentData <- cbind(catchmentData, catchment_tibble)
-
 # Save
-saveRDS(catchmentData,
+saveRDS(watershedData,
         file = paste0(dataDir,
-                      "Processed/Catchments/Catchment_data.Rds"))
+                      "Processed/Watersheds/Watershed_land_data.Rds"))
