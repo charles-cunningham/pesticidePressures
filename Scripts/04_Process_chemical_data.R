@@ -24,20 +24,20 @@ terraOptions(memfrac = 0.9)
 # If working locally: "../Data/"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 
-# Create processed catchement data folder
-lapply(paste0(dataDir, "Processed/Catchments"), function(x) {
+# Create processed watershed data folder
+lapply(paste0(dataDir, "Processed/Watersheds"), function(x) {
   if (!file.exists(x)) {
     dir.create(x, recursive = TRUE)
   }
 })
 
-### READ IN CATCHMENT, FERTILISER AND PESTICIDE DATA ---------------------------  
+### READ IN WATERSHED, FERTILISER AND PESTICIDE DATA ---------------------------  
 
-### READ IN CATCHMENT DATA
+### READ IN WATERSHED DATA
 
-# Read catchment .Rds
-catchmentData <- readRDS(paste0(dataDir,
-                                "Processed/Catchments/Catchment_data_only.Rds"))
+# Read watershed .Rds
+watershedData <- readRDS(paste0(dataDir,
+                                "Processed/Watersheds/Watershed_data.Rds"))
 
 ### READ IN FERTILISER DATA
 
@@ -120,10 +120,10 @@ gc()
 
 ### INTERPOLATE RASTER DATA  ---------------------------------------------------
 
-# Rasterise all cells that touch catchments which intersect with England
+# Rasterise all cells that touch watersheds which intersect with England
 # N.B. There are some gaps in the Land Cover Plus data to interpolate such as
-# catchments along England/Wales border
-catchment_R <- vect(catchmentData) %>%
+# watersheds along England/Wales border
+watershed_R <- vect(watershedData) %>%
   rasterize(., chemData, touches = TRUE)
 
 # For each layer name, i.e. each chemical
@@ -143,7 +143,7 @@ chemDataInterp <- lapply(chemNames, function(i) {
                         nmax = 5) # Only use nearest 5 points
   
   # Interpolate using gstat formula for chemical i
-  iInterp <- interpolate(catchment_R,
+  iInterp <- interpolate(watershed_R,
                          iInterpModel,
                          na.rm = TRUE)[["var1.pred"]]
   
@@ -156,7 +156,7 @@ chemDataInterp <- lapply(chemNames, function(i) {
 }) %>% rast() # Join all layers together into one spatRast
 
 # Remove objects no longer needed
-rm(chemData, catchment_R)
+rm(chemData, watershed_R)
 gc()
 
 ### REMOVE EXTREMELY LOW ESTIMATE APPLICATIONS ---------------------------------
@@ -168,19 +168,19 @@ chemDataInterp <- clamp(chemDataInterp,
                         lower = 0.001, # 1 gram/km^2/year
                         values  = FALSE) # Set NAs below value
 
-### EXTRACT DATA TO CATCHMENTS -------------------------------------------------
+### EXTRACT DATA TO WATERSHEDS -------------------------------------------------
 # N.B. Warning: this runs overnight
 
 # Weighted sum (missing data is treated as 0)
 # N.B. Since each 1x1km data square value has units of kg/year,
-# a weighted sum extract function for each catchment results in estimated 
-# kg/year within that catchment
-catchmentChemData <- terra::extract(chemDataInterp, catchmentData,
+# a weighted sum extract function for each watershed results in estimated 
+# kg/year within that watershed
+watershedChemData <- terra::extract(chemDataInterp, watershedData,
                                     exact = TRUE,
                                     fun = sum, na.rm = TRUE,
-                                    ID = FALSE, bind = TRUE)
+                                    ID = TRUE) # N.B. Same as watershedData ID
 
 # Save
-saveRDS(catchmentChemData,
+saveRDS(watershedChemData,
         file = paste0(dataDir,
-                      "Processed/Catchments/Catchment_chem_data.Rds"))
+                      "Processed/Watershed/Watershed_chem_data.Rds"))
