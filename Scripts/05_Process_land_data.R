@@ -78,7 +78,7 @@ LCM_df <- data.frame("Identifier" = c(1:(length(classLCM) - 1),
 
 # Read catchment .Rds
 catchmentData <- readRDS(paste0(dataDir,
-                                "Processed/Catchments/Catchment_data_only.Rds"))
+                                "Processed/Catchments/Catchment_chem_data.Rds"))
 
 # Create data frame from catchmentData
 # N.B Assigning values later using this tibble speeds up significantly
