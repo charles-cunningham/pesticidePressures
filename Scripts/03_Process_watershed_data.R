@@ -2,7 +2,7 @@
 #
 # Author: Charles Cunningham
 # 
-# Script Name: Process catchment data
+# Script Name: Process watershed data
 #
 # Script Description:
 
@@ -23,8 +23,8 @@ terraOptions(memfrac = 0.9)
 # If working locally: "../Data/"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 
-# Create processed catchement data folder
-lapply(paste0(dataDir, "Processed/Catchments"), function(x) {
+# Create processed watershed data folder
+lapply(paste0(dataDir, "Processed/Watersheds"), function(x) {
   if (!file.exists(x)) {
     dir.create(x, recursive = TRUE)
   }
@@ -35,12 +35,11 @@ england <- readRDS(paste0(dataDir,
                           "Raw/Country_data/England.Rds")) %>%
   st_as_sf
 
-### SEPARATE, FILTER AND SAVE CATCHMENT DATA -----------------------------------
+### SEPARATE, FILTER AND SAVE WATERSHED DATA -----------------------------------
 
-# Read in catchment data from geopackage, with query that selects:
-# columns needed, only River water catchment type, and only segments with 1km
-# flow accumulation or greater
-catchmentData <- read_sf(dsn = paste0(dataDir, "Raw/Flow_data/Flow_data.gpkg"),
+# Read in watershed data from geopackage, with query that selects only 
+# 'River' water catchment type
+watershedData <- read_sf(dsn = paste0(dataDir, "Raw/Flow_data/Flow_data.gpkg"),
                          query = "
                          SELECT *
                          FROM ea_detailed_watersheds
@@ -48,20 +47,23 @@ catchmentData <- read_sf(dsn = paste0(dataDir, "Raw/Flow_data/Flow_data.gpkg"),
                          ")
 
 # Drop columns not needed, and set standardised crs
-catchmentData <- catchmentData %>%
+watershedData <- watershedData %>%
   select (!c(country, watercat, shape_length, shape_area)) %>%
   st_set_crs("EPSG:27700")
 
-# Filter catchments to those which intersect with England country boundary
-# N.B. Cannot use original data column "country" as unreliable at Welsh border
-catchmentData <- catchmentData %>%
+# Filter watersheds to those which intersect with England country boundary
+# N.B. Cannot use watershedData data column "country" as unreliable at Welsh border
+watershedData <- watershedData %>%
   filter(st_intersects(., england, sparse = FALSE)[,1])
 
+# Create unique ID column as does not exist
+watershedData$ID <- 1:NROW(watershedData)
+
 # Save
-saveRDS(catchmentData,
+saveRDS(watershedData,
         file = paste0(dataDir,
-                      "Processed/Catchments/Catchment_data_only.Rds"))
+                      "Processed/Watersheds/Watershed_data.Rds"))
 
 # Remove objects and clear memory
-rm(catchmentData)
+rm(watershedData)
 gc()
