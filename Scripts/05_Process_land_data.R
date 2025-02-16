@@ -95,6 +95,9 @@ colNumsLCM <- names(watershed_tibble) %in% classLCM %>%
 # Add total area column (in 25x25m cells)
 watershed_tibble[, "totalArea"] <- NA
 
+# Add ID column
+watershed_tibble[, "ID"] <- 1:NROW(watershed_tibble)
+
 # EXTRACT COVERAGE (IN 25x25M CELLS) -------------------------------------------
 
 # Create progress bar
@@ -120,12 +123,12 @@ for (i in 1:NROW(watershed_tibble)) { # (Same row numbers as watershedData)
   watershedCount <- full_join(LCM_df, watershedCount, by = "Identifier") %>%
     replace_na(list(Cover = 0)) # Convert 'Cover' NAs to 0
   
-  # Add coverage for each class to watershed_tibble  (row i)
+  # Add coverage for each class to watershed_tibble (row i)
   watershed_tibble[i, colNumsLCM] <- watershedCount$Cover
   
   # Add total cover
   watershed_tibble[i, "totalArea"] <- sum(watershedCount$Cover)
-  
+
   # Iterate progress bar
   setTxtProgressBar(progressBar, i)
   
@@ -135,6 +138,6 @@ for (i in 1:NROW(watershed_tibble)) { # (Same row numbers as watershedData)
 close(progressBar)
 
 # Save
-saveRDS(watershedData,
+saveRDS(watershed_tibble,
         file = paste0(dataDir,
                       "Processed/Watersheds/Watershed_land_data.Rds"))
