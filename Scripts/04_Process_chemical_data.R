@@ -62,21 +62,6 @@ fertData <- lapply(fertFiles, function(x) {
   # Combine together
   rast
 
-### READ IN FERTILISER DATA TO MEMORY
-# As fertData cannot be loaded into memory (reason unknown), use workaround
-# below to load the spatRast into memory which massively speeds up later
-# extract() funtion
-
-# Save to temporary .Rds file
-saveRDS(fertData,
-        file = paste0(dataDir, "temp.Rds"))
-
-# Read back in from temporary .Rds file
-fertData <- readRDS(paste0(dataDir, "temp.Rds"))
-
-# Delete temporary .Rds file
-unlink(paste0(dataDir, "temp.Rds"))
-
 ### READ IN PESTICIDE DATA
 
 # List files (each contains two layers - (1) data layer, (2) uncertainty layer)
@@ -113,6 +98,9 @@ chemData <- c(fertData, pestData)
 
 # Save layer names
 chemNames <- names(chemData)
+
+# Optional: Read spatRast to memory (speeds up later extraction)
+chemData <- toMemory(chemData)
 
 # Remove separate objects
 rm(fertData, pestData)
@@ -183,4 +171,4 @@ watershedChemData <- terra::extract(chemDataInterp, watershedData,
 # Save
 saveRDS(watershedChemData,
         file = paste0(dataDir,
-                      "Processed/Watershed/Watershed_chem_data.Rds"))
+                      "Processed/Watersheds/Watershed_chem_data.Rds"))
