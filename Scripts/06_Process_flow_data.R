@@ -43,17 +43,28 @@ england <- readRDS(paste0(dataDir,
                           "Raw/Country_data/England.Rds")) %>%
   st_as_sf
 
-# Read catchment fertiliser data
-catchmentChem <- readRDS(paste0(dataDir,
-                                "Processed/Catchments/Catchment_chem_data.Rds")) %>%
+# Read watershed spatial data
+watersheds <- readRDS(paste0(dataDir,
+                                "Processed/Watersheds/Watershed_data.Rds")) %>%
   st_as_sf
 
-# Add row ID column for catchmentChem
-catchmentChem$ID <- 1:NROW(catchmentChem)
+# Read watershed chemical application data
+watershedChemData <- readRDS(paste0(dataDir,
+                                    "Processed/Watersheds/Watershed_chem_data.Rds"))
 
-# List fertiliser and pesticide layer names
-fertLayers <- grep("fertiliser", names(catchmentChem), value = TRUE)
-pestLayers <- grep("pesticide", names(catchmentChem), value = TRUE)
+# Read watershed land cover data
+watershedLandData <- readRDS(paste0(dataDir,
+                                    "Processed/Watersheds/Watershed_land_data.Rds"))
+
+# List chemical application and land cover layer names
+chemLayers <- select(watershedChemData, -ID) %>%
+  names()
+landLayers <- select(watershedLandData, -ID) %>%
+  names()
+
+# Join watershed data together (drop ID column from watershedLandData as duplicate)
+watershedData <- cbind(watershedChemData,
+                       select(watershedLandData, -ID))
 
 ### FILTER AND SEPARATE FLOW DATA ----------------------------------------------
 
@@ -112,7 +123,7 @@ flowData$withinEngland <- if_else(flowData$rbd %in% allEnglishBasins,
 # Important - sort data from smallest to largest flow to speed up later steps
 flowData <- arrange(flowData, maxflowacc)
 
-### EXTRACT CATCHMENT DATA TO RIVER SEGMENTS (BASIN LOOP) ----------------------
+### EXTRACT WATERSHED DATA TO RIVER SEGMENTS (BASIN LOOP) ----------------------
 
 ### SET UP BASIN LOOP
 
@@ -122,11 +133,11 @@ mclapply(basins, function(basin) {
   # Subset to river basin
   basinFlow <- flowData[flowData$rbd == basin,]
   
-  # Add pesticide and chemical layers
-  basinFlow[, c(fertLayers, pestLayers)] <- NA
+  # Add chemical application and land cover layers
+  basinFlow[, c(chemLayers, landLayers)] <- NA
   
-  # Filter catchment data to basin only
-  basinChem <- catchmentChem %>%
+  # Filter watershed polygons to basin only
+  basinWatersheds <- watersheds %>%
     filter(rbd == basin)
   
   # Set up list of upstream networks for each segment
@@ -139,11 +150,11 @@ mclapply(basins, function(basin) {
   # iteration workflow is needed to speed up
   
   # Create 20x20 hexagonal grid, and (2 x 20m search distance) buffer
-  basinGrid <- st_make_grid(basinChem, n=c(20,20), square = F) %>%
+  basinGrid <- st_make_grid(basinWatersheds, n=c(20,20), square = F) %>%
     st_buffer(., 40)
   
-  # Intersect buffered grid with catchments
-  basinChemGrid <- basinChem %>%
+  # Intersect buffered grid with watersheds
+  basinWatershedGrid <- basinWatersheds %>%
     st_join(basinGrid %>%
               st_as_sf() %>%
               tibble::rowid_to_column('Cell'),
@@ -288,7 +299,7 @@ mclapply(basins, function(basin) {
       }
     }
     
-    ### EXTRACT FLOW VARIABLES FROM CATCHMENTS
+    ### EXTRACT FLOW VARIABLES FROM WATERSHEDS
 
     # If:
     # - upstream of segment is entirely within England,
@@ -303,35 +314,34 @@ mclapply(basins, function(basin) {
         filter(permid %in% basinFlow[iNetwork,]$permid)
       
       # Iterate through all cells that iNetwork occupies
-      cellCatchments <- lapply(unique(basinGridNetwork$Cell), function(x) {
+      cellWatersheds <- lapply(unique(basinGridNetwork$Cell), function(x) {
         
-        # Filter basinChemGrid to cell x 
-        basinChemGridCell <- basinChemGrid[basinChemGrid$Cell == x,]
+        # Filter basinWatershedGrid to cell x 
+        basinWatershedGridCell <- basinWatershedGrid[basinWatershedGrid$Cell == x,]
         
-        # Intersect all catchments within cell x and iNetwork within cell x
-        overlaps <- st_intersects(basinChemGridCell,
+        # Intersect all watersheds within cell x and iNetwork within cell x
+        overlaps <- st_intersects(basinWatershedGridCell,
                                   basinGridNetwork[basinGridNetwork$Cell == x,]) %>%
-          lengths # Convert to number of intersections per catchment 
+          lengths # Convert to number of intersections per watershed 
         
         # Return basinChemGridCell rows with any overlaps
-        return(basinChemGridCell[overlaps > 0,])
+        return(basinWatershedGridCell[overlaps > 0,])
         
       }) %>% bind_rows # Join together (duplicates from overlapping cells included)
       
-      # Use cellCatchments row IDs to identify unique basinChem catchments
-      iCatchment <- basinChem[basinChem$ID %in% cellCatchments$ID,] %>%
-        as_tibble # Convert to tibble
-      
-      # For every fertiliser and pesticide layer
-      for (x in c(fertLayers,
-                  pestLayers)) {
+      # Use cellWatersheds row IDs to identify unique basinWatersheds
+      iWatershedData <- watershedData[watershedData$ID %in% 
+                                            cellWatersheds$ID,]
+
+      # For every chemical application  and land cover layer 
+      for (layer in c(chemLayers, landLayers)) {
         # Assign upstream application per area for segment i
-        basinFlow[i, x] <-
-          iCatchment[, x] %>% # Collate upstream catchment layer values
+        basinFlow[i, layer] <-
+          iWatershedData[, layer] %>% # Collate upstream watershed layer values
           sum(., na.rm = TRUE) # Sum
       }
     }
-    
+
     ### PRINT UPDATE
     
     # Every 1000 segments
@@ -361,7 +371,7 @@ mclapply(basins, function(basin) {
                         "_chem_data.Rds"))
 
   # Remove objects not needed
-  rm(basinFlow, segmentNetwork, upstreamNetwork, basinChem)
+  rm(basinFlow, segmentNetwork, upstreamNetwork, basinWatersheds)
   gc()
   
 })
@@ -383,10 +393,10 @@ for (i in 1:length(basins)) {
 }
 
 # Bind list of basin objects together
-flowChemData <- do.call(what = rbind,
+flowDataAll <- do.call(what = rbind,
                         args = basinFlowData)
 
 # Save combined object
-saveRDS(flowChemData, 
+saveRDS(flowDataAll, 
         file = paste0(dataDir,
-                      "Processed/Flow/Flow_chem_data.Rds"))
+                      "Processed/Flow/Flow_data_all.Rds"))
