@@ -109,7 +109,7 @@ progressBar = txtProgressBar(
 )
 
 # Start loop iterating through every watershed_tibble row
-for (i in 1:NROW(watershedData[1:1000,])) { # (Same row numbers as watershedData)
+for (i in 1:NROW(watershedData)) { # (Same row numbers as watershedData)
 
   # Extract all 25x25m cells for each land cover class present for watershed i
   # N.B. This is how rows are connected
