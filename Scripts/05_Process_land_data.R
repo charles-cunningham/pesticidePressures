@@ -42,7 +42,10 @@ lcm2015 <- paste0(dataDir, "Raw/Land_cover_data/lcm2015gb25m.tif") %>%
 # Rename lcm2015 spatRast layer
 names(lcm2015) <- "Identifier"
 
-# Specify the LCM classes, add on "No Data" for NA values
+# Optional: Read spatRast to memory (speeds up later extraction)
+lcm2015 <- toMemory(lcm2015)
+
+# Specify the LCM classes (ignore '0's which are marine cells)
 classLCM <- c(
   "Deciduous woodland",
   "Coniferous woodland",
@@ -64,14 +67,12 @@ classLCM <- c(
   "Littoral sediment",
   "Saltmarsh",
   "Urban",
-  "Suburban",
-  "No data" # This is added (not in original LCM Classes)
+  "Suburban"
 )
 
 # Create LCM identifier/class data frame
-# N.B. "No Data" identifier is 'NA'
-LCM_df <- data.frame("Identifier" = c(1:(length(classLCM) - 1),
-                                      NA),
+# N.B. 'Marine' identifier is '0'
+LCM_df <- data.frame("Identifier" = 1:length(classLCM),
                      "Class" = classLCM)
 
 ### READ IN WATERSHED DATA
@@ -81,22 +82,21 @@ watershedData <- readRDS(paste0(dataDir,
                                 "Processed/Watersheds/Watershed_data.Rds"))
 
 # Create data frame from watershedData
-# N.B Assigning values later using this tibble speeds up significantly
+# N.B Assigning values using this tibble speeds up significantly later
 watershed_tibble <-  matrix(ncol = length(classLCM),
                             nrow = NROW(watershedData)) %>%
   data.frame() %>%
   setNames(., classLCM)
 
-
-# Find columns that match to LCM classes
-colNumsLCM <- names(watershed_tibble) %in% classLCM %>%
-  which(.)
-
-# Add total area column (in 25x25m cells)
+# Add total area column (25x25m cell count) to populate
 watershed_tibble[, "totalArea"] <- NA
 
 # Add ID column
 watershed_tibble[, "ID"] <- 1:NROW(watershed_tibble)
+
+# Find columns that match to LCM classes
+colNumsLCM <- names(watershed_tibble) %in% classLCM %>%
+  which(.)
 
 # EXTRACT COVERAGE (IN 25x25M CELLS) -------------------------------------------
 
@@ -109,18 +109,18 @@ progressBar = txtProgressBar(
 )
 
 # Start loop iterating through every watershed_tibble row
-for (i in 1:NROW(watershed_tibble)) { # (Same row numbers as watershedData)
+for (i in 1:NROW(watershedData[1:1000,])) { # (Same row numbers as watershedData)
 
   # Extract all 25x25m cells for each land cover class present for watershed i
   # N.B. This is how rows are connected
   watershedCells <- terra::extract(lcm2015, watershedData[i,])
-  
+
   # Count number of cells for each class
   # N.B. some classes may not be included as count is 0
   watershedCount <- count(watershedCells, Identifier, name = "Cover")
 
   # Add class names by joining coverage values to LCM data frame
-  watershedCount <- full_join(LCM_df, watershedCount, by = "Identifier") %>%
+  watershedCount <- left_join(LCM_df, watershedCount, by = "Identifier") %>%
     replace_na(list(Cover = 0)) # Convert 'Cover' NAs to 0
   
   # Add coverage for each class to watershed_tibble (row i)
@@ -131,7 +131,7 @@ for (i in 1:NROW(watershed_tibble)) { # (Same row numbers as watershedData)
 
   # Iterate progress bar
   setTxtProgressBar(progressBar, i)
-  
+
 }
 
 # Close progress bar
