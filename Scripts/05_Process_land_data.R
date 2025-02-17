@@ -83,19 +83,19 @@ watershedData <- readRDS(paste0(dataDir,
 
 # Create data frame from watershedData
 # N.B Assigning values using this tibble speeds up significantly later
-watershed_tibble <-  matrix(ncol = length(classLCM),
+watershedLandData <-  matrix(ncol = length(classLCM),
                             nrow = NROW(watershedData)) %>%
   data.frame() %>%
   setNames(., classLCM)
 
 # Add total area column (25x25m cell count) to populate
-watershed_tibble[, "totalArea"] <- NA
+watershedLandData[, "totalArea"] <- NA
 
 # Add ID column
-watershed_tibble[, "ID"] <- 1:NROW(watershed_tibble)
+watershedLandData[, "ID"] <- 1:NROW(watershedLandData)
 
 # Find columns that match to LCM classes
-colNumsLCM <- names(watershed_tibble) %in% classLCM %>%
+colNumsLCM <- names(watershedLandData) %in% classLCM %>%
   which(.)
 
 # EXTRACT COVERAGE (IN 25x25M CELLS) -------------------------------------------
@@ -108,7 +108,7 @@ progressBar = txtProgressBar(
   style = 3
 )
 
-# Start loop iterating through every watershed_tibble row
+# Start loop iterating through every watershedLandData row
 for (i in 1:NROW(watershedData)) { # (Same row numbers as watershedData)
 
   # Extract all 25x25m cells for each land cover class present for watershed i
@@ -123,11 +123,11 @@ for (i in 1:NROW(watershedData)) { # (Same row numbers as watershedData)
   watershedCount <- left_join(LCM_df, watershedCount, by = "Identifier") %>%
     replace_na(list(Cover = 0)) # Convert 'Cover' NAs to 0
   
-  # Add coverage for each class to watershed_tibble (row i)
-  watershed_tibble[i, colNumsLCM] <- watershedCount$Cover
+  # Add coverage for each class to watershedLandData (row i)
+  watershedLandData[i, colNumsLCM] <- watershedCount$Cover
   
   # Add total cover
-  watershed_tibble[i, "totalArea"] <- sum(watershedCount$Cover)
+  watershedLandData[i, "totalArea"] <- sum(watershedCount$Cover)
 
   # Iterate progress bar
   setTxtProgressBar(progressBar, i)
@@ -138,6 +138,6 @@ for (i in 1:NROW(watershedData)) { # (Same row numbers as watershedData)
 close(progressBar)
 
 # Save
-saveRDS(watershed_tibble,
+saveRDS(watershedLandData,
         file = paste0(dataDir,
                       "Processed/Watersheds/Watershed_land_data.Rds"))
