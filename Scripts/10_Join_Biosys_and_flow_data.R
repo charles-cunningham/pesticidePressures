@@ -35,25 +35,53 @@ invData_sf <- readRDS(file = paste0(dataDir, "Raw/Biosys/invData.Rds")) %>%
            crs = 27700)
 
 # Read processed flow data
-flowChemData <- readRDS(file = paste0(dataDir,
+flowData <- readRDS(file = paste0(dataDir,
                                       "/Processed/Flow/Flow_aggregated_data.Rds"))
+
+# List land cover classes
+classLCM <- c(
+  "Deciduous woodland",
+  "Coniferous woodland",
+  "Arable",
+  "Improved grassland",
+  "Neutral grassland",
+  "Calcareous grassland",
+  "Acid grassland",
+  "Fen",
+  "Heather",
+  "Heather grassland",
+  "Bog",
+  "Inland rock",
+  "Saltwater",
+  "Freshwater",
+  "Supralittoral rock",
+  "Supralittoral sediment",
+  "Littoral rock",
+  "Littoral sediment",
+  "Saltmarsh",
+  "Urban",
+  "Suburban"
+)
+
+# List flowData columns to join to invData_sf
+upstreamData <- names(flowData) %>%
+  .[grepl("pesticide", .) |
+      grepl("fertiliser_", .) |
+      . %in% c(classLCM, "totalArea")]
 
 ### JOIN PESTICIDE SUMMARY FLOW DATA TO BIOSYS DATA ----------------------------
 
 # Add columns to populate to Biosys data
-invData_sf$pesticideLoad <- 
-  invData_sf$pesticideToxicLoad <- 
-  invData_sf$pesticideShannon <-
-  invData_sf$pesticideSimpson <- 
-  invData_sf$fertiliser_k <-
-  invData_sf$fertiliser_n <-
-  invData_sf$fertiliser_p <- NA
+invData_sf[, upstreamData] <- NA
+
+# Find unique Site IDs
+sites <- unique(invData_sf$SITE_ID)
 
 # Loop through individual sites
-for(i in unique(invData_sf$SITE_ID)) {
-
+for(site in sites) {
+  
   # Find site rows in invData_sf
-  siteRows <- which(invData_sf$SITE_ID == i)
+  siteRows <- which(invData_sf$SITE_ID == site)
   
   # Find site geometries for all site rows, then take unique values
   siteGeometry <- st_geometry(invData_sf[siteRows,]) %>%
@@ -71,39 +99,40 @@ for(i in unique(invData_sf$SITE_ID)) {
     .[[1]]
   
   # Filter flowChemData to waterbodies for i (both datasets have this)
-  waterbodyFlowData <- flowChemData[flowChemData$ea_wb_id %in% iWaterbody,]
+  waterbodyFlowData <- flowData[flowData$ea_wb_id %in% iWaterbody,]
   
   # Find any waterbody segments nearby (within 100m)
-  nearbySegements <- st_is_within_distance(siteGeometry[[1]], 
+  nearbySegments <- st_is_within_distance(siteGeometry[[1]], 
                                           waterbodyFlowData,
                                           dist = 100)[[1]] %>%
     waterbodyFlowData[. ,]
 
   # If any flow segments are within 100m...
-  if (NROW(nearbySegements) > 0) {
+  if (NROW(nearbySegments) > 0) {
  
     # Find nearest feature from nearby segments
-    nearestSegment <- nearbySegements[st_nearest_feature(siteGeometry[[1]],
-                                                        nearbySegements,
-                                                        check_crs = FALSE), ]
+    nearestSegment <- nearbySegments[st_nearest_feature(siteGeometry[[1]],
+                                                        nearbySegments,
+                                                        check_crs = FALSE), ] %>%
+      as_tibble()
     
-    # Transfer aggregated pesticide values from nearest segment to site
-    invData_sf[siteRows, "pesticideLoad"] <-
-      nearestSegment$pesticideLoad
-    invData_sf[siteRows, "pesticideToxicLoad"] <-
-      nearestSegment$pesticideToxicLoad
-    invData_sf[siteRows, "pesticideShannon"] <-
-      nearestSegment$pesticideShannon
-    invData_sf[siteRows, "pesticideSimpson"] <-
-      nearestSegment$pesticideSimpson
-    invData_sf[siteRows, "fertiliser_k"] <-
-      nearestSegment$fertiliser_k
-    invData_sf[siteRows, "fertiliser_n"] <-
-      nearestSegment$fertiliser_n
-    invData_sf[siteRows, "fertiliser_p"] <-
-      nearestSegment$fertiliser_p
+    # Transfer aggregated upstreamData values from nearest segment to site
+    invData_sf[siteRows, upstreamData] <- nearestSegment[, upstreamData]
+    
+    } # Else, leave as NA
+  
+  # PRINT UPDATE
 
-  } # Else, leave as NA
+  # Every 100 sites...
+  if (which(sites %in% site) %% 100 == 0) {
+    
+    # Print update
+    paste(which(sites %in% site),
+          "of",
+          length(sites),
+          "complete") %>%
+      print()
+  }
 }
 
 ### SAVE -----------------------------------------------------------------------
