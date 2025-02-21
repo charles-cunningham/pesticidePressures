@@ -18,7 +18,7 @@
 #                  dep=TRUE)
 # 
 # # Needed to run on LINUX machine
-# INLA::inla.binary.install()
+# library(INLA); inla.binary.install()
 # 
 # # Install inlabru
 # install.packages("inlabru")
@@ -43,10 +43,6 @@ dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 
 # Load Biosys data
 invData <- readRDS(paste0(dataDir, "invDataSpatial.Rds"))
-
-#####TESTING
-testData <- invData %>%
-  filter(CATCHMENT == "OUSE (ST NEOTS)")
 
 #####
 hist(invData$pesticideLoad)
@@ -73,16 +69,12 @@ invData$MONTH_NAME <- invData$SAMPLE_DATE %>%
 invData$MONTH_NUM <- invData$SAMPLE_DATE %>%
   format(., format="%m") %>%
   as.numeric()
-invData$MONTH_NUM <- invData$MONTH_NUM - (min(invData$MONTH_NUM) - 1)
-
-hist(invData$MONTH_NUM)
 
 # Create week column
 invData$WEEK <- invData$SAMPLE_DATE %>%
   format(., format="%V") %>%
-  as.numeric() %>%
+  as.numeric() 
   
-
 # FILTER DATES
 
 # Filter years and season between 2015 and 2020
@@ -90,15 +82,20 @@ invData <- invData %>%
   # Filter years between 2010 and 2019 inclusive
   filter(YEAR >= 2010 & YEAR < 2020) %>%
   # Filter to spring and summer (March, April, May, June, July, August)
-  filter(MONTH %in% c("March", "April", "May", "June", "July", "August"))
+  filter(MONTH_NAME %in% c("March", "April", "May", "June", "July", "August"))
 
+# Rescale months
+invData$MONTH_NUM <- invData$MONTH_NUM - (min(invData$MONTH_NUM) - 1)
 
 # FILTER ON OTHER VARIABLES ----------------------------------------------------
+
+# Remove rows with no upstream data
+invData <- invData %>%
+  filter(!(is.na(pesticideLoad)))
 
 # Remove rows with no abundance data
 invData <- invData %>%
   filter(!(is.na(TOTAL_ABUNDANCE)))
-
 
 ### PROCESS TAXONOMY -----------------------------------------------------------
 
@@ -107,12 +104,19 @@ invData <- invData %>%
 
 ### SEPARATE INTO SEPERATE SPECIES ---------------------------------------------
 
+# Remove spaces from layer names
+
+
+
 # Start loop here
-for( i in unique(invData$TAXON_GROUP_NAME)[4]) {
+for( i in unique(invData$TAXON_GROUP_NAME)[1]) {
 
   taxaData <- invData %>%
     filter(TAXON_GROUP_NAME == i)
 
+  # Remove spaces from names
+  names(taxaData) <- gsub(" ", "_", names(taxaData) )
+  
 ### ZIP MODEL 
 
   # Priors for random effects
@@ -125,10 +129,14 @@ for( i in unique(invData$TAXON_GROUP_NAME)[4]) {
     N(log(fertiliser_n), model = "linear") +
     P(log(fertiliser_p), model = "linear") +
     K(log(fertiliser_k), model = "linear") +
+    upstream(log(totalArea), model = "linear") +
+    arable(Arable/1000000, model = "linear") +
+    grass(Improved_grassland/1000000, model = "linear") +
+    urban(Urban/1000000, model = "linear") +
     month(main = MONTH_NUM,
          model = "seasonal",
          season.length = 6,
-         hyper = randomHyper) +
+         hyper = seasonHyper) +
     wb(WATER_BODY, model = "iid") +
     Intercept(1)
   
@@ -141,4 +149,5 @@ for( i in unique(invData$TAXON_GROUP_NAME)[4]) {
                    verbose = TRUE))
 
 }
+taxaData$Arable %>% hist()
 
