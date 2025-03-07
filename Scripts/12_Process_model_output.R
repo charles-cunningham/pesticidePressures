@@ -57,7 +57,7 @@ taxaGroups <- list.files(paste0(dataDir, "Model_outputs"))
       # Assign species name from file path to list
       # (Remove file name and directory path)
       iSpeciesEffects$Species <-
-        sub("/modelSummary.RData",
+        sub(".Rds",
             "",
             taxaOutput[i]) %>%
         sub(paste0('.*', taxaGroup, '/'), 
@@ -65,25 +65,21 @@ taxaGroups <- list.files(paste0(dataDir, "Model_outputs"))
             .)
       
       # Load species 'i' summary file into global environment
-      grep(paste0(iSpeciesEffects$Species, "/modelSummary.RData"),
-           fixed = TRUE,
-           allSummaryFiles,
-           value = TRUE) %>% 
-        load(., envir = .GlobalEnv)
+      load(taxaOutput[i], envir = .GlobalEnv)
       
       # Assign fixed effects to list
       iSpeciesEffects$FixedEffects <- data.frame(modelSummary$inla$fixed)
       
       # Save list of species i as a sub-list of speciesEffects
-      speciesEffects[[j]] <- iSpeciesEffects
+      speciesEffects[[i]] <- iSpeciesEffects
       
     }
     
     # Add in species name to fixed effects data frames,
     # and effect from row names
-    for (j in 1:length(speciesEffects)) {
-      speciesEffects[[j]][[2]]$species <- speciesEffects[[j]][[1]]
-      speciesEffects[[j]][[2]]$effect <- rownames(speciesEffects[[j]][[2]])
+    for (i in 1:length(speciesEffects)) {
+      speciesEffects[[i]][[2]]$species <- speciesEffects[[i]][[1]]
+      speciesEffects[[i]][[2]]$effect <- rownames(speciesEffects[[i]][[2]])
     }
     
     # Extract fixed effects data frames and bind together
@@ -127,22 +123,7 @@ taxaGroups <- list.files(paste0(dataDir, "Model_outputs"))
   SI_df <- SI_df %>%
     filter(rowSums(abs(SI_df[-c(1:2)])) > 0)
   
-  # IDENTIFY WOODLAND AND CONNECTIVITY RELATIONSHIPS --------
-  
-  # Use main analysis to assign relationships
-  # N.B. Inner join only retains species from main analysis for consistency
-  SI_df <- inner_join(
-    meta_df %>%
-      select(
-        species,
-        broadleafAssociation,
-        coniferousAssociation,
-        openAssociation,
-        connectivitySig
-      ), 
-    SI_df,
-    by = "species")
-  
+
   # SAVE DATA FRAME -----------------------------------------------
   
   save(SI_df,
