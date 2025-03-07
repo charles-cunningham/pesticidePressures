@@ -40,7 +40,7 @@ library(sf)
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 
 # Create processed Biosys data folder
-lapply(paste0(dataDir, "Processed/Species/Model_outputs"), function(x) {
+lapply(paste0(dataDir, "Processed/Species"), function(x) {
   if (!file.exists(x)) {
     dir.create(x, recursive = TRUE)
   }
