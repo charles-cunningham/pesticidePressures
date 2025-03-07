@@ -36,7 +36,7 @@ library(sf)
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 # Set data directory
 # If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/
-# If working locally: "../Data/Processed/Biosys/"
+# If working locally: "../Data/"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 
 # Create processed Biosys data folder
@@ -116,6 +116,13 @@ invData <- invData %>%
 # Separate into species
 invData <- invData %>%
   filter(TAXON_RANK == "Species")
+
+# Change species names to be file friendly
+invData$TAXON_NAME <- invData$TAXON_NAME %>%
+  # Remove slashes
+  gsub(" ", "_", .) %>%
+  # Remove
+  gsub("/", "-", .)
 
 ### SCALE VARIABLES ------------------------------------------------------------
 
@@ -235,8 +242,8 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     # Create direcotry for iTaxa
     lapply(paste0(dataDir,
                   "Processed/Species/",
-                  iTaxa,
-                  "/Model_outputs"), function(x) {
+                  "Model_outputs/", 
+                  iTaxa), function(x) {
                     if (!file.exists(x)) {
                       dir.create(x, recursive = TRUE)
                     }
@@ -246,9 +253,9 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     save(modelSummary,
          file = paste0(
            dataDir,
-           "Processed/Species/",
+           "Processed/Species/Model_outputs/",
            iTaxa,
-           "/Model_outputs/",
+           "/",
            iSpecies,
            ".Rds")
          )
@@ -369,5 +376,3 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
 #'         plot.title = element_text(hjust = 0.5, vjust = -0.5))
 #' 
 #' fixedEffPlot
-
-
