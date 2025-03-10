@@ -109,7 +109,7 @@ invData <- invData %>%
   # Filter to only macroinvertebrates
   filter(TAXON_TYPE == "Other Macroinvertebrates")
 
-### PROCESS TAXONOMY -----------------------------------------------------------
+### PROCESS TAXTAXON_NAME### PROCESS TAXONOMY -----------------------------------------------------------
 
 ### todo: WILKES APPROACH TO BE ADDED TO SELECTING SPECIES
 
@@ -168,7 +168,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
   for (iSpecies in taxaSpecies) {
     
     # PROCESS TO PRESENCE-ABSENCE FORMAT
-    
+
     # Create iSpecies abundance column with 0s
     speciesData <- invData %>%
       mutate(speciesAbundance = ifelse(TAXON_NAME == iSpecies,
@@ -223,7 +223,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     model <- bru(
       components = comps,
       family = "poisson",
-      data = speciesData[speciesData$speciesAbundance > 0, ],
+      data = speciesData,
       options = list(
         control.compute = list(
           waic = TRUE,
