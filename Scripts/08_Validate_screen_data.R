@@ -57,8 +57,8 @@ cor(gcmsData$Concentration, gcmsData$APPLICATION_MOD)
 # LCMS
 
 # Plot relationship between concentration and application per area
-ggplot(data = lcmsSummary,
-       aes(x = log(ConcentrationMedian), 
+ggplot(data = lcmsData,
+       aes(x = log(Concentration), 
            y = log(APPLICATION_MOD))) +
   geom_point()
 
