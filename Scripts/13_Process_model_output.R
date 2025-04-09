@@ -100,5 +100,5 @@ effects_wide <- effects_wide %>%
 # SAVE DATA FRAME --------------------------------------------------------------
 
 # Save
-save(effects_wide,
-     file = paste0(dataDir, "speciesEffects.Rds"))
+save(effects_df, effects_wide,
+     file = paste0(dataDir, "Species_effects.Rdata"))
