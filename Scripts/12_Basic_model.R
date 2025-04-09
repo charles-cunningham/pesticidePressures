@@ -109,7 +109,7 @@ invData <- invData %>%
   # Filter to only macroinvertebrates
   filter(TAXON_TYPE == "Other Macroinvertebrates")
 
-### PROCESS TAXTAXON_NAME### PROCESS TAXONOMY -----------------------------------------------------------
+### PROCESS TAXONOMY -----------------------------------------------------------
 
 ### todo: WILKES APPROACH TO BE ADDED TO SELECTING SPECIES
 
