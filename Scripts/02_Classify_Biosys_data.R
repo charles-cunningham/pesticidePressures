@@ -4,7 +4,10 @@
 # 
 # Script Name: Create schedule 2 and INNS groups for biosys data
 #
-# Script Description: 
+# Script Description: Identify and filter invData from script 01 to only include
+# species which we are interested in and have sufficienct records to model, i.e.
+# Schedule 2 and INNS species. Also apply other filtering steps on sample types
+# Many thanks to Dr Martin Wilkes for code snippets for this script.
 
 ### LOAD LIBRARIES -------------------------------------------------------------
 
@@ -71,7 +74,7 @@ invData <- invData %>%
 
 # Remove problematic species
 invData <- invData %>%
-  #Was causing trouble later - remove as the target shouldn't include this single INNS
+  # Remove as the target shouldn't include this single INNS
   filter(PREFERRED_TAXON_NAME != "Musculium transversum") %>%
   # Not Capnia any more
   filter(PREFERRED_TAXON_NAME != "Capnia bifron")
@@ -80,13 +83,13 @@ invData <- invData %>%
 invData$PARENT_TAXON_NAME[which(invData$TAXON_NAME=="Baetis niger")] <- 
   "Nigrobaetis" #To keep consistent with Schedule 2 taxonomy
 
-# ADD SPECIES COLUMN
+# ADD SPECIES NAME AND GROUP COLUMNS
 
-# Add columms to populate species group name and type - either 'schedule 2' or 'INNS'
+# Add columms to populate species group name and type - 'schedule 2' or 'INNS'
 invData$TAXON <- NA 
 invData$GROUP <- NA
 
-### SUBSET SCHEDULE 2 ----------------------------------------------------------
+### IDENTIFY SCHEDULE 2 --------------------------------------------------------
 
 # ADD TAXON LEVEL
 
@@ -146,46 +149,57 @@ s2$taxon.alt4[s2$taxon=="Simulium ornatum group"] <- "Simulium trifasciatum"
 s2$taxon.alt1[s2$taxon=="Simulium tuberosum complex"] <- "Simulium tuberosum"
 s2$taxon.alt1[s2$taxon=="Siphonoperla torrentium"] <- "Chloroperla torrentium"
 
-# SUBSET
+# IDENTIFY SPECIES
 
+# For each species in the schedule 2 list...
 for (i in 1:NROW(s2)) {
   
+  # Create taxon synonyms list for i
+  taxaNames <- s2[i, ] %>% # For row i
+    select(-level) %>% # Drop 'level' column
+    select_if( ~ !(is.na(.))) # Drop NA columns
+  
+  # If taxon level is species ...
   if (s2$level[i] == "species") {
     
-    # Create taxon synonyms
-    taxaNames <- s2[i, -2] %>%
-      select_if( ~ !(is.na(.)))
-    
-    
+    # Identify invDatarows where PREFERRED_TAXON_NAME matches taxaNames
     iRows <- which(invData$PREFERRED_TAXON_NAME %in% taxaNames)
     
-    
-    invData[iRows, "TAXON"] <- s2[i, 1]
-    invData[iRows, "GROUP"] <- "Schedule 2"
-    
+    # Else if taxon level is genus...
   } else {
-    iRows <- which(invData$PREFERRED_TAXON_NAME %in% s2[i, 1] |
-                     invData$PARENT_TAXON_NAME %in% s2[i, 1])
     
-    invData[iRows, "TAXON"] <- s2[i, 1]
-    invData[iRows, "GROUP"] <- "Schedule 2"
-    
+    # Identify invData rows where PREFERRED_TAXON_NAME or
+    # PARENT_TAXON_NAME matches taxaNames
+    iRows <- which(invData$PREFERRED_TAXON_NAME %in% taxaNames |
+                     invData$PARENT_TAXON_NAME %in% taxaNames)
   }
+  
+  # Assign invData taxon name and group based on iRows (match with s2)
+  invData[iRows, "TAXON"] <- s2$taxon[i]
+  invData[iRows, "GROUP"] <- "Schedule 2"
 }
 
-invData$TAXON %>% unique()
-#TAXON_LIST_ITEM_KEY final name?
+### IDENTIFY INNS --------------------------------------------------------------
 
+# For each species in the inns list...
+for (i in 1:NROW(inns)) {
+  
+  # Identify invData rows where PREFERRED_TAXON_NAME matches Scientific.name for i
+  iRows <-
+    which(invData$PREFERRED_TAXON_NAME %in% inns$Scientific.name[i])
+  
+  # Assign invData taxon name and group based on iRows (match with inns)
+  invData[iRows, "TAXON"] <- inns$Scientific.name[i]
+  invData[iRows, "GROUP"] <- "INNS"
+}
 
-### SUBSET INNS ----------------------------------------------------------------
+# FILTER TO SCHEDULE 2 AND INNS SPECIES ----------------------------------------
 
-inns$Scientific.name
-str(invData)
-invData[iRows, "GROUP"] <- "INNS"
-
+# Remove species which do not have a group, e.g. are not schedule 2 or INNS
+invData <- invData %>%
+  filter(!is.na(GROUP))
 
 ### SAVE BIOSYS DATA -----------------------------------------------------------
 
 # Save file
 saveRDS(invData, file = paste0(dataDir, "invData.Rds"))
-
