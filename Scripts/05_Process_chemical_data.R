@@ -31,13 +31,17 @@ lapply(paste0(dataDir, "Processed/Watersheds"), function(x) {
   }
 })
 
-### READ IN WATERSHED, FERTILISER AND PESTICIDE DATA ---------------------------  
+### READ IN WATERSHED, LOAD, FERTILISER AND PESTICIDE DATA ---------------------  
 
 ### READ IN WATERSHED DATA
 
 # Read watershed .Rds
 watershedData <- readRDS(paste0(dataDir,
                                 "Processed/Watersheds/Watershed_data.Rds"))
+
+### READ IN LOAD DATA
+exportLoad <- paste0(dataDir, "Raw/Pesticide_data/chemical_export.tif") %>%
+  rast()
 
 ### READ IN FERTILISER DATA
 
@@ -156,14 +160,31 @@ chemDataInterp <- clamp(chemDataInterp,
                         lower = 0.001, # 1 gram/km^2/year
                         values  = FALSE) # Set NAs below value
 
+# CALCULATE LOAD ---------------------------------------------------------------
+
+# Disaggregate chemDataInterp to 100m resolution (same as exportLoad)
+chemDataDisagg <- disagg(chemDataInterp, fact = 10) 
+
+# Change exportload extent to match chemDataDisagg
+exportLoad <- extend(exportLoad, chemDataDisagg)
+exportLoad <- crop(exportLoad, chemDataDisagg)
+
+# Multiply chemDataDisagg with exportLoad to get total estimated export for each
+# chemical
+chemLoad <- chemDataDisagg * exportLoad
+
+# Remove objects no longer needed
+rm(chemDataInterp, chemDataDisagg)
+gc()
+
 ### EXTRACT DATA TO WATERSHEDS -------------------------------------------------
 # N.B. Warning: this runs overnight
 
-# Weighted sum (missing data is treated as 0)
-# N.B. Since each 1x1km data square value has units of kg/year,
-# a weighted sum extract function for each watershed results in estimated 
-# kg/year within that watershed
-watershedChemData <- terra::extract(chemDataInterp, watershedData,
+# Weighted sum (missing data is treated as 0) of load
+# N.B. Since each 1x1km chemDataInterp value has units of kg/year,
+# a weighted sum extract function for each watershed  of chemLoad results in
+# estimated kg/year applied within that watershed that ends up being exported 
+watershedChemData <- terra::extract(chemLoad, watershedData,
                                     exact = TRUE,
                                     fun = sum, na.rm = TRUE,
                                     ID = TRUE) # N.B. Same as watershedData ID
