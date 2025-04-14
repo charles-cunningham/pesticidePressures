@@ -59,7 +59,7 @@ c(pestDir,
     }
   })
 
-### DOWNLOAD PESTICIDE AND FERTILISER DATA [MANUAL] ----------------------------
+### DOWNLOAD PESTICIDE AND FERTILISER APPLICATION DATA [MANUAL] ----------------
 
 # Information on data here:l
 # https://www.ceh.ac.uk/data/ukceh-land-cover-plus-fertilisers-and-pesticides
@@ -72,6 +72,20 @@ c(pestDir,
 # (ii) Move to 'pestDir' and 'fertDir' respectively
 # (iii) Each directory should be organised in such a way that the respective 
 # data and documentation directories sit directly below 'pestDir' or 'fertDir'
+
+### DOWNLOAD MODELLED CHEMICAL EXPORT LOAD -------------------------------------
+
+# This data layer was produced as part of Upcott et al. (2025), available here:
+# https://doi.org/10.1016/j.scitotenv.2025.179223. # The data layer can be 
+# requested from one of the authors or directly from UKCEH.
+
+# It represents the modelled 100m resolution load for chemicals applied to 
+# arable land in England. Relative retention value is fixed at 1, hence although 
+# different ingredients will likely differ in their responses to soil carbon,
+# this represents a modelled chimical with very high mobility in soil, a
+# worst-case scenario.
+
+# The layer named 'chemical_export.tif' must be saved in the pestDir directory.
 
 ### DOWNLOAD FLOW DATA [MANUAL] ------------------------------------------------
 
