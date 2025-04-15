@@ -110,7 +110,8 @@ chemData <- toMemory(chemData)
 rm(fertData, pestData)
 gc()
 
-### INTERPOLATE RASTER DATA  ---------------------------------------------------
+### INTERPOLATE 1KM APPLICATION DATA  ------------------------------------------
+# Use gstat inverse weighting approach
 
 # Rasterise all cells that touch watersheds which intersect with England
 # N.B. There are some gaps in the Land Cover Plus data to interpolate such as
@@ -147,31 +148,55 @@ chemDataInterp <- lapply(chemNames, function(i) {
   
 }) %>% rast() # Join all layers together into one spatRast
 
+### INTERPOLATE 100 M EXPORT LOAD ----------------------------------------------
+# Use while loop with terra focal approach as gstat too slow due to resolution.
+# This approach iteratively fills any data gaps by slowly expanding the focal 
+# window
+
+# Disaggregate watershed_R to 100 m resolution
+watershed_R_100 <- disagg(watershed_R, fact = 10)
+
+# Change exportload extent to match other datasets
+exportLoad <- extend(exportLoad, watershed_R_100)
+exportLoad <- crop(exportLoad, watershed_R_100)
+
+# Optional: Read spatRast to memory (speeds up later extraction)
+exportLoad <- toMemory(exportLoad)
+
+# Set up while loop
+w <- 1 # window size set to 1 initially (will expand)
+filled <- exportLoad # Assign exportLoad to object to be iteratively filled
+to_fill <- TRUE # Set up initial logical value to get while loop started
+
+# Start while loop
+while(to_fill) {
+  
+  # Expand window by 2 (has to be odd number)
+  w <- w + 2
+  
+  # Carry out interpolation for all data gap cells within w of a non-NA value
+  filled <- focal(filled, w = w, fun = mean, na.policy = "only", na.rm = T)
+  
+  # Check to see if any data gaps remain - find if any original NA values remain
+  remainingGaps <- mask(watershed_R_100, filled, inverse = TRUE)
+  to_fill <- any(!is.na(values(remainingGaps)))
+}
+
+# Mask to watershed_R_100
+exportLoadInterp <- mask(filled, watershed_R_100)
+
 # Remove objects no longer needed
-rm(chemData, watershed_R)
+rm(chemData, filled, watershed_R, watershed_R_100)
 gc()
 
-### REMOVE EXTREMELY LOW ESTIMATE APPLICATIONS ---------------------------------
-# Interpolation will overestimate the presence of extremely low applications
-# which are more likely to be genuine absence, i.e. in National Parks
-
-# Conservatively reassign values < 0.001 (less than 1 gram/km^2/year) to NA
-chemDataInterp <- clamp(chemDataInterp,
-                        lower = 0.001, # 1 gram/km^2/year
-                        values  = FALSE) # Set NAs below value
-
-# CALCULATE LOAD ---------------------------------------------------------------
+# CALCULATE LOAD FOR EACH CHEMICAL ---------------------------------------------
 
 # Disaggregate chemDataInterp to 100m resolution (same as exportLoad)
 chemDataDisagg <- disagg(chemDataInterp, fact = 10) 
 
-# Change exportload extent to match chemDataDisagg
-exportLoad <- extend(exportLoad, chemDataDisagg)
-exportLoad <- crop(exportLoad, chemDataDisagg)
-
 # Multiply chemDataDisagg with exportLoad to get total estimated export for each
 # chemical
-chemLoad <- chemDataDisagg * exportLoad
+chemLoad <- chemDataDisagg * exportLoadInterp
 
 # Remove objects no longer needed
 rm(chemDataInterp, chemDataDisagg)
@@ -184,10 +209,10 @@ gc()
 # N.B. Since each 1x1km chemDataInterp value has units of kg/year,
 # a weighted sum extract function for each watershed  of chemLoad results in
 # estimated kg/year applied within that watershed that ends up being exported 
-watershedChemData <- terra::extract(chemLoad, watershedData,
+watershedChemData <- system.time(terra::extract(chemLoad[[1]], watershedData,
                                     exact = TRUE,
                                     fun = sum, na.rm = TRUE,
-                                    ID = TRUE) # N.B. Same as watershedData ID
+                                    ID = TRUE)) # N.B. Same as watershedData ID
 
 # Save
 saveRDS(watershedChemData,
