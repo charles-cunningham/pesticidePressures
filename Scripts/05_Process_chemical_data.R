@@ -209,10 +209,11 @@ gc()
 # N.B. Since each 1x1km chemDataInterp value has units of kg/year,
 # a weighted sum extract function for each watershed  of chemLoad results in
 # estimated kg/year applied within that watershed that ends up being exported 
-watershedChemData <- system.time(terra::extract(chemLoad[[1]], watershedData,
+watershedChemData <- terra::extract(chemLoad, watershedData,
                                     exact = TRUE,
-                                    fun = sum, na.rm = TRUE,
-                                    ID = TRUE)) # N.B. Same as watershedData ID
+                                    fun = sum,
+                                    na.rm = TRUE,
+                                    ID = TRUE) # N.B. Same as watershedData ID
 
 # Save
 saveRDS(watershedChemData,
