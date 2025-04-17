@@ -52,18 +52,25 @@ watersheds <- readRDS(paste0(dataDir,
 watershedChemData <- readRDS(paste0(dataDir,
                                     "Processed/Watersheds/Watershed_chem_data.Rds"))
 
+# Read watershed livestock data
+watershedLiveData <- readRDS(paste0(dataDir,
+                                    "Processed/Watersheds/Watershed_live_data.Rds"))
+
 # Read watershed land cover data
 watershedLandData <- readRDS(paste0(dataDir,
                                     "Processed/Watersheds/Watershed_land_data.Rds"))
 
-# List chemical application and land cover layer names
+# List chemical application, livestock and land cover layer names
 chemLayers <- select(watershedChemData, -ID) %>%
+  names()
+liveLayers <- select(watershedLiveData, -ID) %>%
   names()
 landLayers <- select(watershedLandData, -ID) %>%
   names()
 
 # Join watershed data together (drop ID column from watershedLandData as duplicate)
 watershedData <- cbind(watershedChemData,
+                       select(watershedLiveData, -ID),
                        select(watershedLandData, -ID))
 
 ### FILTER AND SEPARATE FLOW DATA ----------------------------------------------
@@ -333,8 +340,8 @@ mclapply(basins, function(basin) {
       iWatershedData <- watershedData[watershedData$ID %in% 
                                             cellWatersheds$ID,]
 
-      # For every chemical application  and land cover layer 
-      for (layer in c(chemLayers, landLayers)) {
+      # For every chemical application, livestock and land cover layer 
+      for (layer in c(chemLayers, liveLayers, landLayers)) {
         # Assign upstream application per area for segment i
         basinFlow[i, layer] <-
           iWatershedData[, layer] %>% # Collate upstream watershed layer values
