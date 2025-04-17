@@ -70,7 +70,7 @@ ext(cattle) <- ext(pigs) <- ext(poultry) <- ext(sheep) <- ext(cropExtent)
 # Merge into single spatRast object
 livestock <- c(cattle, pigs, poultry, sheep)
 
-### EXTRACT DATA ### EXTRACT DATA ### EXTRACT DATA TO WATERSHEDS -------------------------------------------------
+### EXTRACT DATA TO WATERSHEDS -------------------------------------------------
 # N.B. Warning: this runs overnight
 
 # Weighted sum (missing data is treated as 0) of load
@@ -87,4 +87,3 @@ watershedLiveData <- terra::extract(livestock, watershedData,
 saveRDS(watershedLiveData,
         file = paste0(dataDir,
                       "Processed/Watersheds/Watershed_live_data.Rds"))
-
