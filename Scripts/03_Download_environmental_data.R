@@ -2,9 +2,10 @@
 #
 # Author: Charles Cunningham
 # 
-# Script Name: Read in spatial data
+# Script Name: Read in environmental data
 #
-# Script Description:
+# Script Description: Download all environmental data needed in subsequent
+# analysis
 
 ### LOAD LIBRARIES -------------------------------------------------------------
 
@@ -25,33 +26,39 @@ dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 pestDir <-  paste0(dataDir, "Pesticide_data/")
 # Specify directory for fertiliser data
 fertDir <-  paste0(dataDir, "Fertiliser_data/")
-# Specify directory for surface flow data
-flowDir <- paste0(dataDir, "Flow_data/")
+# Specify directory for livestock data
+liveDir <-  paste0(dataDir, "Livestock_data/")
 # Specify directory for land cover data
 landDir <-  paste0(dataDir, "Land_cover_data/")
+# Specify directory for surface flow data
+flowDir <- paste0(dataDir, "Flow_data/")
 
 # Automated dataset download folders
 
+# Specify directory for site variables data
+siteDir <- paste0(dataDir, "Site_data/")
+# Specify directory for water quality monitoring data
+screenDir <- paste0(dataDir, "Monitoring_screen_data/")
 # Specify directory for catchment data
 catchmentDir <- paste0(dataDir, "Catchment_data/")
 # Specify directory for national boundaries data
 countryDir <- paste0(dataDir, "Country_data/")
 # Specify directory for farming archetype data
 farmDir <-  paste0(dataDir, "Farm_archetype_data/")
-# Specify directory for water quality monitoring data
-screenDir <- paste0(dataDir, "Monitoring_screen_data/")
 # Specify directory for topographic data
 topoDir <- paste0(dataDir, "Topographic_data/")
 
 # Create directories if they do not exist
 c(pestDir,
   fertDir,
-  flowDir,
+  liveDir,
   landDir,
+  flowDir,
+  siteDir,
+  screenDir,
   catchmentDir,
   countryDir,
   farmDir,
-  screenDir,
   topoDir) %>%
   lapply(., function(x) {
     if (!file.exists(x)) {
@@ -73,7 +80,7 @@ c(pestDir,
 # (iii) Each directory should be organised in such a way that the respective 
 # data and documentation directories sit directly below 'pestDir' or 'fertDir'
 
-### DOWNLOAD MODELLED CHEMICAL EXPORT LOAD -------------------------------------
+### DOWNLOAD MODELLED CHEMICAL EXPORT LOAD [MANUAL] ----------------------------
 
 # This data layer was produced as part of Upcott et al. (2025), available here:
 # https://doi.org/10.1016/j.scitotenv.2025.179223. # The data layer can be 
@@ -87,18 +94,22 @@ c(pestDir,
 
 # The layer named 'chemical_export.tif' must be saved in the pestDir directory.
 
-### DOWNLOAD FLOW DATA [MANUAL] ------------------------------------------------
+### DOWNLOAD LIVESTOCK DATA [MANUAL] -------------------------------------------
 
-# This must be requested by raising a support ticket with Defra Data Services
-# https://environment.data.gov.uk/explore/36e7f4d3-61b2-4e64-aaa2-2b85bceb61a9?download=true
+# Information on data available here:
+# https://www.gov.uk/government/collections/livestock-population-reports-for-great-britain
 
-# Dataset documentation available:
-# https://www.data.gov.uk/dataset/c9dd994d-9649-4041-96d4-cdc0f1a53152/overland-flow-pathways
+# Data is publicly available by request from the APHA Livestock 
+# Demographic Data Group (LDDG) - LDDG@apha.gov.uk.
 
-# Once downloaded:
-# (i) .gpkg file is unzipped, then
-# (ii) file is renamed 'Flow_data.gpkg', then 
-# (iii) file is moved to flowDir [>file.copy("../Flow_data.gpkg", flowDir)]
+# Here we use the following datasets, which are saved in liveDir:
+# -	GB cattle Population density 2015 (APHA_LDDG_Cattle_Pop_2015.tif)
+# -	GB pig population density 2016-2017 (APHA_LDDG_Pig_Pop_2016_2017.tif)
+# -	Poultry population 2016 (APHA_LDDG_Poultry_Pop_2016.tif)
+# -	Sheep population density 2015-1016 (APHA_LDDG_Sheep_Pop_2015_2016.tif)
+
+# We selected the earliest time periods available  with high quality data which
+# were closest to the chemical application data, i.e. 2015.
 
 ### DOWNLOAD LAND COVER DATA [MANUAL] ------------------------------------------
 
@@ -113,6 +124,57 @@ c(pestDir,
 # (ii) Contents are moved to LandDir
 # (iii) Converted to flat structure (i.e. contents of all directories moved to 
 # 'landDir' and empty directories removed)
+
+### DOWNLOAD FLOW DATA [MANUAL] ------------------------------------------------
+
+# This must be requested by raising a support ticket with Defra Data Services
+# https://environment.data.gov.uk/explore/36e7f4d3-61b2-4e64-aaa2-2b85bceb61a9?download=true
+
+# Dataset documentation available:
+# https://www.data.gov.uk/dataset/c9dd994d-9649-4041-96d4-cdc0f1a53152/overland-flow-pathways
+
+# Once downloaded:
+# (i) .gpkg file is unzipped, then
+# (ii) file is renamed 'Flow_data.gpkg', then 
+# (iii) file is moved to flowDir [>file.copy("../Flow_data.gpkg", flowDir)]
+
+
+### DOWNLOAD SITE VARIABLES DATA [AUTOMATED] -----------------------------------
+
+# Download dataset here:
+# https://www.data.gov.uk/dataset/0c63b33e-0e34-45bb-a779-16a8c3a4b3f7/water-quality-monitoring-data-gc-ms-and-lc-ms-semi-quantitative-screen
+
+# Dataset documentation available here:
+# https://catalogue.ceh.ac.uk/documents/23f194b0-1e21-4f14-be9c-6eabdcc1feb7
+# Set download url
+url <- "https://catalogue.ceh.ac.uk/download/23f194b0-1e21-4f14-be9c-6eabdcc1feb7?url=https%3A%2F%2Fdata-package.ceh.ac.uk%2Fdata%2F23f194b0-1e21-4f14-be9c-6eabdcc1feb7.zip"
+
+# Download
+download.file(url = url,
+              destfile = paste0(siteDir, "Site_data.zip"),
+              sep = "")
+
+# Unzip
+unzip(paste0(siteDir, "Site_data.zip"),
+      exdir = siteDir,
+      overwrite = TRUE)
+
+# Delete .zip file as no longer needed
+unlink(paste0(siteDir, "Site_data.zip"), recursive = TRUE)
+
+# Remove additional unnecessary nested directory; first list directory to remove
+removeDir <- list.dirs(siteDir, recursive = FALSE)
+
+# Copy files 'up a level'
+file.copy(list.files(removeDir, full.names = TRUE), 
+          to = siteDir, 
+          recursive = TRUE)
+
+# Remove removeDir (needs several unlinks to fully remove)
+while(file.exists(removeDir)) {
+  unlink(removeDir, recursive = TRUE)
+}
+rm(removeDir)
 
 ### DOWNLOAD CATCHMENT DATA [AUTOMATED] ----------------------------------------
 
