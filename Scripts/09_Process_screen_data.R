@@ -31,7 +31,7 @@ lapply(paste0(dataDir, "Processed/Screen"), function(x) {
 
 # Load flow data
 flowChemData <- readRDS(paste0(dataDir,
-                               "Processed/Flow/Flow_chem_data.Rds"))
+                               "Processed/Flow/Flow_data_all.Rds"))
 
 # Load LC-MS (liquid chromatography-mass spectrometry) screen data
 lcms <- paste0(dataDir,
