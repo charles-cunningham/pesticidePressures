@@ -71,6 +71,7 @@ cor(lcmsData$Concentration, lcmsData$APPLICATION_MOD)
 
 #
 gcmsTruncated<- gcmsData %>%
+  filter(APPLICATION_MOD > 0 ) %>%
   mutate(truncatedConc = ifelse(Concentration> LOD,
                                 Concentration,
                                 LOD))
@@ -88,6 +89,7 @@ summary(gcmsTruncModel)
 
 #
 lcmsTruncated <- lcmsData %>%
+  filter(APPLICATION_MOD > 0 ) %>%
   mutate(truncatedConc = ifelse(Concentration > LOD,
                                 Concentration,
                                 LOD))
@@ -106,8 +108,9 @@ summary(lcmsTruncModel)
 
 # For every compound, aggregate all concentrations at every site by the median
 gcmsSummary <- gcmsData %>%
+  filter(APPLICATION_MOD > 0 ) %>%
   group_by(Sample_Site_ID, PESTICIDE_MOD, OPCAT_NAME, APPLICATION_MOD) %>%
-  summarise(ConcentrationMedian = median(Concentration)) %>%
+  summarise(ConcentrationMedian = min(Concentration)) %>%
   ungroup()
 
 
