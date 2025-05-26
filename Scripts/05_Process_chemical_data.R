@@ -33,15 +33,24 @@ lapply(paste0(dataDir, "Processed/Watersheds"), function(x) {
 
 ### READ IN WATERSHED, LOAD, FERTILISER AND PESTICIDE DATA ---------------------  
 
-### READ IN WATERSHED DATA
+### READ IN WATERSHED AND LOAD DATA
 
 # Read watershed .Rds
 watershedData <- readRDS(paste0(dataDir,
                                 "Processed/Watersheds/Watershed_data.Rds"))
 
-### READ IN LOAD DATA
+# Read in load data
 exportLoad <- paste0(dataDir, "Raw/Pesticide_data/chemical_export.tif") %>%
   rast()
+
+### READ IN LAND COVER DATA
+
+# Read land cover data as spatRast file (first layer is land cover class)
+lcm2015 <- paste0(dataDir, "Raw/Land_cover_data/lcm2015gb25m.tif") %>%
+  rast(., lyr = 1)
+
+# Rename lcm2015 spatRast layer
+names(lcm2015) <- "Identifier"
 
 ### READ IN FERTILISER DATA
 
@@ -160,9 +169,6 @@ watershed_R_100 <- disagg(watershed_R, fact = 10)
 exportLoad <- extend(exportLoad, watershed_R_100)
 exportLoad <- crop(exportLoad, watershed_R_100)
 
-# Optional: Read spatRast to memory (speeds up later extraction)
-exportLoad <- toMemory(exportLoad)
-
 # Set up while loop
 w <- 1 # window size set to 1 initially (will expand)
 filled <- exportLoad # Assign exportLoad to object to be iteratively filled
@@ -186,21 +192,43 @@ while(to_fill) {
 exportLoadInterp <- mask(filled, watershed_R_100)
 
 # Remove objects no longer needed
-rm(chemData, filled, watershed_R, watershed_R_100)
+rm(chemData, filled)
 gc()
 
 # CALCULATE LOAD FOR EACH CHEMICAL ---------------------------------------------
 
-# Disaggregate chemDataInterp to 100m resolution (same as exportLoad)
-chemDataDisagg <- disagg(chemDataInterp, fact = 10) 
+# Change land cover map extent to match other datasets
+lcm2015 <- extend(lcm2015, watershed_R_100)
+lcm2015 <- crop(lcm2015, watershed_R_100)
 
-# Multiply chemDataDisagg with exportLoad to get total estimated export for each
-# chemical
-chemLoad <- chemDataDisagg * exportLoadInterp
+# Create single value arable spatRast
+arable <- classify(lcm2015,
+                   cbind(3, 1),
+                   others = NA)
+
+# Aggregate arable spatRast to 1km
+arable_1km <- aggregate(arable, fact = 40, 
+                        sum, na.rm = TRUE)
+
+# Get proportion of arable land in each 100m
+arable_prop <- aggregate(arable, fact = 4, sum, na.rm = TRUE) / 
+  disagg(arable_1km, fact = 10)
+
+# Multiply proportion by chemDataInterp to downscale to 100m
+chemDataInterp_100m <- arable_prop * disagg(chemDataInterp, fact = 10) 
+
+# Multiply chemDataInterp_100m with exportLoad to get total estimated export 
+# for each chemical
+chemLoad <-  exportLoadInterp * chemDataInterp_100m
 
 # Remove objects no longer needed
-rm(chemDataInterp, chemDataDisagg)
+rm(chemDataInterp, chemDataDisagg, 
+   lcm2025, arable, arable_1km, arable_prop,
+   watershed_R, watershed_R_100)
 gc()
+
+# Save chemLoad in Memory to speed up extraction
+toMemory(chemLoad)
 
 ### EXTRACT DATA TO WATERSHEDS -------------------------------------------------
 # N.B. Warning: this runs overnight
