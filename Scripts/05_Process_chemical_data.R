@@ -192,7 +192,7 @@ while(to_fill) {
 exportLoadInterp <- mask(filled, watershed_R_100)
 
 # Remove objects no longer needed
-rm(chemData, filled)
+rm(chemData, filled, remainingGaps)
 gc()
 
 # CALCULATE LOAD FOR EACH CHEMICAL ---------------------------------------------
@@ -222,7 +222,8 @@ chemDataInterp_100m <- arable_prop * disagg(chemDataInterp, fact = 10)
 chemLoad <-  exportLoadInterp * chemDataInterp_100m
 
 # Remove objects no longer needed
-rm(chemDataInterp, chemDataInterp_100m, 
+rm(chemDataInterp, chemDataInterp_100m,
+   exportLoad, exportLoadInterp,
    lcm2015, arable, arable_1km, arable_prop,
    watershed_R, watershed_R_100)
 gc()
