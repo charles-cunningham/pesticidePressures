@@ -222,8 +222,8 @@ chemDataInterp_100m <- arable_prop * disagg(chemDataInterp, fact = 10)
 chemLoad <-  exportLoadInterp * chemDataInterp_100m
 
 # Remove objects no longer needed
-rm(chemDataInterp, chemDataDisagg, 
-   lcm2025, arable, arable_1km, arable_prop,
+rm(chemDataInterp, chemDataInterp_100m, 
+   lcm2015, arable, arable_1km, arable_prop,
    watershed_R, watershed_R_100)
 gc()
 
