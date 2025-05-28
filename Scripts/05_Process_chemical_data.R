@@ -228,9 +228,6 @@ rm(chemDataInterp, chemDataInterp_100m,
    watershed_R, watershed_R_100)
 gc()
 
-# Save chemLoad in Memory to speed up extraction
-toMemory(chemLoad)
-
 ### EXTRACT DATA TO WATERSHEDS -------------------------------------------------
 # N.B. Warning: this runs overnight
 
