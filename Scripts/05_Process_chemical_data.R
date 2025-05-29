@@ -215,11 +215,11 @@ arable_prop <- aggregate(arable, fact = 4, sum, na.rm = TRUE) /
   disagg(arable_1km, fact = 10)
 
 # Multiply proportion by chemDataInterp to downscale to 100m
-chemDataInterp_100m <- arable_prop * disagg(chemDataInterp, fact = 10) 
+chemDataInterp_100m <- disagg(chemDataInterp, fact = 10) * arable_prop  
 
 # Multiply chemDataInterp_100m with exportLoad to get total estimated export 
 # for each chemical
-chemLoad <-  exportLoadInterp * chemDataInterp_100m
+chemLoad <-  chemDataInterp_100m * exportLoadInterp 
 
 # Remove objects no longer needed
 rm(chemDataInterp, chemDataInterp_100m,
