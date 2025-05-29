@@ -47,25 +47,43 @@ poultry <- rast(paste0(dataDir,
 sheep <- rast(paste0(dataDir,
                      "Raw/Livestock_data/APHA_LDDG_Sheep_Pop_2015_2016.tif"))
 
+plot(cattle)
+
+# Read in 1km grid
+grid1km <- vect(paste0(dataDir,
+                        "Raw/Livestock_data/1km_grid.shp")) %>%
+  as_tibble()
+
+# Read in livestock data
+live_df <- read.table(paste0(dataDir,
+                               "Raw/Livestock_data/ADAS_1km_2014_Livestock.txt"),
+                        header = TRUE, sep = ",")
+
+# Join geometry to livestock data
+live_df <- right_join(grid1km,
+                      live_df,
+                      by = c("UNIQUE" = "Unique"))
+
+# Convert livestock data to raster (via spatialPoints)
+live_R <- vect(live_df, geom=c("X", "Y"), crs = "EPSG:27700") %>%
+  rast(., type = "xyz")
+
 ### PROCESS LIVESTOCK DATA -----------------------------------------------------
 
 # Create extent object to crop the livestock spatRasts to
 cropExtent <- vect(watershedData) %>%
-  rasterize(., cattle, touches = TRUE) %>%
+  rasterize(., live_R, touches = TRUE) %>%
   ext()
 
 # Crop and extend livestock spatRasts to the cropExtent extent
-cattle <- crop(cattle, cropExtent) %>%
-  extend(., cropExtent)
-pigs <- crop(pigs, cropExtent) %>%
-  extend(., cropExtent)
-poultry <- crop(poultry, cropExtent) %>%
-  extend(., cropExtent)
-sheep <- crop(sheep, cropExtent) %>%
+cattle <- crop(live_R, cropExtent) %>%
   extend(., cropExtent)
 
 # Also manually set extent to remove small inconsistencies in extent
-ext(cattle) <- ext(pigs) <- ext(poultry) <- ext(sheep) <- ext(cropExtent)
+ext(live_R) <- ext(cropExtent)
+
+
+select and rename
 
 # Merge into single spatRast object
 livestock <- c(cattle, pigs, poultry, sheep)
