@@ -12,6 +12,7 @@
 library(tidyverse)
 library(terra)
 library(sf)
+library(gstat)
 
 # Set terra options to speed up
 terraOptions(memfrac = 0.9)
