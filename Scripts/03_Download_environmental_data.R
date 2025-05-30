@@ -96,20 +96,13 @@ c(pestDir,
 
 ### DOWNLOAD LIVESTOCK DATA [MANUAL] -------------------------------------------
 
-# Information on data available here:
-# https://www.gov.uk/government/collections/livestock-population-reports-for-great-britain
+# We use the ADAS land use database generated using the June Agricultural
+# Census. See Comber et al. (2008). https://doi.org/10.1111/j.1467-9671.2008.01130.x.
 
-# Data is publicly available by request from the APHA Livestock 
-# Demographic Data Group (LDDG) - LDDG@apha.gov.uk.
+# We selected the time period available closest to the chemical
+# application data, i.e. 2014.
 
-# Here we use the following datasets, which are saved in liveDir:
-# -	GB cattle Population density 2015 (APHA_LDDG_Cattle_Pop_2015.tif)
-# -	GB pig population density 2016-2017 (APHA_LDDG_Pig_Pop_2016_2017.tif)
-# -	Poultry population 2016 (APHA_LDDG_Poultry_Pop_2016.tif)
-# -	Sheep population density 2015-1016 (APHA_LDDG_Sheep_Pop_2015_2016.tif)
-
-# We selected the earliest time periods available  with high quality data which
-# were closest to the chemical application data, i.e. 2015.
+# This is data owned by Defra and is not publicly available.
 
 ### DOWNLOAD LAND COVER DATA [MANUAL] ------------------------------------------
 
