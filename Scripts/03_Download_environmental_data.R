@@ -102,7 +102,8 @@ c(pestDir,
 # We selected the time period available closest to the chemical
 # application data, i.e. 2014.
 
-# This is data owned by Defra and is not publicly available.
+# This is data owned by Defra and is not publicly available. Data files are
+# saved in liveDir.
 
 ### DOWNLOAD LAND COVER DATA [MANUAL] ------------------------------------------
 
