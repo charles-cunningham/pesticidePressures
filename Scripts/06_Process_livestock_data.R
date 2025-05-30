@@ -30,63 +30,91 @@ lapply(paste0(dataDir, "Processed/Watersheds"), function(x) {
   }
 })
 
-### READ IN WATERSHED AND LAND COVER DATA --------------------------------------
+### READ IN WATERSHED AND LIVESTOCK DATA --------------------------------------
 
 # Read in watershed data
-
 watershedData <- readRDS(paste0(dataDir,
                                 "Processed/Watersheds/Watershed_data.Rds"))
 
-# Read in livestock data
-cattle <- rast(paste0(dataDir,
-                      "Raw/Livestock_data/APHA_LDDG_Cattle_Pop_2015.tif"))
-pigs <- rast(paste0(dataDir,
-                    "Raw/Livestock_data/APHA_LDDG_Pig_Pop_2016_2017.tif"))
-poultry <- rast(paste0(dataDir,
-                       "Raw/Livestock_data/APHA_LDDG_Poultry_Pop_2016.tif"))
-sheep <- rast(paste0(dataDir,
-                     "Raw/Livestock_data/APHA_LDDG_Sheep_Pop_2015_2016.tif"))
-
-plot(cattle)
-
-# Read in 1km grid
+# Read in 1km livestock grid
 grid1km <- vect(paste0(dataDir,
                         "Raw/Livestock_data/1km_grid.shp")) %>%
   as_tibble()
 
-# Read in livestock data
+# Read in livestock data frame
 live_df <- read.table(paste0(dataDir,
                                "Raw/Livestock_data/ADAS_1km_2014_Livestock.txt"),
                         header = TRUE, sep = ",")
 
-# Join geometry to livestock data
+### PROCESS LIVESTOCK DATA -----------------------------------------------------
+
+# Join grid coordinates to livestock data frame
 live_df <- right_join(grid1km,
                       live_df,
                       by = c("UNIQUE" = "Unique"))
 
-# Convert livestock data to raster (via spatialPoints)
+# Convert livestock data frame to spatRast (via spatialPoints)
 live_R <- vect(live_df, geom=c("X", "Y"), crs = "EPSG:27700") %>%
   rast(., type = "xyz")
 
-### PROCESS LIVESTOCK DATA -----------------------------------------------------
+# Drop columns not needed
+live_R <- subset(live_R, c("UNIQUE", "AREASQKM"), negate = TRUE)
+
+### CROP LIVESTOCK DATA --------------------------------------------------------
+
+# Rasterise all cells that touch watersheds which intersect with England
+watershed_R <- vect(watershedData) %>%
+  rasterize(., live_R, touches = TRUE)
 
 # Create extent object to crop the livestock spatRasts to
-cropExtent <- vect(watershedData) %>%
-  rasterize(., live_R, touches = TRUE) %>%
-  ext()
+cropExtent <- ext(watershed_R)
 
-# Crop and extend livestock spatRasts to the cropExtent extent
-cattle <- crop(live_R, cropExtent) %>%
+# Crop and extend livestock spatRast to cropExtent 
+live_R <- crop(live_R, cropExtent) %>%
   extend(., cropExtent)
 
-# Also manually set extent to remove small inconsistencies in extent
-ext(live_R) <- ext(cropExtent)
+### SUBSET LIVESTOCK DATA ---------------------------------------------------
 
+# Select total numbers of livestock
+live_R <- subset(live_R, c("K299", "L98", "M98", "N98"))
 
-select and rename
+# Rename to inutuitive names
+names(live_R) <- c("cattle", "pigs", "sheep", "poultry")
 
-# Merge into single spatRast object
-livestock <- c(cattle, pigs, poultry, sheep)
+# Ensure spatRast is in memory
+toMemory(live_R)
+
+### INTERPOLATE 1KM LIVESTOCK DATA  --------------------------------------------
+# Use gstat inverse weighting approach in case any gaps
+
+# For each layer name, i.e. each chemical
+liveInterp <- lapply(names(live_R), function(i) {
+  
+  # Create 'x,y,z' data frame of chemical i (coordinates and values) 
+  liveData_df <- as.points(live_R[[i]]) %>%
+    data.frame(crds(.), . )
+  
+  # Rename livestock column to standardized name to avoid errors- "z"
+  names(liveData_df) <- c("x", "y", "z")
+  
+  # Create a basic inverse distance weighted gstat interpolation formula
+  iInterpModel <- gstat(formula = z ~ 1, # Only use location
+                        locations = ~ x + y, # Location based on x, y
+                        data = liveData_df, 
+                        nmax = 5) # Only use nearest 5 points
+  
+  # Interpolate using gstat formula
+  iInterp <- interpolate(watershed_R,
+                         iInterpModel,
+                         na.rm = TRUE)[["var1.pred"]]
+  
+  # Change name back
+  names(iInterp) <- i
+  
+  # Return
+  return(iInterp)
+  
+}) %>% rast() # Join all layers together into one spatRast
 
 ### EXTRACT DATA TO WATERSHEDS -------------------------------------------------
 # N.B. Warning: this runs overnight
@@ -95,7 +123,7 @@ livestock <- c(cattle, pigs, poultry, sheep)
 # N.B. Since each 1x1km livestock_R value has units of number of livestock,
 # a weighted sum extract function for each watershed results in
 # estimated number within that watershed
-watershedLiveData <- terra::extract(livestock, watershedData,
+watershedLiveData <- terra::extract(liveInterp, watershedData,
                                     exact = TRUE,
                                     fun = sum,
                                     na.rm = TRUE,
