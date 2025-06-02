@@ -71,12 +71,12 @@ cor(lcmsData$Concentration, lcmsData$APPLICATION_MOD)
 
 #
 gcmsTruncated<- gcmsData %>%
-  filter(APPLICATION_MOD > 0 ) %>%
+  filter(APP_PER_AREA_MOD > 0 ) %>%
   mutate(truncatedConc = ifelse(Concentration> LOD,
                                 Concentration,
                                 LOD))
 
-gcmsTruncModel <- crch::trch ( truncatedConc ~ log(APPLICATION_MOD),
+gcmsTruncModel <- crch::trch ( truncatedConc ~ log(APP_PER_AREA_MOD),
                      truncated = TRUE,
                      left =  gcmsTruncated$LOD,
                      link.scale = "log",
@@ -89,12 +89,12 @@ summary(gcmsTruncModel)
 
 #
 lcmsTruncated <- lcmsData %>%
-  filter(APPLICATION_MOD > 0 ) %>%
+  filter(APP_PER_AREA_MOD > 0 ) %>%
   mutate(truncatedConc = ifelse(Concentration > LOD,
                                 Concentration,
                                 LOD))
 
-lcmsTruncModel <- crch::trch ( truncatedConc ~ log(APPLICATION_MOD),
+lcmsTruncModel <- crch::trch ( truncatedConc ~ log(APP_PER_AREA_MOD),
                                truncated = TRUE,
                                left =  lcmsTruncated$LOD,
                                link.scale = "log",
@@ -106,24 +106,18 @@ summary(lcmsTruncModel)
 
 ### MIXED-EFFECTS MODEL --------------------------------------------------------
 
-# For every compound, aggregate all concentrations at every site by the median
-gcmsSummary <- gcmsData %>%
-  filter(APPLICATION_MOD > 0 ) %>%
-  group_by(Sample_Site_ID, PESTICIDE_MOD, OPCAT_NAME, APPLICATION_MOD) %>%
-  summarise(ConcentrationMedian = min(Concentration)) %>%
-  ungroup()
-
+# GCMS
 
 # Fit mixed model with concentration as response
-gcmsModMixed <- lme4::glmer(ConcentrationMedian ~ 
+gcmsModMixed <- lme4::glmer(Concentration ~ 1 +
                               # Fixed log-transformed estimated application
-                              log(APPLICATION_MOD) + 
+                              log(APP_PER_AREA_MOD) + 
                               # Pesticide name random effect
                               (1| PESTICIDE_MOD) +
                               # # Site random effect
                                (1 | Sample_Site_ID) ,
                             family = Gamma(link = "log"),
-                            data = gcmsSummary) 
+                            data = gcmsData) 
 
 # Checl R^2 values
 MuMIn::r.squaredGLMM(gcmsModMixed)
@@ -133,23 +127,16 @@ summary(gcmsModMixed)
 
 # LCMS
 
-# For every compound, aggregate all concentrations at every site by the median
-lcmsSummary <- lcmsData %>%
-  group_by(Sample_Site_ID, PESTICIDE_MOD, OPCAT_NAME, APPLICATION_MOD) %>%
-  summarise(ConcentrationMedian = median(Concentration)) %>%
-  ungroup()
-
-
 # Fit mixed model with concentration as response
-lcmsModMixed <- lme4::glmer(ConcentrationMedian ~ 1 +
+lcmsModMixed <- lme4::glmer(Concentration ~ 1 +
                               # Fixed log-transformed estimated application
-                              log(APPLICATION_MOD) + 
+                              log(APP_PER_AREA_MOD) + 
                               # Pesticide name random effect
                               (1| PESTICIDE_MOD) +
                               # Site random effect
                               (1 | Sample_Site_ID) ,
                             family = Gamma(link = "log"),
-                            data = lcmsSummary) 
+                            data = lcmsData) 
 
 
 # Check R^2 values
