@@ -46,6 +46,4 @@ invData_sf <- left_join(invData_sf, siteData,
 # Save processed invData ready for modelling
 saveRDS(invData_sf,
         file = paste0(dataDir,
-                      "/Processed/Biosys/invDataSpatial.Rds"))                      
-                      
-                      
+                      "/Processed/Biosys/invDataSpatial.Rds"))
