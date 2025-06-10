@@ -137,7 +137,7 @@ flowDataAll <- flowDataAll %>%
 
 # REMOVE REDUNDANT PESTICIDE COLUMNS -------------------------------------------
 
-# Select all invividual pesticide columns and remove as not needed (aggreagted)
+# Select all invividual pesticide columns and remove as not needed (aggregated)
 flowDataAll <- flowDataAll %>%
   select (-c(starts_with('pesticide_')))
 
