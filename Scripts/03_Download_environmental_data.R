@@ -135,11 +135,9 @@ c(pestDir,
 
 ### DOWNLOAD SITE VARIABLES DATA [AUTOMATED] -----------------------------------
 
-# Download dataset here:
-# https://www.data.gov.uk/dataset/0c63b33e-0e34-45bb-a779-16a8c3a4b3f7/water-quality-monitoring-data-gc-ms-and-lc-ms-semi-quantitative-screen
-
 # Dataset documentation available here:
 # https://catalogue.ceh.ac.uk/documents/23f194b0-1e21-4f14-be9c-6eabdcc1feb7
+
 # Set download url
 url <- "https://catalogue.ceh.ac.uk/download/23f194b0-1e21-4f14-be9c-6eabdcc1feb7?url=https%3A%2F%2Fdata-package.ceh.ac.uk%2Fdata%2F23f194b0-1e21-4f14-be9c-6eabdcc1feb7.zip"
 
