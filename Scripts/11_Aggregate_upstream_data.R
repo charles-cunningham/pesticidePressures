@@ -11,6 +11,7 @@
 # Load packages
 library(tidyverse)
 library(sf)
+library(vegan)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 
@@ -127,12 +128,12 @@ flowDataAll <- flowDataAll %>%
   
   # Create pesticideDiv column as Shannon diversity index
   mutate(pesticideShannon =
-           vegan::diversity(across(starts_with('pesticide_')),
+           diversity(across(starts_with('pesticide_')),
                             index = "shannon")) %>%
   
   # Create pesticideDiv column as Simpson diversity index
   mutate(pesticideSimpson =
-           vegan::diversity(across(starts_with('pesticide_')),
+           diversity(across(starts_with('pesticide_')),
                             index = "simpson"))
 
 # REMOVE REDUNDANT PESTICIDE COLUMNS -------------------------------------------
