@@ -97,26 +97,21 @@ invData <- invData %>%
   # Filter to spring and summer (March, April, May, June, July, August)
   filter(MONTH_NAME %in% c("March", "April", "May", "June", "July", "August"))
 
-# Filter available upstream data
+# Filter available  data
 invData <- invData %>%
   # Remove rows with no upstream data
-  filter(!(is.na(pesticideLoad)))
-
-# Filter Biosys originating data
-invData <- invData %>%
-  # Remove rows with no abundance data() these NAs will become 0s later
-  filter(!(is.na(TOTAL_ABUNDANCE)))
+  filter(!(is.na(pesticideLoad))) %>%
+  # Remove rows with no site data
+  filter(!(is.na(EDF_MEAN))) 
 
 ### PROCESS TAXONOMY -----------------------------------------------------------
-names(invData) %>% grep("GROUP", .)
 
-
-# Separate into species
+# Filter to Schedule 2 species
 invDataS2 <- invData %>%
   filter(GROUP == "Schedule 2")
 
 # Change species names to be file friendly
-invData$TAXON_NAME <- invData$TAXON_NAME %>%
+invDataS2$TAXON_NAME <- invDataS2$TAXON_NAME %>%
   # Remove slashes
   gsub(" ", "_", .) %>%
   # Remove
@@ -133,7 +128,12 @@ modelVariables <- c("fertiliser_k",
                     "totalArea",        
                     "pesticideShannon",
                     "pesticideLoad",
-                    "pesticideToxicLoad")
+                    "pesticideToxicLoad",
+                    "cattle",
+                    "pigs",
+                    "sheep",
+                    "poultry",
+                    "EDF_MEAN")
 
 # Create additional scaled column for each modelVariables
 for(variable in modelVariables) {
@@ -142,33 +142,33 @@ for(variable in modelVariables) {
   colName <- paste0(variable, "_scaled")
   
   # Assign scaled variable to new column
-  invData[, colName] <- scale(invData[[variable]])[,1]
+  invDataS2[, colName] <- scale(invDataS2[[variable]])[,1]
 }
 
 # Convert categorical variables for random effects to factors
-invData$WATER_BODY <- as.factor(invData$WATER_BODY)
-invData$CATCHMENT <- as.factor(invData$CATCHMENT)
-invData$REPORTING_AREA <- as.factor(invData$REPORTING_AREA)
+invDataS2$WATER_BODY <- as.factor(invDataS2$WATER_BODY)
+invDataS2$CATCHMENT <- as.factor(invDataS2$CATCHMENT)
+invDataS2$REPORTING_AREA <- as.factor(invDataS2$REPORTING_AREA)
 
 ### RUN SPECIES-LEVEL MODELS ---------------------------------------------------
 
 # Start taxa here
 # Loop through taxa then species to preserve ordering
 for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
-  
+  iTaxa = "insect - mayfly (Ephemeroptera)"
   # Find species within taxa
-  taxaSpecies <- invData %>%
+  taxaSpecies <- invDataS2 %>%
     filter(TAXON_GROUP_NAME == iTaxa) %>%
     .[["TAXON_NAME"]] %>%
     unique()
   
   # Loop through species here
   for (iSpecies in taxaSpecies) {
-    
+    iSpecies <- taxaSpecies[2]
     # PROCESS TO PRESENCE-ABSENCE FORMAT
 
     # Create iSpecies abundance column with 0s
-    speciesData <- invData %>%
+    speciesData <- invDataS2 %>%
       mutate(speciesAbundance = ifelse(TAXON_NAME == iSpecies,
                                        TOTAL_ABUNDANCE,
                                        0)) %>%
@@ -192,6 +192,11 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       N(fertiliser_n_scaled, model = "linear") +
       P(fertiliser_p_scaled, model = "linear") +
       K(fertiliser_k_scaled, model = "linear") +
+      cattle(cattle_scaled, model = "linear") +
+      pigs(pigs_scaled, model = "linear") +
+      sheep(sheep_scaled, model = "linear") +
+      poultry(poultry_scaled, model = "linear") +
+      wastewater(EDF_MEAN_scaled, model = "linear") +
       upstream(totalArea_scaled, model = "linear") +
       arable(Arable_scaled, model = "linear") +
       urban(Urban_scaled, model = "linear") +
