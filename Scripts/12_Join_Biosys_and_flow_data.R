@@ -37,7 +37,7 @@ invData_sf <- readRDS(file = paste0(dataDir, "Processed/Biosys/invData.Rds")) %>
 # Read processed flow data
 flowData <- readRDS(file = paste0(dataDir,
                                       "/Processed/Flow/Flow_aggregated_data.Rds"))
-
+names(flowData)
 # List land cover classes
 classLCM <- c(
   "Deciduous woodland",
@@ -64,10 +64,11 @@ classLCM <- c(
 )
 
 # List flowData columns to join to invData_sf
-upstreamData <- names(flowData) %>%
-  .[grepl("pesticide", .) |
-      grepl("fertiliser_", .) |
-      . %in% c(classLCM, "totalArea")]
+upstreamData <- as_tibble(flowData) %>%
+  select(!c("ea_wb_id", "opcatch", "mancatch", "ea_area", "wbname",               
+                 "rbd", "meanslope", "startz", "endz", "permid",          
+                 "maxflowacc", "shape", "withinEngland")) %>%
+  names
 
 ### JOIN PESTICIDE SUMMARY FLOW DATA TO BIOSYS DATA ----------------------------
 
