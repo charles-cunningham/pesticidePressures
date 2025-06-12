@@ -29,7 +29,7 @@ lapply(paste0(dataDir, "Processed/Biosys"), function(x) {
 ### LOAD DATA ------------------------------------------------------------------
 
 # Read Biosys data, and convert to sf object
-invData_sf <- readRDS(file = paste0(dataDir, "Raw/Biosys/invData.Rds")) %>%
+invData_sf <- readRDS(file = paste0(dataDir, "Processed/Biosys/invData.Rds")) %>%
   st_as_sf(.,
            coords = c("FULL_EASTING", "FULL_NORTHING"),
            crs = 27700)
