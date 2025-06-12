@@ -17,7 +17,7 @@
 #                  repos=c(getOption("repos"),INLA="http://inla.r-inla-download.org/R/stable"),
 #                  dep=TRUE)
 # 
-# # Needed to run on LINUX machine
+# Needed to run on LINUX machine
 # library(INLA); inla.binary.install()
 # 
 # # Install inlabru
@@ -49,7 +49,7 @@ lapply(paste0(dataDir, "Processed/Species"), function(x) {
 ### LOAD DATA ------------------------------------------------------------------
 
 # Load Biosys data
-tempStoreForTesting <- readRDS(paste0(dataDir, "Processed/Biosys/invDataSpatial.Rds"))
+tempStoreForTesting <- readRDS(paste0(dataDir, "Processed/Biosys/invDataSpatialAll.Rds"))
 invData <- tempStoreForTesting
 
 # PROCESS DATA STRUCTURE -------------------------------------------------------
@@ -105,17 +105,15 @@ invData <- invData %>%
 # Filter Biosys originating data
 invData <- invData %>%
   # Remove rows with no abundance data() these NAs will become 0s later
-  filter(!(is.na(TOTAL_ABUNDANCE))) %>%
-  # Filter to only macroinvertebrates
-  filter(TAXON_TYPE == "Other Macroinvertebrates")
+  filter(!(is.na(TOTAL_ABUNDANCE)))
 
 ### PROCESS TAXONOMY -----------------------------------------------------------
+names(invData) %>% grep("GROUP", .)
 
-### todo: WILKES APPROACH TO BE ADDED TO SELECTING SPECIES
 
 # Separate into species
-invData <- invData %>%
-  filter(TAXON_RANK == "Species")
+invDataS2 <- invData %>%
+  filter(GROUP == "Schedule 2")
 
 # Change species names to be file friendly
 invData$TAXON_NAME <- invData$TAXON_NAME %>%
