@@ -52,22 +52,6 @@ load(paste0(dataDir, "Species_effects.Rdata"))
 # N.B. Species effect nested within taxa effect
 # (i.e. taxa + taxa:species random effects)
 
-
-pest_brms <- brm(data = effects_wide,
-                   family = gaussian,
-                 mean_NPK | se(sd_NPK) ~
-                     1  + (1 | taxa:species),
-                   prior = c(prior(normal(0, 1), class = Intercept),
-                             prior(cauchy(0, 1), class = sd)),
-                   #iter = 10000,
-                   #warmup = 5000, 
-                  # control=list(adapt_delta = 0.999,
-                  #              stepsize = 0.001,
-                   #             max_treedepth = 20),
-                   cores = 4,
-                   chains = 4)
-
-
 pesticideDiv_brms <- brm(data = effects_wide,
                  family = gaussian,
                  mean_pesticideDiv | se(sd_pesticideDiv) ~
@@ -250,3 +234,14 @@ length_brms <- brm(data = effects_wide,
                          cores = 4,
                          chains = 4)
 
+### Save
+
+# List of brms objects
+brmsList <- c("pesticideDiv_brms", "pesticideToxicity_brms", "NPK_brms",
+              "cattle_brms", "sheep_brms","pigs_brms", "poultry_brms",
+              "wastewater_brms", "modification_brms", "quality_brms",
+              "arable_brms", "urban_brms", "length_brms")
+
+# Save brms objects
+save(list = brmsList,
+     file = paste0(dataDir, "Species_brms.Rdata"))
