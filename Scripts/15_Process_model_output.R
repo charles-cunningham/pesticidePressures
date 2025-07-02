@@ -22,7 +22,7 @@ dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 # SET PARAMETERS ---------------------------------------------------------------
 
 # Set taxa groups to analyse
-taxaGroups <- list.files(paste0(dataDir, "Model_outputs"))
+taxaGroups <- list.files(paste0(dataDir, "Model_outputs/Schedule_2"))
 
 # Create empty data frame to populate with all species level effects
 effects_df <- data.frame()
@@ -33,7 +33,7 @@ effects_df <- data.frame()
 for (iTaxa in taxaGroups) {
   
   # List all summary files for iTaxa
-  taxaOutput <- paste0(paste0(dataDir, "Model_outputs/", iTaxa)) %>%
+  taxaOutput <- paste0(paste0(dataDir, "Model_outputs/Schedule_2/", iTaxa)) %>%
   list.files(.,
              full.names = TRUE,
              recursive = TRUE)
