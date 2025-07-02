@@ -31,8 +31,8 @@ load(paste0(dataDir, "Species_effects.Rdata"))
 # Box plot of connectivity model effect sizes
 
 # Plot
- effects_df %>%
-  filter(str_detect(taxa, "insect -" )) %>%
+ effects_df[, ] %>%
+  #filter(str_detect(taxa, "insect -" )) %>%
   ggplot() +
   geom_boxplot(aes(x = effect, y = mean   )) +
    #facet_wrap(~taxa) +
