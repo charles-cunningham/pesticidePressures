@@ -89,15 +89,13 @@ invData$WEEK <- invData$SAMPLE_DATE %>%
 
 # FILTER VARIABLES ----------------------------------------------------
 
-# Filter temporally ( years and season)
+# Filter temporally ( filter years between 2011 and 2020 inclusive)
 invData <- invData %>%
-  # Filter years between 2011 and 2020 inclusive
-  filter(YEAR >= 2010 & YEAR < 2020) %>%
-  # Filter to spring and summer (March, April, May, June, July, August)
-  filter(MONTH_NAME %in% c("March", "April", "May", "June", "July", "August"))
+  filter(YEAR >= 2010 & YEAR < 2020)
 
-# Rescale months
+# Rescale months and years
 invData$MONTH_NUM <- invData$MONTH_NUM - (min(invData$MONTH_NUM) - 1)
+invData$YEAR <- invData$YEAR - (min(invData$YEAR) - 1)
 
 # Filter available  data
 invData <- invData %>%
@@ -128,9 +126,7 @@ invDataINNS <- invData %>%
   distinct(TAXON_NAME) %>%
   .$TAXON_NAME
 
-### PROCESS VARIABLES ------------------------------------------------------------
-
-# MODIFY UPSTREAM VARIABLES TO PER AREA VALUES
+### MODIFY UPSTREAM VARIABLES TO PER AREA VALUES -------------------------------
 
 # Divide upstream variables by area (excluding diversity)
 for(variable in c("fertiliser_k",
@@ -153,28 +149,96 @@ for(variable in c("fertiliser_k",
   
 }
 
-# SCALE VARIABLES
+### CORRELATION PLOTS ----------------------------------------------------------
+
+corr_df <- invData %>%
+  select(pesticideShannon,
+         pesticideToxicLoad_PerArea,
+         fertiliser_n_PerArea,
+         fertiliser_p_PerArea,
+         fertiliser_k_PerArea,
+         cattle_PerArea,
+         pigs_PerArea,
+         sheep_PerArea,
+         poultry_PerArea,
+         EDF_MEAN,
+         HS_HMS,
+         HS_HQA,
+         BIO_ALTITUDE,
+         BIO_SLOPE, 
+         BIO_DISTANCE_FROM_SOURCE,
+         BIO_DISCHARGE,
+         BIO_WIDTH,
+         BIO_DEPTH, 
+         BIO_BOULDERS_COBBLES, 
+         BIO_PEBBLES_GRAVEL, 
+         BIO_SAND,
+         BIO_SILT_CLAY,
+         YEAR,
+         MONTH_NUM)
+
+corr_df <- corr_df %>%
+  mutate(NPK = fertiliser_n_PerArea + 
+           fertiliser_p_PerArea + 
+           fertiliser_k_PerArea) %>%
+  select(-c(fertiliser_n_PerArea, 
+            fertiliser_p_PerArea,
+            fertiliser_k_PerArea))
+
+corPredictors <- cor(corr_df) 
+
+corrplot::corrplot(corPredictors,
+                   type = "upper", order = "original", diag = FALSE,
+                   method = "number", addCoef.col="white", tl.col = "black",
+                   tl.srt = 45)
+
+# Plot
+# effectPairs <- corr_df %>%
+#   # Select columns we want for pairs plot
+#   select(-c(fertiliser_n_PerArea_scaled,
+#             fertiliser_p_PerArea_scaled,
+#             fertiliser_k_PerArea_scaled)) %>%
+#   # Call ggpairs
+#   ggpairs(
+#     aes( alpha = 0.5),
+#     lower = list(continuous = wrap("cor", size = 3)),
+#     diag = list(continuous = wrap("densityDiag"))#,
+#     # upper = list(
+#     #   combo = wrap("box_no_facet"),
+#     #   continuous = wrap("points")
+#   )
+
+# SCALE VARIABLES --------------------------------------------------------------
 
 # List variables to be scaled
-modelVariables <- c("fertiliser_k_PerArea",
-                    "fertiliser_n_PerArea",
-                    "fertiliser_p_PerArea",
-                    "Arable_PerArea",
-                    "Urban_PerArea",
-                    "totalArea",        
-                    "pesticideShannon",
-                    "pesticideLoad_PerArea",
-                    "pesticideToxicLoad_PerArea",
-                    "cattle_PerArea",
-                    "pigs_PerArea",
-                    "sheep_PerArea",
-                    "poultry_PerArea",
-                    "EDF_MEAN",
-                    "HS_HMS",
-                    "HS_HQA",
-                    "BIO_ALTITUDE",
-                    "BIO_DISTANCE_FROM_SOURCE",
-                    "BIO_DISCHARGE")
+modelVariables <- c(
+  # Upstream variables
+  "fertiliser_k_PerArea",
+  "fertiliser_n_PerArea",
+  "fertiliser_p_PerArea",
+  "Arable_PerArea",
+  "Urban_PerArea",
+  "pesticideShannon",
+  "pesticideLoad_PerArea",
+  "pesticideToxicLoad_PerArea",
+  "cattle_PerArea",
+  "pigs_PerArea",
+  "sheep_PerArea",
+  "poultry_PerArea",
+  # Site variables
+  "EDF_MEAN",
+  "HS_HMS",
+  "HS_HQA",
+  "BIO_ALTITUDE",
+  "BIO_SLOPE", 
+  "BIO_DISTANCE_FROM_SOURCE",
+  "BIO_DISCHARGE",
+  "BIO_WIDTH",
+  "BIO_DEPTH", 
+  "BIO_BOULDERS_COBBLES", 
+  "BIO_PEBBLES_GRAVEL", 
+  "BIO_SAND",
+  "BIO_SILT_CLAY")
 
 # Create additional scaled column for each modelVariables
 for(variable in modelVariables) {
@@ -188,77 +252,50 @@ for(variable in modelVariables) {
 
 # CHANGE DATA TYPES
 
-# Group altitude to bins for random walk effect
+# Group site characteristics to bins for random walk effect
 invData$BIO_ALTITUDE_scaled_grp <- INLA::inla.group(invData$BIO_ALTITUDE_scaled,
                                                     n = 10,
                                                     method = "cut")
+invData$BIO_SLOPE_scaled_grp <- INLA::inla.group(invData$BIO_SLOPE_scaled,
+                                                    n = 10,
+                                                    method = "cut")
+invData$BIO_DISTANCE_FROM_SOURCE_scaled_grp <- INLA::inla.group(invData$BIO_DISTANCE_FROM_SOURCE_scaled,
+                                                    n = 10,
+                                                    method = "cut")
+invData$BIO_DISCHARGE_scaled_grp <- INLA::inla.group(invData$BIO_DISCHARGE_scaled,
+                                                    n = 10,
+                                                    method = "cut")
+invData$BIO_WIDTH_scaled_grp <- INLA::inla.group(invData$BIO_WIDTH_scaled,
+                                                    n = 10,
+                                                    method = "cut")
+invData$BIO_DEPTH_scaled_grp <- INLA::inla.group(invData$BIO_DEPTH_scaled,
+                                                    n = 10,
+                                                    method = "cut")
+invData$BIO_BOULDERS_COBBLES_scaled_grp <- INLA::inla.group(invData$BIO_BOULDERS_COBBLES_scaled,
+                                                    n = 10,
+                                                    method = "cut")
+invData$BIO_PEBBLES_GRAVEL_scaled_grp <- INLA::inla.group(invData$BIO_PEBBLES_GRAVEL_scaled,
+                                                    n = 10,
+                                                    method = "cut")
+invData$BIO_SAND_scaled_grp <- INLA::inla.group(invData$BIO_SAND_scaled,
+                                                              n = 10,
+                                                              method = "cut")
+invData$BIO_SILT_CLAY_scaled_grp <- INLA::inla.group(invData$BIO_SILT_CLAY_scaled,
+                                                              n = 10,
+                                                              method = "cut")
 
 # Convert categorical variables for random effects to factors
 invData$WATER_BODY <- as.factor(invData$WATER_BODY)
 invData$CATCHMENT <- as.factor(invData$CATCHMENT)
 invData$REPORTING_AREA <- as.factor(invData$REPORTING_AREA)
-
-### CORRELATION PLOTS ----------------------------------------------------------
-
-corr_df <- invData %>%
-  select(pesticideShannon_scaled,
-         pesticideToxicLoad_PerArea_scaled,
-         fertiliser_n_PerArea_scaled,
-         fertiliser_p_PerArea_scaled,
-         fertiliser_k_PerArea_scaled,
-         cattle_PerArea_scaled,
-         pigs_PerArea_scaled,
-         sheep_PerArea_scaled,
-         poultry_PerArea_scaled,
-         EDF_MEAN_scaled,
-         HS_HMS_scaled,
-         HS_HQA_scaled,
-         totalArea_scaled,
-         Arable_PerArea_scaled,
-         Urban_PerArea_scaled,
-         BIO_DISCHARGE_scaled,
-         BIO_DISTANCE_FROM_SOURCE_scaled,
-         BIO_ALTITUDE_scaled,
-         MONTH_NUM)
-
-
-corr_df <- corr_df %>%
-  mutate(NPK = fertiliser_n_PerArea_scaled + 
-           fertiliser_p_PerArea_scaled + 
-           fertiliser_k_PerArea_scaled)
-
-
-corPredictors <- cor(corr_df %>% select(-c(fertiliser_n_PerArea_scaled, 
-                                             fertiliser_p_PerArea_scaled,
-                                             fertiliser_k_PerArea_scaled)))
-
-corrplot::corrplot(corPredictors,
-                   type = "upper", order = "original", diag = FALSE,
-                   method = "number", addCoef.col="white", tl.col = "black",
-                   tl.srt = 45)
-
-# Plot
-effectPairs <- corr_df %>%
-  # Select columns we want for pairs plot
-  select(-c(fertiliser_n_PerArea_scaled,
-            fertiliser_p_PerArea_scaled,
-            fertiliser_k_PerArea_scaled)) %>%
-  # Call ggpairs
-  ggpairs(
-    aes( alpha = 0.5),
-    lower = list(continuous = wrap("cor", size = 3)),
-    diag = list(continuous = wrap("densityDiag")),
-    upper = list(
-      combo = wrap("box_no_facet"),
-      continuous = wrap("points")
-    ))
+invData$YEAR <- as.factor(invData$YEAR)
 
 ### RUN SPECIES-LEVEL MODELS ---------------------------------------------------
 
 # Start taxa here
 # Loop through taxa then species to preserve ordering
 for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
-
+iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
   # Find species within taxa
   taxaSpecies <- invData %>%
     filter(TAXON_GROUP_NAME == iTaxa) %>%
@@ -267,7 +304,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
   
   # Loop through species here
   for (iSpecies in taxaSpecies) {
- 
+    iSpecies <- taxaSpecies[4]
     # PROCESS TO PRESENCE-ABSENCE FORMAT
 
     # Create iSpecies abundance column with 0s
@@ -287,14 +324,28 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       # Ungroup
       ungroup()
     
-    # SET MODEL COMPONENTS
+    # SET MODEL PARAMETERS
     
+    # Priors for fixed effects
+    fixedHyper <- list( mean.intercept=0, 
+                        prec.intercept=1,
+                        mean = 0,
+                        prec = 1 )
+    
+    # Priors for random effects
+    iidHyper <- list(prec = list(prior = "pc.prec",
+                                  param = c(0.5, 0.01)))
+    rw2Hyper <- list(prec = list(prior="pc.prec",
+                                     param=c(0.5, 0.01)))
+
+    # SET MODEL COMPONENTS
+
     comps <-speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
       NPK(fertiliser_n_PerArea_scaled +
-          fertiliser_p_PerArea_scaled +
-          fertiliser_k_PerArea_scaled, model = "linear") +
+            fertiliser_p_PerArea_scaled +
+            fertiliser_k_PerArea_scaled, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
@@ -304,54 +355,75 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       quality(HS_HQA_scaled, model = "linear") +
       arable(Arable_PerArea_scaled, model = "linear") +
       urban(Urban_PerArea_scaled, model = "linear") +
-      length(BIO_DISTANCE_FROM_SOURCE_scaled, model = "linear") +
       altitude(BIO_ALTITUDE_scaled_grp,
-                model = "rw2",
-                scale.model = TRUE,
-                hyper = riverPrior) +
+               model = "rw2",
+               scale.model = TRUE,
+               hyper = rw2Hyper) +
+      slope(BIO_SLOPE_scaled_grp,
+            model = "rw2",
+            scale.model = TRUE,
+            hyper = rw2Hyper) +
+      length(BIO_DISTANCE_FROM_SOURCE_scaled_grp,
+             model = "rw2",
+             scale.model = TRUE,
+             hyper = rw2Hyper) +
       discharge(BIO_DISCHARGE_scaled,
                 model = "rw2",
                 scale.model = TRUE,
-                hyper = riverPrior) +
+                hyper = rw2Hyper) +
+      width(BIO_WIDTH_scaled,
+                model = "rw2",
+                scale.model = TRUE,
+                hyper = rw2Hyper) +
+      depth(BIO_DEPTH_scaled,
+                model = "rw2",
+                scale.model = TRUE,
+                hyper = rw2Hyper) +
+      boulders(BIO_BOULDERS_COBBLES_scaled,
+                model = "rw2",
+                scale.model = TRUE,
+                hyper = rw2Hyper) +
+      pebbles(BIO_PEBBLES_GRAVEL_scaled,
+                model = "rw2",
+                scale.model = TRUE,
+                hyper = rw2Hyper) +
+      sand(BIO_SAND_scaled,
+                model = "rw2",
+                scale.model = TRUE,
+                hyper = rw2Hyper) +
+      silt(BIO_SILT_CLAY_scaled,
+                model = "rw2",
+                scale.model = TRUE,
+                hyper = rw2Hyper) +
       month(main = MONTH_NUM,
             model = "seasonal",
-            season.length = 6,
-            hyper = seasonPrior,
+            season.length = 12,
+            hyper = rw2Hyper,
             scale.model = TRUE) +
-     basin(REPORTING_AREA, model = "iid", hyper = locPrior) +
-     catchment(CATCHMENT, model = "iid", hyper = locPrior) +
-     wb(WATER_BODY, model = "iid", hyper = locPrior) +
+      year(YEAR, model = "iid", hyper = iidHyper) +
+      basin(REPORTING_AREA, model = "iid", hyper = iidHyper) +
+      catchment(CATCHMENT, model = "iid", hyper = iidHyper) +
+      wb(WATER_BODY, model = "iid", hyper = iidHyper) +
       Intercept(1)
-    
-    # SET MODEL PARAMETERS
 
-    # Priors for random effects
-    seasonPrior <- list(theta = list(prior = "pc.prec",
-                                     param = c(1, 0.01)))
-    riverPrior <- list(theta = list(prior = "pc.prec",
-                                     param = c(1, 0.01)))
-    locPrior <- list(theta = list(prior = "pc.prec",
-                                  param = c(1, 0.01)))
-    
     # RUN MODEL
-
+    
     model <- bru(
       components = comps,
-      family = "poisson",
+      family = "zeroinflatednbinomial1",
       data = speciesData,
       options = list(
-        control.compute = list(
-          waic = TRUE,
-          dic = TRUE,
-          cpo = TRUE
-        ),
-        verbose = TRUE
-      )
+        control.fixed = fixedHyper,
+        control.inla= list(int.strategy='eb'),
+        control.compute = list(waic = TRUE,
+                               dic = TRUE,
+                               cpo = TRUE),
+        verbose = TRUE)
     )
- 
+
     # Model summary
     modelSummary <- summary(model) ; modelSummary
-    
+
     # SAVE OUTPUT
     
     # Set folder
@@ -498,3 +570,104 @@ fixedEffPlot <- ggplot(effectSizeAll,
         plot.title = element_text(hjust = 0.5, vjust = -0.5))
 
 fixedEffPlot
+
+
+
+#### TESTING
+# Create presence/absence column for ZAP model
+speciesData <- mutate(speciesData,
+                      speciesPresent = (speciesAbundance > 0) * 1L)
+
+comps <- ~
+  pesticideDiv(pesticideShannon_scaled, model = "linear") +
+  pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
+  NPK(fertiliser_n_PerArea_scaled +
+        fertiliser_p_PerArea_scaled +
+        fertiliser_k_PerArea_scaled, model = "linear") +
+  cattle(cattle_PerArea_scaled, model = "linear") +
+  pigs(pigs_PerArea_scaled, model = "linear") +
+  sheep(sheep_PerArea_scaled, model = "linear") +
+  poultry(poultry_PerArea_scaled, model = "linear") +
+  wastewater(EDF_MEAN_scaled, model = "linear") +
+  modification(HS_HMS_scaled, model = "linear") +
+  quality(HS_HQA_scaled, model = "linear") +
+  arable(Arable_PerArea_scaled, model = "linear") +
+  urban(Urban_PerArea_scaled, model = "linear") +
+  altitude(BIO_ALTITUDE_scaled_grp,
+           model = "rw2",
+           scale.model = TRUE,
+           hyper = riverPrior) +
+  discharge(BIO_DISCHARGE_scaled,
+            model = "rw2",
+            scale.model = TRUE,
+            hyper = riverPrior) +
+  month(main = MONTH_NUM,
+        model = "seasonal",
+        season.length = 12,
+        hyper = timePrior,
+        scale.model = TRUE) +
+  year(YEAR,
+       model = "rw2",
+       scale.model = TRUE,
+       hyper = timePrior) +
+  basin(REPORTING_AREA, model = "iid", hyper = locPrior) +
+  catchment(CATCHMENT, model = "iid", hyper = locPrior) +
+  wb(WATER_BODY, model = "iid", hyper = locPrior) +
+  Intercept_present(1) +
+  Intercept_count(1)
+
+
+poisson_obs <- 
+  bru_obs(
+    family = "zeroinflatedpoisson1",
+    data = speciesData,
+    formula = speciesAbundance ~ pesticideDiv +
+      pesticideToxicity +
+      NPK +
+      cattle +
+      pigs +
+      sheep + 
+      poultry +
+      wastewater +
+      modification +
+      quality +
+      arable +
+      urban +
+      altitude +
+      month +
+      discharge +
+      basin + 
+      catchment +
+      wb +
+      Intercept_count,
+    control.family = list(hyper = list(theta = list(initial = -20,
+                                                    fixed = TRUE)
+    )))
+
+present_obs <- bru_obs(
+  family = "binomial",
+  data = speciesData,
+  formula = speciesPresent ~ 
+    year +
+    Intercept_present
+)
+
+# RUN MODEL
+
+model <- bru(
+  comps,
+  present_obs,
+  truncated_poisson_obs,
+  options = list(
+    control.compute = list(
+      waic = TRUE,
+      dic = TRUE,
+      cpo = TRUE
+    ),
+    verbose = TRUE
+  ))
+
+# Create summary
+modelSummary <- summary(model) ; modelSummary
+
+
