@@ -327,20 +327,18 @@ iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
     # SET MODEL PARAMETERS
     
     # Priors for fixed effects
-    fixedHyper <- list( mean.intercept=0, 
-                        prec.intercept=1,
-                        mean = 0,
+    fixedHyper <- list( mean = 0,
                         prec = 1 )
     
     # Priors for random effects
     iidHyper <- list(prec = list(prior = "pc.prec",
                                   param = c(0.5, 0.01)))
-    rw2Hyper <- list(prec = list(prior="pc.prec",
+    rwHyper <- list(prec = list(prior="pc.prec",
                                      param=c(0.5, 0.01)))
 
     # SET MODEL COMPONENTS
 
-    comps <-speciesAbundance ~
+    comps <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
       NPK(fertiliser_n_PerArea_scaled +
@@ -367,40 +365,42 @@ iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
              model = "rw2",
              scale.model = TRUE,
              hyper = rw2Hyper) +
-      discharge(BIO_DISCHARGE_scaled,
+      discharge(BIO_DISCHARGE_scaled_grp,
                 model = "rw2",
                 scale.model = TRUE,
                 hyper = rw2Hyper) +
-      width(BIO_WIDTH_scaled,
+      width(BIO_WIDTH_scaled_grp,
                 model = "rw2",
                 scale.model = TRUE,
                 hyper = rw2Hyper) +
-      depth(BIO_DEPTH_scaled,
+      depth(BIO_DEPTH_scaled_grp,
                 model = "rw2",
                 scale.model = TRUE,
                 hyper = rw2Hyper) +
-      boulders(BIO_BOULDERS_COBBLES_scaled,
+      boulders(BIO_BOULDERS_COBBLES_scaled_grp,
                 model = "rw2",
                 scale.model = TRUE,
                 hyper = rw2Hyper) +
-      pebbles(BIO_PEBBLES_GRAVEL_scaled,
+      pebbles(BIO_PEBBLES_GRAVEL_scaled_grp,
                 model = "rw2",
                 scale.model = TRUE,
                 hyper = rw2Hyper) +
-      sand(BIO_SAND_scaled,
+      sand(BIO_SAND_scaled_grp,
                 model = "rw2",
                 scale.model = TRUE,
                 hyper = rw2Hyper) +
-      silt(BIO_SILT_CLAY_scaled,
+      silt(BIO_SILT_CLAY_scaled_grp,
                 model = "rw2",
                 scale.model = TRUE,
                 hyper = rw2Hyper) +
       month(main = MONTH_NUM,
-            model = "seasonal",
-            season.length = 12,
+            model = "rw2",
+            cyclic = TRUE,
             hyper = rw2Hyper,
             scale.model = TRUE) +
-      year(YEAR, model = "iid", hyper = iidHyper) +
+      year(YEAR, model = "rw1",
+           hyper = rw2Hyper,
+           scale.model = TRUE) +
       basin(REPORTING_AREA, model = "iid", hyper = iidHyper) +
       catchment(CATCHMENT, model = "iid", hyper = iidHyper) +
       wb(WATER_BODY, model = "iid", hyper = iidHyper) +
@@ -414,7 +414,6 @@ iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
       data = speciesData,
       options = list(
         control.fixed = fixedHyper,
-        control.inla= list(int.strategy='eb'),
         control.compute = list(waic = TRUE,
                                dic = TRUE,
                                cpo = TRUE),
