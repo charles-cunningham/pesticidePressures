@@ -255,34 +255,31 @@ for(variable in modelVariables) {
 # Group site characteristics to bins for random walk effect
 invData$BIO_ALTITUDE_scaled_grp <- INLA::inla.group(invData$BIO_ALTITUDE_scaled,
                                                     n = 10,
-                                                    method = "cut")
+                                                    method = "quantile")
 invData$BIO_SLOPE_scaled_grp <- INLA::inla.group(invData$BIO_SLOPE_scaled,
                                                     n = 10,
-                                                    method = "cut")
+                                                    method = "quantile")
 invData$BIO_DISTANCE_FROM_SOURCE_scaled_grp <- INLA::inla.group(invData$BIO_DISTANCE_FROM_SOURCE_scaled,
                                                     n = 10,
-                                                    method = "cut")
-invData$BIO_DISCHARGE_scaled_grp <- INLA::inla.group(invData$BIO_DISCHARGE_scaled,
-                                                    n = 10,
-                                                    method = "cut")
+                                                    method = "quantile")
 invData$BIO_WIDTH_scaled_grp <- INLA::inla.group(invData$BIO_WIDTH_scaled,
                                                     n = 10,
-                                                    method = "cut")
+                                                    method = "quantile")
 invData$BIO_DEPTH_scaled_grp <- INLA::inla.group(invData$BIO_DEPTH_scaled,
                                                     n = 10,
-                                                    method = "cut")
+                                                    method = "quantile")
 invData$BIO_BOULDERS_COBBLES_scaled_grp <- INLA::inla.group(invData$BIO_BOULDERS_COBBLES_scaled,
                                                     n = 10,
-                                                    method = "cut")
+                                                    method = "quantile")
 invData$BIO_PEBBLES_GRAVEL_scaled_grp <- INLA::inla.group(invData$BIO_PEBBLES_GRAVEL_scaled,
                                                     n = 10,
-                                                    method = "cut")
+                                                    method = "quantile")
 invData$BIO_SAND_scaled_grp <- INLA::inla.group(invData$BIO_SAND_scaled,
                                                               n = 10,
-                                                              method = "cut")
+                                                              method = "quantile")
 invData$BIO_SILT_CLAY_scaled_grp <- INLA::inla.group(invData$BIO_SILT_CLAY_scaled,
                                                               n = 10,
-                                                              method = "cut")
+                                                              method = "quantile")
 
 # Convert categorical variables for random effects to factors
 invData$WATER_BODY <- as.factor(invData$WATER_BODY)
@@ -327,7 +324,9 @@ iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
     # SET MODEL PARAMETERS
     
     # Priors for fixed effects
-    fixedHyper <- list( mean = 0,
+    fixedHyper <- list( mean.intercept = 0,
+                        prec.intercept = 1,
+                        mean = 0,
                         prec = 1 )
     
     # Priors for random effects
@@ -365,7 +364,7 @@ iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
              model = "rw2",
              scale.model = TRUE,
              hyper = rw2Hyper) +
-      discharge(BIO_DISCHARGE_scaled_grp,
+      discharge(BIO_DISCHARGE_scaled,
                 model = "rw2",
                 scale.model = TRUE,
                 hyper = rw2Hyper) +
@@ -394,7 +393,7 @@ iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
                 scale.model = TRUE,
                 hyper = rw2Hyper) +
       month(main = MONTH_NUM,
-            model = "rw2",
+            model = "rw1",
             cyclic = TRUE,
             hyper = rw2Hyper,
             scale.model = TRUE) +
