@@ -184,7 +184,7 @@ for (i in brmsList) {
           axis.title.x = element_text(size = 16))
   
   # Save
-  ggsave(filename = paste0(plotDir, "/Meta_analyis/Meta_",
+  ggsave(filename = paste0(plotDir, "/Meta_analysis/Meta_",
                            i, "_taxaSummaries.png"),
          taxaSummaries,
          dpi = 600,
