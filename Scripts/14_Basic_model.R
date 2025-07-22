@@ -103,7 +103,8 @@ invData <- invData %>%
   filter(!(is.na(pesticideLoad))) %>%
   # Remove rows with no site data
   filter(!(is.na(EDF_MEAN))) %>%
-  filter(!(is.na(HS_HMS)))
+  filter(!(is.na(HS_HMS))) %>%
+  filter(!(is.na(BIO_DEPTH))) 
 
 ### PROCESS TAXONOMY -----------------------------------------------------------
 
@@ -126,41 +127,23 @@ invDataINNS <- invData %>%
   distinct(TAXON_NAME) %>%
   .$TAXON_NAME
 
-### MODIFY UPSTREAM VARIABLES TO PER AREA VALUES -------------------------------
-
-# Divide upstream variables by area (excluding diversity)
-for(variable in c("fertiliser_k",
-                  "fertiliser_n",
-                  "fertiliser_p",
-                  "Arable",
-                  "Urban",
-                  "pesticideLoad",
-                  "pesticideToxicLoad",
-                  "cattle",
-                  "pigs",
-                  "sheep",
-                  "poultry")) {
-  
-  # Create new scaled column name
-  colName <- paste0(variable, "_PerArea")
-  
-  # Assign scaled variable to new column
-  invData[, colName] <- invData[, variable] / invData[, "totalArea"]
-  
-}
-
 ### CORRELATION PLOTS ----------------------------------------------------------
 
 corr_df <- invData %>%
   select(pesticideShannon,
-         pesticideToxicLoad_PerArea,
-         fertiliser_n_PerArea,
-         fertiliser_p_PerArea,
-         fertiliser_k_PerArea,
-         cattle_PerArea,
-         pigs_PerArea,
-         sheep_PerArea,
-         poultry_PerArea,
+         pesticideToxicLoad,
+         fertiliser_n,
+         fertiliser_p,
+         fertiliser_k,
+         Arable,
+         Urban,
+         Improved_grassland,
+         Deciduous_woodland,
+         Coniferous_woodland,
+         cattle,
+         pigs,
+         sheep,
+         poultry,
          EDF_MEAN,
          HS_HMS,
          HS_HQA,
@@ -178,12 +161,12 @@ corr_df <- invData %>%
          MONTH_NUM)
 
 corr_df <- corr_df %>%
-  mutate(NPK = fertiliser_n_PerArea + 
-           fertiliser_p_PerArea + 
-           fertiliser_k_PerArea) %>%
-  select(-c(fertiliser_n_PerArea, 
-            fertiliser_p_PerArea,
-            fertiliser_k_PerArea))
+  mutate(NPK = fertiliser_n + 
+           fertiliser_p + 
+           fertiliser_k) %>%
+  select(-c(fertiliser_n, 
+            fertiliser_p,
+            fertiliser_k))
 
 corPredictors <- cor(corr_df) 
 
@@ -195,9 +178,9 @@ corrplot::corrplot(corPredictors,
 # Plot
 # effectPairs <- corr_df %>%
 #   # Select columns we want for pairs plot
-#   select(-c(fertiliser_n_PerArea_scaled,
-#             fertiliser_p_PerArea_scaled,
-#             fertiliser_k_PerArea_scaled)) %>%
+#   select(-c(fertiliser_n_scaled,
+#             fertiliser_p_scaled,
+#             fertiliser_k_scaled)) %>%
 #   # Call ggpairs
 #   ggpairs(
 #     aes( alpha = 0.5),
@@ -208,23 +191,31 @@ corrplot::corrplot(corPredictors,
 #     #   continuous = wrap("points")
 #   )
 
+### AGGREGATE VARIABLES --------------------------------------------------------
+
+# NPK
+invData$NPK <- invData$fertiliser_k + invData$fertiliser_n + invData$fertiliser_p
+
+# Woodland
+invData$woodland <- invData$Deciduous_woodland + invData$Coniferous_woodland
+
 # SCALE VARIABLES --------------------------------------------------------------
 
 # List variables to be scaled
 modelVariables <- c(
   # Upstream variables
-  "fertiliser_k_PerArea",
-  "fertiliser_n_PerArea",
-  "fertiliser_p_PerArea",
-  "Arable_PerArea",
-  "Urban_PerArea",
+  "NPK",
+  "Arable",
+  "Urban",
+  "Improved_grassland",
+  "woodland",
   "pesticideShannon",
-  "pesticideLoad_PerArea",
-  "pesticideToxicLoad_PerArea",
-  "cattle_PerArea",
-  "pigs_PerArea",
-  "sheep_PerArea",
-  "poultry_PerArea",
+  "pesticideLoad",
+  "pesticideToxicLoad",
+  "cattle",
+  "pigs",
+  "sheep",
+  "poultry",
   # Site variables
   "EDF_MEAN",
   "HS_HMS",
@@ -250,49 +241,37 @@ for(variable in modelVariables) {
   invData[, colName] <- scale(invData[[variable]])[,1]
 }
 
-# CHANGE DATA TYPES
-
-# Group site characteristics to bins for random walk effect
-invData$BIO_ALTITUDE_scaled_grp <- INLA::inla.group(invData$BIO_ALTITUDE_scaled,
-                                                    n = 10,
-                                                    method = "quantile")
-invData$BIO_SLOPE_scaled_grp <- INLA::inla.group(invData$BIO_SLOPE_scaled,
-                                                    n = 10,
-                                                    method = "quantile")
-invData$BIO_DISTANCE_FROM_SOURCE_scaled_grp <- INLA::inla.group(invData$BIO_DISTANCE_FROM_SOURCE_scaled,
-                                                    n = 10,
-                                                    method = "quantile")
-invData$BIO_WIDTH_scaled_grp <- INLA::inla.group(invData$BIO_WIDTH_scaled,
-                                                    n = 10,
-                                                    method = "quantile")
-invData$BIO_DEPTH_scaled_grp <- INLA::inla.group(invData$BIO_DEPTH_scaled,
-                                                    n = 10,
-                                                    method = "quantile")
-invData$BIO_BOULDERS_COBBLES_scaled_grp <- INLA::inla.group(invData$BIO_BOULDERS_COBBLES_scaled,
-                                                    n = 10,
-                                                    method = "quantile")
-invData$BIO_PEBBLES_GRAVEL_scaled_grp <- INLA::inla.group(invData$BIO_PEBBLES_GRAVEL_scaled,
-                                                    n = 10,
-                                                    method = "quantile")
-invData$BIO_SAND_scaled_grp <- INLA::inla.group(invData$BIO_SAND_scaled,
-                                                              n = 10,
-                                                              method = "quantile")
-invData$BIO_SILT_CLAY_scaled_grp <- INLA::inla.group(invData$BIO_SILT_CLAY_scaled,
-                                                              n = 10,
-                                                              method = "quantile")
-
 # Convert categorical variables for random effects to factors
 invData$WATER_BODY <- as.factor(invData$WATER_BODY)
 invData$CATCHMENT <- as.factor(invData$CATCHMENT)
 invData$REPORTING_AREA <- as.factor(invData$REPORTING_AREA)
 invData$YEAR <- as.factor(invData$YEAR)
 
+### CONVERT SITE VARIABLES TO PCA ----------------------------------------------
+
+sitePCA <- invData %>% 
+  select(BIO_ALTITUDE,
+         BIO_SLOPE,
+         BIO_DISTANCE_FROM_SOURCE,
+         BIO_DISCHARGE,
+         BIO_WIDTH,
+         BIO_DEPTH,
+         BIO_BOULDERS_COBBLES,
+         BIO_PEBBLES_GRAVEL,
+         BIO_SAND,
+         BIO_SILT_CLAY) %>%
+  prcomp(.)
+
+summary(sitePCA)
+
+invData <- cbind(invData, sitePCA$x)
+
 ### RUN SPECIES-LEVEL MODELS ---------------------------------------------------
 
 # Start taxa here
 # Loop through taxa then species to preserve ordering
 for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
-iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
+iTaxa <- unique(invData$TAXON_GROUP_NAME)[5]
   # Find species within taxa
   taxaSpecies <- invData %>%
     filter(TAXON_GROUP_NAME == iTaxa) %>%
@@ -301,7 +280,7 @@ iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
   
   # Loop through species here
   for (iSpecies in taxaSpecies) {
-    iSpecies <- taxaSpecies[4]
+    iSpecies <- taxaSpecies[5]
     # PROCESS TO PRESENCE-ABSENCE FORMAT
 
     # Create iSpecies abundance column with 0s
@@ -339,61 +318,27 @@ iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
 
     comps <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      NPK(fertiliser_n_PerArea_scaled +
-            fertiliser_p_PerArea_scaled +
-            fertiliser_k_PerArea_scaled, model = "linear") +
-      cattle(cattle_PerArea_scaled, model = "linear") +
-      pigs(pigs_PerArea_scaled, model = "linear") +
-      sheep(sheep_PerArea_scaled, model = "linear") +
-      poultry(poultry_PerArea_scaled, model = "linear") +
+      pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+      NPK(NPK_scaled, model = "linear") +
+      cattle(cattle_scaled, model = "linear") +
+      pigs(pigs_scaled, model = "linear") +
+      sheep(sheep_scaled, model = "linear") +
+      poultry(poultry_scaled, model = "linear") +
       wastewater(EDF_MEAN_scaled, model = "linear") +
       modification(HS_HMS_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
-      arable(Arable_PerArea_scaled, model = "linear") +
-      urban(Urban_PerArea_scaled, model = "linear") +
-      altitude(BIO_ALTITUDE_scaled_grp,
-               model = "rw2",
-               scale.model = TRUE,
-               hyper = rw2Hyper) +
-      slope(BIO_SLOPE_scaled_grp,
-            model = "rw2",
-            scale.model = TRUE,
-            hyper = rw2Hyper) +
-      length(BIO_DISTANCE_FROM_SOURCE_scaled_grp,
-             model = "rw2",
-             scale.model = TRUE,
-             hyper = rw2Hyper) +
-      discharge(BIO_DISCHARGE_scaled,
-                model = "rw2",
-                scale.model = TRUE,
-                hyper = rw2Hyper) +
-      width(BIO_WIDTH_scaled_grp,
-                model = "rw2",
-                scale.model = TRUE,
-                hyper = rw2Hyper) +
-      depth(BIO_DEPTH_scaled_grp,
-                model = "rw2",
-                scale.model = TRUE,
-                hyper = rw2Hyper) +
-      boulders(BIO_BOULDERS_COBBLES_scaled_grp,
-                model = "rw2",
-                scale.model = TRUE,
-                hyper = rw2Hyper) +
-      pebbles(BIO_PEBBLES_GRAVEL_scaled_grp,
-                model = "rw2",
-                scale.model = TRUE,
-                hyper = rw2Hyper) +
-      sand(BIO_SAND_scaled_grp,
-                model = "rw2",
-                scale.model = TRUE,
-                hyper = rw2Hyper) +
-      silt(BIO_SILT_CLAY_scaled_grp,
-                model = "rw2",
-                scale.model = TRUE,
-                hyper = rw2Hyper) +
+      arable(Arable_scaled, model = "linear") +
+      pasture(Improved_grassland_scaled, model = "linear") +
+      urban(Urban_scaled, model = "linear") +
+      woodland(woodland_scaled, model = "linear") +
+      PC1(PC1, model = "linear") +
+      PC2(PC2, model = "linear") +
+      PC3(PC3, model = "linear") +
+      PC4(PC4, model = "linear") +
+      PC5(PC5, model = "linear") +
+      PC6(PC6, model = "linear") +
       month(main = MONTH_NUM,
-            model = "rw1",
+            model = "rw2",
             cyclic = TRUE,
             hyper = rw2Hyper,
             scale.model = TRUE) +
@@ -578,19 +523,19 @@ speciesData <- mutate(speciesData,
 
 comps <- ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-  NPK(fertiliser_n_PerArea_scaled +
-        fertiliser_p_PerArea_scaled +
-        fertiliser_k_PerArea_scaled, model = "linear") +
-  cattle(cattle_PerArea_scaled, model = "linear") +
-  pigs(pigs_PerArea_scaled, model = "linear") +
-  sheep(sheep_PerArea_scaled, model = "linear") +
-  poultry(poultry_PerArea_scaled, model = "linear") +
+  pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+  NPK(fertiliser_n_scaled +
+        fertiliser_p_scaled +
+        fertiliser_k_scaled, model = "linear") +
+  cattle(cattle_scaled, model = "linear") +
+  pigs(pigs_scaled, model = "linear") +
+  sheep(sheep_scaled, model = "linear") +
+  poultry(poultry_scaled, model = "linear") +
   wastewater(EDF_MEAN_scaled, model = "linear") +
   modification(HS_HMS_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
-  arable(Arable_PerArea_scaled, model = "linear") +
-  urban(Urban_PerArea_scaled, model = "linear") +
+  arable(Arable_scaled, model = "linear") +
+  urban(Urban_scaled, model = "linear") +
   altitude(BIO_ALTITUDE_scaled_grp,
            model = "rw2",
            scale.model = TRUE,
