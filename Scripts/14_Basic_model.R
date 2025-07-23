@@ -245,7 +245,6 @@ for(variable in modelVariables) {
 invData$WATER_BODY <- as.factor(invData$WATER_BODY)
 invData$CATCHMENT <- as.factor(invData$CATCHMENT)
 invData$REPORTING_AREA <- as.factor(invData$REPORTING_AREA)
-invData$YEAR <- as.factor(invData$YEAR)
 
 ### CONVERT SITE VARIABLES TO PCA ----------------------------------------------
 
@@ -271,21 +270,21 @@ invData <- cbind(invData, sitePCA$x)
 # Start taxa here
 # Loop through taxa then species to preserve ordering
 for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
-iTaxa <- unique(invData$TAXON_GROUP_NAME)[5]
+iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
   # Find species within taxa
   taxaSpecies <- invData %>%
     filter(TAXON_GROUP_NAME == iTaxa) %>%
-    .[["TAXON_NAME"]] %>%
+    .[["TAXON"]] %>%
     unique()
   
   # Loop through species here
   for (iSpecies in taxaSpecies) {
-    iSpecies <- taxaSpecies[5]
+    iSpecies <- taxaSpecies[4]
     # PROCESS TO PRESENCE-ABSENCE FORMAT
 
     # Create iSpecies abundance column with 0s
     speciesData <- invData %>%
-      mutate(speciesAbundance = ifelse(TAXON_NAME == iSpecies,
+      mutate(speciesAbundance = ifelse(TAXON == iSpecies,
                                        TOTAL_ABUNDANCE,
                                        0)) %>%
       # Remove TOTAL_ABUNDANCE column as deprecated
@@ -340,10 +339,10 @@ iTaxa <- unique(invData$TAXON_GROUP_NAME)[5]
       month(main = MONTH_NUM,
             model = "rw2",
             cyclic = TRUE,
-            hyper = rw2Hyper,
+            hyper = rwHyper,
             scale.model = TRUE) +
       year(YEAR, model = "rw1",
-           hyper = rw2Hyper,
+           hyper = rwHyper,
            scale.model = TRUE) +
       basin(REPORTING_AREA, model = "iid", hyper = iidHyper) +
       catchment(CATCHMENT, model = "iid", hyper = iidHyper) +
