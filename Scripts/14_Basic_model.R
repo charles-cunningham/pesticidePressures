@@ -109,7 +109,7 @@ invData <- invData %>%
 ### PROCESS TAXONOMY -----------------------------------------------------------
 
 # Change species names to be file friendly
-invData$TAXON_NAME <- invData$TAXON_NAME %>%
+invData$TAXON <- invData$TAXON %>%
   # Remove slashes
   gsub(" ", "_", .) %>%
   # Remove
@@ -118,14 +118,14 @@ invData$TAXON_NAME <- invData$TAXON_NAME %>%
 # Schedule 2 species list
 invDataS2 <- invData %>%
   filter(GROUP == "Schedule 2") %>%
-  distinct(TAXON_NAME) %>%
-  .$TAXON_NAME
+  distinct(TAXON) %>%
+  .$TAXON
 
 # INNS species list
 invDataINNS <- invData %>%
   filter(GROUP == "INNS") %>%
-  distinct(TAXON_NAME) %>%
-  .$TAXON_NAME
+  distinct(TAXON) %>%
+  .$TAXON
 
 ### CORRELATION PLOTS ----------------------------------------------------------
 
@@ -270,7 +270,7 @@ invData <- cbind(invData, sitePCA$x)
 # Start taxa here
 # Loop through taxa then species to preserve ordering
 for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
-iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
+
   # Find species within taxa
   taxaSpecies <- invData %>%
     filter(TAXON_GROUP_NAME == iTaxa) %>%
@@ -279,7 +279,7 @@ iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
   
   # Loop through species here
   for (iSpecies in taxaSpecies) {
-    iSpecies <- taxaSpecies[4]
+
     # PROCESS TO PRESENCE-ABSENCE FORMAT
 
     # Create iSpecies abundance column with 0s
@@ -400,7 +400,6 @@ iTaxa <- unique(invData$TAXON_GROUP_NAME)[4]
          )
   }
 }
-
 
 ### PLOT
 
