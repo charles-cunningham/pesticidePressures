@@ -270,12 +270,23 @@ invData <- cbind(invData, sitePCA$x)
 # Start taxa here
 # Loop through taxa then species to preserve ordering
 for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
+  
+# Set minimum number of records to model
+minRecords <- 100
 
-  # Find species within taxa
-  taxaSpecies <- invData %>%
-    filter(TAXON_GROUP_NAME == iTaxa) %>%
-    .[["TAXON"]] %>%
-    unique()
+# Find species within taxa
+taxaSpecies <- invData %>%
+  
+  # Filter to TAXON_GROUP
+  filter(TAXON_GROUP_NAME == iTaxa) %>%
+  
+  # Filter only rows of species with over 100 records
+  group_by(TAXON) %>% 
+  filter(n() > minRecords) %>%
+  
+  # Get unique TAXON names
+  .[["TAXON"]] %>%
+  unique()
   
   # Loop through species here
   for (iSpecies in taxaSpecies) {
@@ -351,6 +362,12 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
 
     # RUN MODEL
     
+    # Remove previous model
+    rm(model)
+    
+    # Add escape if model does not converge(
+    try(
+    
     model <- bru(
       components = comps,
       family = "zeroinflatednbinomial1",
@@ -362,12 +379,16 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
                                cpo = TRUE),
         verbose = TRUE)
     )
-
-    # Model summary
-    modelSummary <- summary(model) ; modelSummary
+    )
 
     # SAVE OUTPUT
     
+    # If model converges...
+    if (exists("model")) {
+    
+    # Model summary
+    modelSummary <- summary(model) ; modelSummary
+
     # Set folder
     
     # If iTaxa is Schedule 2
@@ -399,6 +420,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            ".Rds")
          )
   }
+}
 }
 
 ### PLOT
