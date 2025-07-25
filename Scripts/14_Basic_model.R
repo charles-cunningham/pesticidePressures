@@ -37,7 +37,7 @@ library(GGally)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 # Set data directory
-# If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/
+# If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 # If working locally: "../Data/"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 
@@ -89,9 +89,9 @@ invData$WEEK <- invData$SAMPLE_DATE %>%
 
 # FILTER VARIABLES ----------------------------------------------------
 
-# Filter temporally ( filter years between 2011 and 2020 inclusive)
+# Filter temporally ( filter years after 2010)
 invData <- invData %>%
-  filter(YEAR >= 2010 & YEAR < 2020)
+  filter(YEAR >= 2010)
 
 # Rescale months and years
 invData$MONTH_NUM <- invData$MONTH_NUM - (min(invData$MONTH_NUM) - 1)
@@ -102,9 +102,9 @@ invData <- invData %>%
   # Remove rows with no upstream data
   filter(!(is.na(pesticideLoad))) %>%
   # Remove rows with no site data
-  filter(!(is.na(EDF_MEAN))) %>%
+  filter(!(is.na(EDF_MEAN))) %>% 
   filter(!(is.na(HS_HMS))) %>%
-  filter(!(is.na(BIO_DEPTH))) 
+  filter(!(is.na(BIO_DEPTH)))
 
 ### PROCESS TAXONOMY -----------------------------------------------------------
 
@@ -199,6 +199,25 @@ invData$NPK <- invData$fertiliser_k + invData$fertiliser_n + invData$fertiliser_
 # Woodland
 invData$woodland <- invData$Deciduous_woodland + invData$Coniferous_woodland
 
+### CONVERT SITE VARIABLES TO PCA ----------------------------------------------
+
+sitePCA <- invData %>% 
+  select(BIO_ALTITUDE,
+         BIO_SLOPE,
+         BIO_DISTANCE_FROM_SOURCE,
+         BIO_DISCHARGE,
+         BIO_WIDTH,
+         BIO_DEPTH,
+         BIO_BOULDERS_COBBLES,
+         BIO_PEBBLES_GRAVEL,
+         BIO_SAND,
+         BIO_SILT_CLAY) %>%
+  prcomp(.)
+
+summary(sitePCA)
+
+invData <- cbind(invData, sitePCA$x)
+
 # SCALE VARIABLES --------------------------------------------------------------
 
 # List variables to be scaled
@@ -220,16 +239,12 @@ modelVariables <- c(
   "EDF_MEAN",
   "HS_HMS",
   "HS_HQA",
-  "BIO_ALTITUDE",
-  "BIO_SLOPE", 
-  "BIO_DISTANCE_FROM_SOURCE",
-  "BIO_DISCHARGE",
-  "BIO_WIDTH",
-  "BIO_DEPTH", 
-  "BIO_BOULDERS_COBBLES", 
-  "BIO_PEBBLES_GRAVEL", 
-  "BIO_SAND",
-  "BIO_SILT_CLAY")
+  "PC1",
+  "PC2",
+  "PC3",
+  "PC4",
+  "PC5",
+  "PC6")
 
 # Create additional scaled column for each modelVariables
 for(variable in modelVariables) {
@@ -246,31 +261,12 @@ invData$WATER_BODY <- as.factor(invData$WATER_BODY)
 invData$CATCHMENT <- as.factor(invData$CATCHMENT)
 invData$REPORTING_AREA <- as.factor(invData$REPORTING_AREA)
 
-### CONVERT SITE VARIABLES TO PCA ----------------------------------------------
-
-sitePCA <- invData %>% 
-  select(BIO_ALTITUDE,
-         BIO_SLOPE,
-         BIO_DISTANCE_FROM_SOURCE,
-         BIO_DISCHARGE,
-         BIO_WIDTH,
-         BIO_DEPTH,
-         BIO_BOULDERS_COBBLES,
-         BIO_PEBBLES_GRAVEL,
-         BIO_SAND,
-         BIO_SILT_CLAY) %>%
-  prcomp(.)
-
-summary(sitePCA)
-
-invData <- cbind(invData, sitePCA$x)
-
 ### RUN SPECIES-LEVEL MODELS ---------------------------------------------------
 
 # Start taxa here
 # Loop through taxa then species to preserve ordering
 for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
-  
+
 # Set minimum number of records to model
 minRecords <- 100
 
@@ -341,12 +337,12 @@ taxaSpecies <- invData %>%
       pasture(Improved_grassland_scaled, model = "linear") +
       urban(Urban_scaled, model = "linear") +
       woodland(woodland_scaled, model = "linear") +
-      PC1(PC1, model = "linear") +
-      PC2(PC2, model = "linear") +
-      PC3(PC3, model = "linear") +
-      PC4(PC4, model = "linear") +
-      PC5(PC5, model = "linear") +
-      PC6(PC6, model = "linear") +
+      PC1(PC1_scaled, model = "linear") +
+      PC2(PC2_scaled, model = "linear") +
+      PC3(PC3_scaled, model = "linear") +
+      PC4(PC4_scaled, model = "linear") +
+      PC5(PC5_scaled, model = "linear") +
+      PC6(PC6_scaled, model = "linear") +
       month(main = MONTH_NUM,
             model = "rw2",
             cyclic = TRUE,
@@ -363,7 +359,7 @@ taxaSpecies <- invData %>%
     # RUN MODEL
     
     # Remove previous model
-    rm(model)
+    if (exists("model")) {rm(model)}
     
     # Add escape if model does not converge(
     try(
