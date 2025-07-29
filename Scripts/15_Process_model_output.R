@@ -52,24 +52,28 @@ for (iTaxa in taxaGroups) {
     # Assign fixed effects to dataframe
     iSpeciesEffects_df <- data.frame(modelSummary$inla$fixed)
     
-    # Add fixed effects name column
-    iSpeciesEffects_df$effect <- rownames(iSpeciesEffects_df)
+    # If model converged...
+    if (NROW(iSpeciesEffects_df) > 0) {
     
-    # Add in species name to fixed effects data frames
-    iSpeciesEffects_df$species <- basename(taxaOutput[i]) %>%
-      sub(".Rds",
-          "",
-          .)
+      # Add fixed effects name column
+      iSpeciesEffects_df$effect <- rownames(iSpeciesEffects_df)
     
-    # Add taxa column
-    iSpeciesEffects_df$taxa <- iTaxa
+      # Add in species name to fixed effects data frames
+      iSpeciesEffects_df$species <- basename(taxaOutput[i]) %>%
+        sub(".Rds",
+            "",
+            .)
+      # Add taxa column
+      iSpeciesEffects_df$taxa <- iTaxa
     
-    # Drop redundant row names
-    rownames(iSpeciesEffects_df) <- NULL
+      # Drop redundant row names
+      rownames(iSpeciesEffects_df) <- NULL
+      
+      # Bind iSpeciesEffects_df to the aggregated datadrame of all species
+      effects_df <-
+        bind_rows(effects_df, iSpeciesEffects_df)
     
-    # Bind iSpeciesEffects_df to the aggregated datadrame of all species
-    effects_df <-
-      bind_rows(effects_df, iSpeciesEffects_df)
+    }
   }
 }
 
