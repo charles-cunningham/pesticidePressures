@@ -29,13 +29,65 @@ plotDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 brmsList <- c("pesticideDiv_brms", "pesticideToxicity_brms", "NPK_brms",
               "cattle_brms", "sheep_brms","pigs_brms", "poultry_brms",
               "wastewater_brms", "modification_brms", "quality_brms",
-              "arable_brms", "urban_brms", "length_brms")
+              "arable_brms", "urban_brms","pasture_brms", "woodland_brms")
 
 # Load brms objects
 load(paste0(dataDir, "Species_brms.Rdata"))
 
 # Load SDM fixed effect summaries
 load(paste0(dataDir, "Species_effects.Rdata"))
+
+# SET PARAMETERS ------------------------------------
+
+# Set taxa groups to analyse
+taxaGroups <- c("annelid",                        "crustacean",                        
+                "flatworm (Turbellaria)",         "insect - alderfly (Megaloptera)",
+                "insect - beetle (Coleoptera)",   "insect - caddis fly (Trichoptera)",
+                "insect - dragonfly (Odonata)",   "insect - mayfly (Ephemeroptera)",
+                "insect - stonefly (Plecoptera)", "insect - true bug (Hemiptera)",
+                "insect - true fly (Diptera)",    "mollusc") 
+
+# Set taxa group labels
+taxaGroupLabels <- c("Leeches", "Crustaceans",                        
+                     "Flatworms",       "Alderflies",
+                     "Beetles",         "Caddisflies",
+                     "Dragonflies",     "Mayflies",
+                     "Stoneflies",      "True bugs",
+                     "True flies",      "Molluscs") 
+
+# Set taxa group labels
+taxaGroupLabels <- c( "annelid" = "Leeches",
+                      "crustacean" = "Crustaceans",
+                      "flatworm (Turbellaria)" = "Flatworms",
+                      "insect - alderfly (Megaloptera)" = "Alderflies",
+                      "insect - beetle (Coleoptera)" = "Beetles",
+                      "insect - mayfly (Ephemeroptera)" = "Caddisflies",
+                      "insect - dragonfly (Odonata)" = "Dragonflies",
+                      "insect - mayfly (Ephemeroptera)" = "Mayflies",
+                      "insect - stonefly (Plecoptera)" = "Stoneflies",
+                      "insect - true bug (Hemiptera)" = "True bugs",
+                      "insect - true fly (Diptera)" = "True flies",
+                      "mollusc" = "Molluscs")
+
+# Set phylopic images (choose uuid manually)
+phylopicImages <- data.frame(taxa = taxaGroups,
+                             uuid = c("91973387-c0fb-4193-a28d-17fe4284c4aa",
+                                      "639a8581-cf15-4ab0-a81a-d4319f7078d7",
+                                      "c0d58291-98ee-40b9-a842-fa5e10b64496",
+                                      "50a3840c-8e67-4d89-8904-609fcd53860a",
+                                      "74e85bf0-e705-4512-9e53-be48e39251eb",
+                                      "d04ff776-292a-4181-a7d9-117a7036a348",
+                                      "2757cb60-acda-422d-a318-85b812a658c2",
+                                      "518961b9-b966-4094-b402-8ba63183cf26",
+                                      "5fc0aae8-0ad3-4d6e-b5f3-3b948b04614b",
+                                      "e462a93f-e572-4ed8-9420-91335a24c6b4",
+                                      "c5835123-e2d3-4c20-9e7a-f7b6528bbf8e",
+                                      "c5835123-e2d3-4c20-9e7a-f7b6528bbf8e")) %>%
+  mutate(svg = lapply(uuid, get_phylopic)) # Use uuids to get image objects
+
+# Get attribution using get_attribution():
+#get_attribution(uuid = "5aeaf558-3c48-4173-83b4-dbf2846f8d75")
+
 
 # SUMMARISE EFFECT SIZES -------------------------------------------------------
 
