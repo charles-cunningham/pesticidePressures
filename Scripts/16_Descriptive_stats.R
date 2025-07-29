@@ -32,11 +32,13 @@ load(paste0(dataDir, "Species_effects.Rdata"))
 
 # Plot
  effects_df[, ] %>%
-  #filter(str_detect(taxa, "insect -" )) %>%
+
   ggplot() +
   geom_boxplot(aes(x = effect, y = mean   )) +
    #facet_wrap(~taxa) +
   geom_hline(yintercept = 0, linetype = "dashed") +
+  #facet_wrap(~taxa) +
+  #ylim(c(-8,8)) +
   coord_flip()
 
 # Save
