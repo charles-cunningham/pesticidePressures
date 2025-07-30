@@ -109,10 +109,17 @@ invData <- invData %>%
 ### PROCESS TAXONOMY -----------------------------------------------------------
 
 # Change species names to be file friendly
+invData$TAXON_GROUP_NAME <- invData$TAXON_GROUP_NAME %>%
+  # Remove "insect - " prefix
+  gsub("insect - ", "", .)
+  # Remove spaces
+  gsub(" ", "_", .)
+
+# Change taxanomic group names to be file friendly
 invData$TAXON <- invData$TAXON %>%
-  # Remove slashes
+  # Remove spaces
   gsub(" ", "_", .) %>%
-  # Remove
+  # Remove slashes
   gsub("/", "-", .)
 
 # Schedule 2 species list
