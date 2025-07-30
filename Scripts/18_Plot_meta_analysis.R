@@ -40,12 +40,19 @@ load(paste0(dataDir, "Species_effects.Rdata"))
 # SET PARAMETERS ------------------------------------
 
 # Set taxa groups to analyse
-taxaGroups <- c("annelid",                        "crustacean",                        
-                "flatworm (Turbellaria)",         "insect - alderfly (Megaloptera)",
-                "insect - beetle (Coleoptera)",   "insect - caddis fly (Trichoptera)",
-                "insect - dragonfly (Odonata)",   "insect - mayfly (Ephemeroptera)",
-                "insect - stonefly (Plecoptera)", "insect - true bug (Hemiptera)",
-                "insect - true fly (Diptera)",    "mollusc") 
+# taxaGroups <- c("annelid",                        "crustacean",                        
+#                 "flatworm (Turbellaria)",         "insect - alderfly (Megaloptera)",
+#                 "insect - beetle (Coleoptera)",   "insect - caddis fly (Trichoptera)",
+#                 "insect - dragonfly (Odonata)",   "insect - mayfly (Ephemeroptera)",
+#                 "insect - stonefly (Plecoptera)", "insect - true bug (Hemiptera)",
+#                 "insect - true fly (Diptera)",    "mollusc")
+
+taxaGroups <-c("annelid",                       "crustacean",                        
+                "flatworm.(Turbellaria)",         "insect.-.alderfly.(Megaloptera)",
+                "insect.-.beetle.(Coleoptera)",   "insect.-.caddis.fly.(Trichoptera)",
+                "insect.-.dragonfly.(Odonata)",   "insect.-.mayfly.(Ephemeroptera)",
+                "insect.-.stonefly.(Plecoptera)", "insect.-.true.bug.(Hemiptera)",
+                "insect.-.true.fly.(Diptera)",    "mollusc") 
 
 # Set taxa group labels
 taxaGroupLabels <- c("Leeches", "Crustaceans",                        
@@ -55,39 +62,66 @@ taxaGroupLabels <- c("Leeches", "Crustaceans",
                      "Stoneflies",      "True bugs",
                      "True flies",      "Molluscs") 
 
+
+# # Set taxa group labels
+# taxaGroupLabels <- c( "annelid" = "Leeches",
+#                       "crustacean" = "Crustaceans",
+#                       "flatworm_(Turbellaria)" = "Flatworms",
+#                       "alderfly_(Megaloptera)" = "Alderflies",
+#                       "beetle_(Coleoptera)" = "Beetles",
+#                       "caddis_fly_(Trichoptera)" = "Caddisflies",
+#                       "dragonfly_(Odonata)" = "Dragonflies",
+#                       "mayfly_(Ephemeroptera)" = "Mayflies",
+#                       "stonefly_(Plecoptera)" = "Stoneflies",
+#                       "true_bug_(Hemiptera)" = "True bugs",
+#                       "true_fly_(Diptera)" = "True flies",
+#                       "mollusc" = "Molluscs")
+
+
 # Set taxa group labels
 taxaGroupLabels <- c( "annelid" = "Leeches",
                       "crustacean" = "Crustaceans",
-                      "flatworm (Turbellaria)" = "Flatworms",
-                      "insect - alderfly (Megaloptera)" = "Alderflies",
-                      "insect - beetle (Coleoptera)" = "Beetles",
-                      "insect - mayfly (Ephemeroptera)" = "Caddisflies",
-                      "insect - dragonfly (Odonata)" = "Dragonflies",
-                      "insect - mayfly (Ephemeroptera)" = "Mayflies",
-                      "insect - stonefly (Plecoptera)" = "Stoneflies",
-                      "insect - true bug (Hemiptera)" = "True bugs",
-                      "insect - true fly (Diptera)" = "True flies",
+                      "flatworm.(Turbellaria)" = "Flatworms",
+                      "insect.-.alderfly.(Megaloptera)" = "Alderflies",
+                      "insect.-.beetle.(Coleoptera)" = "Beetles",
+                      "insect.-.caddis.fly.(Trichoptera)" = "Caddisflies",
+                      "insect.-.dragonfly.(Odonata)" = "Dragonflies",
+                      "insect.-.mayfly.(Ephemeroptera)" = "Mayflies",
+                      "insect.-.stonefly.(Plecoptera)" = "Stoneflies",
+                      "insect.-.true.bug.(Hemiptera)" = "True bugs",
+                      "insect.-.true.fly.(Diptera)" = "True flies",
                       "mollusc" = "Molluscs")
 
 # Set phylopic images (choose uuid manually)
 phylopicImages <- data.frame(taxa = taxaGroups,
-                             uuid = c("91973387-c0fb-4193-a28d-17fe4284c4aa",
-                                      "639a8581-cf15-4ab0-a81a-d4319f7078d7",
-                                      "c0d58291-98ee-40b9-a842-fa5e10b64496",
-                                      "50a3840c-8e67-4d89-8904-609fcd53860a",
-                                      "74e85bf0-e705-4512-9e53-be48e39251eb",
-                                      "d04ff776-292a-4181-a7d9-117a7036a348",
-                                      "2757cb60-acda-422d-a318-85b812a658c2",
-                                      "518961b9-b966-4094-b402-8ba63183cf26",
-                                      "5fc0aae8-0ad3-4d6e-b5f3-3b948b04614b",
-                                      "e462a93f-e572-4ed8-9420-91335a24c6b4",
-                                      "c5835123-e2d3-4c20-9e7a-f7b6528bbf8e",
-                                      "c5835123-e2d3-4c20-9e7a-f7b6528bbf8e")) %>%
+                             uuid = c(
+                               "91973387-c0fb-4193-a28d-17fe4284c4aa",
+                               "639a8581-cf15-4ab0-a81a-d4319f7078d7",
+                               "22f8d558-6763-426d-a651-f4087090fc41",
+                               "3c5af8a0-ea99-4df9-a344-88585844b24e",
+                               "74e85bf0-e705-4512-9e53-be48e39251eb",
+                               "e1307c88-3e8f-4ba8-9f93-751df3deb739",
+                               "92a2b163-34dc-4fef-9aef-f348d8b3af6c",
+                               "777bbd68-7924-4a4d-a5dd-452111d2a823",
+                               "a0cbfbcb-71e3-4b21-bbfd-95a6ce1f246c",
+                               "2d5699f4-f8e9-48d0-8668-eedff9a87343",
+                               "558127d5-4e77-41b3-8d4b-6eb7d7deeb9c",
+                               "c5835123-e2d3-4c20-9e7a-f7b6528bbf8e"
+                             )) %>%
   mutate(svg = lapply(uuid, get_phylopic)) # Use uuids to get image objects
+
+# Rotate images
+phylopicImages$svg[[2]] <- rotate_phylopic(img = phylopicImages$svg[[2]], angle = 180)
+phylopicImages$svg[[3]] <- rotate_phylopic(img = phylopicImages$svg[[3]], angle = 90)
+phylopicImages$svg[[4]] <- flip_phylopic(img = phylopicImages$svg[[4]])
+phylopicImages$svg[[5]] <- rotate_phylopic(img = phylopicImages$svg[[5]], angle = 90)
+phylopicImages$svg[[9]] <- flip_phylopic(img = phylopicImages$svg[[9]])
+phylopicImages$svg[[10]] <- rotate_phylopic(img = phylopicImages$svg[[10]], angle = 90)
+phylopicImages$svg[[11]] <- rotate_phylopic(img = phylopicImages$svg[[11]], angle = 90)
+phylopicImages$svg[[12]] <- rotate_phylopic(img = phylopicImages$svg[[12]], angle = 90)
 
 # Get attribution using get_attribution():
 #get_attribution(uuid = "5aeaf558-3c48-4173-83b4-dbf2846f8d75")
-
 
 # SUMMARISE EFFECT SIZES -------------------------------------------------------
 
@@ -194,14 +228,14 @@ for (i in brmsList) {
                               fill = taxa )) +
     
     # Add densities
-    geom_density_ridges(scale = 0.95,
-                        rel_min_height = 0.01) +
+    geom_density_ridges(scale = 0.9,
+                        rel_min_height = 0.1) +
     geom_pointinterval(data = iBrmsSummary,
                        linewidth = 2,
                        aes(xmin = .lower, xmax = .upper)) +
     
     # Change colours and labels
-    #scale_y_discrete(labels = taxaGroupLabels) +
+    scale_y_discrete(labels = taxaGroupLabels) +
     
     # Add vertical lines for pooled effect mean and CI, and 0
     geom_vline(xintercept = fixef(iBrms)[1, 1],
@@ -215,17 +249,17 @@ for (i in brmsList) {
                linewidth = 1) +
     
     # Add taxon silouettes
-    # geom_phylopic(data = data.frame(taxa = levels(iBrmsDraws$taxa )) %>%
-    #                 left_join(., phylopicImages , by = "taxa"),
-    #               inherit.aes = FALSE,
-    #               aes(x = min(iBrmsDraws$taxa_mean) +
-    #                     (max(iBrmsDraws$taxa_mean) - 
-    #                        min(iBrmsDraws$taxa_mean)) / 100,
-    #                   y = taxa,
-    #                   img = svg ),
-    #               size = 0.7,
-    #               na.rm = TRUE) +
-    
+    geom_phylopic(data = data.frame(taxa = levels(iBrmsDraws$taxa )) %>%
+                    left_join(., phylopicImages , by = "taxa"),
+                  inherit.aes = FALSE,
+                  aes(x = min(iBrmsDraws$taxa_mean) +
+                        (max(iBrmsDraws$taxa_mean) -
+                           min(iBrmsDraws$taxa_mean)) / 80,
+                      y = taxa,
+                      img = svg ),
+                  width = 0.08,
+                  na.rm = TRUE) +
+
     # Add labels
     labs(x = "Effect size", # summary measure
          y = element_blank()) +
@@ -236,7 +270,7 @@ for (i in brmsList) {
           axis.title.x = element_text(size = 16))
   
   # Save
-  ggsave(filename = paste0(plotDir, "/Meta_analysis/Meta_",
+  ggsave(filename = paste0(plotDir, "/Meta_analysis/Effects/Meta_",
                            i, "_taxaSummaries.png"),
          taxaSummaries,
          dpi = 600,
