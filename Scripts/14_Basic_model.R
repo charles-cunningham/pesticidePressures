@@ -474,7 +474,7 @@ taxaSpecies <- invData %>%
     if (exists("modelWastewater") & exists("modelNoWastewater")) {
       
       # Loop through both models
-      for (modelName in c("modelWastewater", "modelNoWastewater"))
+      for (modelName in c("modelWastewater", "modelNoWastewater")) {
         
         # Get model
         model <- get(modelName)
@@ -588,43 +588,44 @@ taxaSpecies <- invData %>%
       
       # Set folder
       
-      # If iTaxa is Schedule 2
+      # If iSpecies is Schedule 2
       if (iSpecies %in% invDataS2) {
         group <- "Schedule_2"
       } else if (iSpecies %in% invDataINNS) {
         group <- "INNS"
       }
       
-      # Create directory for iTaxa
-      speciesDir <- paste0(
+      # Create directory string for iSpecies
+      iSpeciesDir <- paste0(
         dataDir,
         "Processed/Species/",
         "Model_outputs/",
-        gsub(model, "", modelName),
+        gsub("model", "", modelName),
         "/",
         group,
         "/",
         iTaxa
       )
       
-      if (any(!file.exists(speciesDir))) {
-        lapply(speciesDir, function(x) {
-          dir.create(x, recursive = TRUE)
-        })
-      }
+      # Create directories for iTaxa if they don't exist
+      lapply(paste0(iSpeciesDir, c("/ModelSummary", "/ModelPlots")),
+             function(x) {
+               dir.create(x, recursive = TRUE, showWarnings = FALSE)
+             })
       
       # Save model summaries
       save(modelSummary,
-           file = paste0(speciesDir,
-                         "/",
+           file = paste0(iSpeciesDir,
+                         "/ModelSummary/",
                          iSpecies,
                          ".Rds"))
       ggsave(paste0(iSpeciesDir,
-                    "/", iSpecies, ".png"),
+                    "/ModelPlots/", iSpecies, ".png"),
              evalPlot,
              width = 3000, height = 3000, 
              units = "px", dpi = 400,
              limitsize = FALSE)
+      }
     }
   }
 }
