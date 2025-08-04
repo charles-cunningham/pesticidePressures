@@ -471,7 +471,8 @@ taxaSpecies <- invData %>%
     )
     
     # Only plot and save if both models converge
-    if (exists("modelWastewater") & exists("modelNoWastewater")) {
+    if (!is.null(summary(modelWastewater)$inla) & 
+        !is.null(summary(modelNoWastewater)$inla)) {
       
       # Loop through both models
       for (modelName in c("modelWastewater", "modelNoWastewater")) {
@@ -480,7 +481,7 @@ taxaSpecies <- invData %>%
         model <- get(modelName)
         
         # Model summary
-        modelSummary <- summary(model) 
+        modelSummary <- summary(model)
 
       # PLOTS ------------------------------------------------------------------
     
