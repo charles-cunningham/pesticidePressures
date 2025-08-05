@@ -153,20 +153,6 @@ poultry_brms <- brm(data = effects_wide,
                          cores = 4,
                          chains = 4)
 
-wastewater_brms <- brm(data = effects_wide,
-                         family = gaussian,
-                         mean_wastewater | se(sd_wastewater) ~
-                           1 + (1 | taxa) + (1 | taxa:species),
-                         prior = c(prior(normal(0, 1), class = Intercept),
-                                   prior(cauchy(0, 1), class = sd)),
-                       iter = 10000,
-                       warmup = 5000,
-                       control=list(adapt_delta = 0.99,
-                                    stepsize = 0.01,
-                                    max_treedepth = 15),
-                         cores = 4,
-                         chains = 4)
-
 modification_brms <- brm(data = effects_wide,
                          family = gaussian,
                          mean_modification | se(sd_modification) ~
@@ -250,6 +236,25 @@ woodland_brms <- brm(data = effects_wide,
                                max_treedepth = 15),
                   cores = 4,
                   chains = 4)
+
+if(type == "Wastewater") {
+  
+  wastewater_brms <- brm(data = effects_wide,
+                       family = gaussian,
+                       mean_wastewater | se(sd_wastewater) ~
+                         1 + (1 | taxa) + (1 | taxa:species),
+                       prior = c(prior(normal(0, 1), class = Intercept),
+                                 prior(cauchy(0, 1), class = sd)),
+                       iter = 10000,
+                       warmup = 5000,
+                       control=list(adapt_delta = 0.99,
+                                    stepsize = 0.01,
+                                    max_treedepth = 15),
+                       cores = 4,
+                       chains = 4)
+}
+
+
 
 ### Save
 
