@@ -37,8 +37,11 @@ dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 
 # DATA FILES -------------------------------------------------------------------
 
-# Load SDM fixed effect summaries
-load(paste0(dataDir, "Species_effects.Rdata"))
+# Loop through models that include and exclude wastewater
+for (type in c("Wastewater", "NoWastewater")) {
+
+  # Load SDM fixed effect summaries
+  load(paste0(dataDir, "Species_effects/", type, "/Schedule_2.Rdata"))
 
 ### META ANALYSIS --------------------------------------
 # In this stage we want to check overall data patterns,
@@ -248,8 +251,6 @@ woodland_brms <- brm(data = effects_wide,
                   cores = 4,
                   chains = 4)
 
-
-
 ### Save
 
 # List of brms objects
@@ -260,4 +261,6 @@ brmsList <- c("pesticideDiv_brms", "pesticideToxicity_brms", "NPK_brms",
 
 # Save brms objects
 save(list = brmsList,
-     file = paste0(dataDir, "Species_brms.Rdata"))
+     file = paste0(dataDir, type, "_species_brms.Rdata"))
+
+}
