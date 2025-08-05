@@ -223,9 +223,9 @@ urban_brms <- brm(data = effects_wide,
                          cores = 4,
                          chains = 4)
 
-pasture_brms <- brm(data = effects_wide,
+grass_brms <- brm(data = effects_wide,
                   family = gaussian,
-                  mean_pasture | se(sd_pasture) ~
+                  mean_grass | se(sd_grass) ~
                     1 + (1 | taxa) + (1 | taxa:species),
                   prior = c(prior(normal(0, 1), class = Intercept),
                             prior(cauchy(0, 1), class = sd)),
@@ -257,7 +257,7 @@ woodland_brms <- brm(data = effects_wide,
 brmsList <- c("pesticideDiv_brms", "pesticideToxicity_brms", "NPK_brms",
               "cattle_brms", "sheep_brms","pigs_brms", "poultry_brms",
               "wastewater_brms", "modification_brms", "quality_brms",
-              "arable_brms", "urban_brms", "pasture_brms", "woodland_brms")
+              "arable_brms", "urban_brms", "grass_brms", "woodland_brms")
 
 # Save brms objects
 save(list = brmsList,
