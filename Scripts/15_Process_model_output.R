@@ -22,87 +22,113 @@ dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 # SET PARAMETERS ---------------------------------------------------------------
 
 # Set taxa groups to analyse
-taxaGroups <- list.files(paste0(dataDir, "Model_outputs/Schedule_2"))
+taxaGroups <- list.files(paste0(dataDir, "Model_outputs/Wastewater/Schedule_2"))
 
-# Create empty data frame to populate with all species level effects
-effects_df <- data.frame()
+# LOOP THROUGH TYPE AND GROUP --------------------------------------------------
 
-# PROCESS OUTPUT ---------------------------------------------------------------
-
-# Loop through each taxa group here
-for (iTaxa in taxaGroups) {
+# Loop through models that include and exclude wastewater
+for (type in c("Wastewater", "NoWastewater")) {
   
-  # List all summary files for iTaxa
-  taxaOutput <- paste0(paste0(dataDir, "Model_outputs/Schedule_2/", iTaxa)) %>%
-  list.files(.,
-             full.names = TRUE,
-             recursive = TRUE)
-  
-  # Print taxa group as progress update
-  print(iTaxa)
-  
-  # IMPORT FIXED EFFECTS -------------------------------------------------------
-  
-  # For every species model in taxa group...
-  for (i in 1:length(taxaOutput)) {
+  # Loop through the two species groups
+  for (group in c("Schedule_2", "INNS")) {
     
-    # Load species 'i' summary file into global environment
-    load(taxaOutput[i], envir = .GlobalEnv)
+    # Create output directory
+    dir.create(paste0(dataDir, "Species_effects/", type), recursive = TRUE)
     
-    # Assign fixed effects to dataframe
-    iSpeciesEffects_df <- data.frame(modelSummary$inla$fixed)
+    # PROCESS OUTPUT -----------------------------------------------------------
     
-    # If model converged...
-    if (NROW(iSpeciesEffects_df) > 0) {
+    # Create empty data frame to populate with all species level effects for 
+    # type and group
+    effects_df <- data.frame()
     
-      # Add fixed effects name column
-      iSpeciesEffects_df$effect <- rownames(iSpeciesEffects_df)
-    
-      # Add in species name to fixed effects data frames
-      iSpeciesEffects_df$species <- basename(taxaOutput[i]) %>%
-        sub(".Rds",
-            "",
-            .)
-      # Add taxa column
-      iSpeciesEffects_df$taxa <- iTaxa
-    
-      # Drop redundant row names
-      rownames(iSpeciesEffects_df) <- NULL
+    # Loop through each taxa group here
+    for (iTaxa in taxaGroups) {
       
-      # Bind iSpeciesEffects_df to the aggregated datadrame of all species
-      effects_df <-
-        bind_rows(effects_df, iSpeciesEffects_df)
-    
+      # List all summary files for iTaxa
+      taxaOutput <- paste0(paste0(dataDir,
+                                  "Model_outputs/",
+                                  type,
+                                  "/",
+                                  group,
+                                  "/",
+                                  iTaxa,
+                                  "/ModelSummary")) %>%
+        list.files(.,
+                   full.names = TRUE,
+                   recursive = TRUE)
+  
+      # Print taxa group as progress update
+      paste0(type, "-", group, "-", iTaxa) %>% print()
+  
+      # IMPORT FIXED EFFECTS ---------------------------------------------------
+  
+      # If any species models within iTaxa...
+      if (length(taxaOutput) > 0) {
+      
+        # For every species model in taxa group...
+        for (i in 1:length(taxaOutput)) {
+          
+          # Load species 'i' summary file into global environment
+          load(taxaOutput[i], envir = .GlobalEnv)
+          
+          # Assign fixed effects to dataframe
+          iSpeciesEffects_df <- data.frame(modelSummary$inla$fixed)
+        
+          # Add fixed effects name column
+          iSpeciesEffects_df$effect <- rownames(iSpeciesEffects_df)
+          
+          # Add in species name to fixed effects data frames
+          iSpeciesEffects_df$species <- basename(taxaOutput[i]) %>%
+            sub(".Rds",
+                "",
+                .)
+          # Add taxa column
+          iSpeciesEffects_df$taxa <- iTaxa
+          
+          # Drop redundant row names
+          rownames(iSpeciesEffects_df) <- NULL
+          
+          # Bind iSpeciesEffects_df to the aggregated datadrame of all species
+          effects_df <-
+            bind_rows(effects_df, iSpeciesEffects_df)
+          
+        }
+      }
     }
+  
+  # CHECK SPECIES DUPLCIATES ---------------------------------------------------
+  
+  # Find all duplicate species
+  duplicates <- effects_df %>%
+    group_by(species, effect) %>%
+    filter(n() > 1)
+  
+  # Print any duplicates - should be 0
+  print(duplicates)
+  
+  # RESTRUCTURE DATA FRAME -----------------------------------------------------
+  
+  # Drop unneeded columns, then spread dataframe so that each effect mean, sd, 
+  # and quantile is a separate column
+  effects_wide <-
+    dplyr::select(effects_df,-c("mode", "kld", "X0.5quant",)) %>%
+    pivot_wider(
+      names_from = effect,
+      values_from = c("mean", "sd", "X0.025quant", "X0.975quant")
+    )
+  
+  # Remove any species with 0s for all values (modelling error)
+  effects_wide <- effects_wide %>%
+    filter(if_any(where(is.numeric), ~ .x != 0))
+
+  # SAVE DATA FRAME --------------------------------------------------------------
+  
+  # Save
+  save(
+    effects_df,
+    effects_wide,
+    file = paste0(dataDir, "Species_effects/", type, "/", group, ".Rdata")
+  )
+  
   }
 }
-
-# CHECK SPECIES DUPLCIATES -----------------------------------------------------
-
-# Find all duplicate species
-duplicates <- effects_df %>%
-  group_by(species, effect) %>%
-  filter(n() > 1)
-
-# Print any duplicates - should be 0
-print(duplicates)
-
-# RESTRUCTURE DATA FRAME -------------------------------------------------------
-
-# Drop unneeded columns, then spread dataframe so that each effect mean, sd, and
-# quantile is a separate column
-effects_wide <-
-  dplyr::select(effects_df, 
-                -c("mode", "kld", "X0.5quant", )) %>%
-  pivot_wider(names_from = effect,
-              values_from = c("mean", "sd", "X0.025quant", "X0.975quant"))
-
-# Remove any species with 0s for all values (modelling error)
-effects_wide <- effects_wide %>%
-  filter(if_any(where(is.numeric), ~ .x != 0))
-
-# SAVE DATA FRAME --------------------------------------------------------------
-
-# Save
-save(effects_df, effects_wide,
-     file = paste0(dataDir, "Species_effects.Rdata"))
