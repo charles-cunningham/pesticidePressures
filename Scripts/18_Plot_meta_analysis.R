@@ -14,45 +14,23 @@ library(tidyverse)
 library(tidybayes)
 library(ggridges)
 library(rphylopic)
-library(wesanderson)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 # Set data directory
 # If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/Processed/Species/"
 # If working locally: "../Data/Processed/Species/
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/Processed/Species/"
-plotDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Plots"
-
-### RELOAD OBJECTS ---------------------------------------------------
-
-# List of brms objects
-brmsList <- c("pesticideDiv_brms", "pesticideToxicity_brms", "NPK_brms",
-              "cattle_brms", "sheep_brms","pigs_brms", "poultry_brms",
-              "wastewater_brms", "modification_brms", "quality_brms",
-              "arable_brms", "urban_brms","pasture_brms", "woodland_brms")
-
-# Load brms objects
-load(paste0(dataDir, "Species_brms.Rdata"))
-
-# Load SDM fixed effect summaries
-load(paste0(dataDir, "Species_effects.Rdata"))
+plotDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Plots/"
 
 # SET PARAMETERS ------------------------------------
 
 # Set taxa groups to analyse
-# taxaGroups <- c("annelid",                        "crustacean",                        
-#                 "flatworm (Turbellaria)",         "insect - alderfly (Megaloptera)",
-#                 "insect - beetle (Coleoptera)",   "insect - caddis fly (Trichoptera)",
-#                 "insect - dragonfly (Odonata)",   "insect - mayfly (Ephemeroptera)",
-#                 "insect - stonefly (Plecoptera)", "insect - true bug (Hemiptera)",
-#                 "insect - true fly (Diptera)",    "mollusc")
-
-taxaGroups <-c("annelid",                       "crustacean",                        
-                "flatworm.(Turbellaria)",         "insect.-.alderfly.(Megaloptera)",
-                "insect.-.beetle.(Coleoptera)",   "insect.-.caddis.fly.(Trichoptera)",
-                "insect.-.dragonfly.(Odonata)",   "insect.-.mayfly.(Ephemeroptera)",
-                "insect.-.stonefly.(Plecoptera)", "insect.-.true.bug.(Hemiptera)",
-                "insect.-.true.fly.(Diptera)",    "mollusc") 
+taxaGroups <- c("annelid",                "crustacean",
+                "flatworm_(Turbellaria)", "alderfly_(Megaloptera)",
+                "beetle_(Coleoptera)",    "caddis_fly_(Trichoptera)",
+                "dragonfly_(Odonata)",    "mayfly_(Ephemeroptera)",
+                "stonefly_(Plecoptera)",  "true_bug_(Hemiptera)",
+                "true_fly_(Diptera)",     "mollusc")
 
 # Set taxa group labels
 taxaGroupLabels <- c("Leeches", "Crustaceans",                        
@@ -63,34 +41,20 @@ taxaGroupLabels <- c("Leeches", "Crustaceans",
                      "True flies",      "Molluscs") 
 
 
-# # Set taxa group labels
-# taxaGroupLabels <- c( "annelid" = "Leeches",
-#                       "crustacean" = "Crustaceans",
-#                       "flatworm_(Turbellaria)" = "Flatworms",
-#                       "alderfly_(Megaloptera)" = "Alderflies",
-#                       "beetle_(Coleoptera)" = "Beetles",
-#                       "caddis_fly_(Trichoptera)" = "Caddisflies",
-#                       "dragonfly_(Odonata)" = "Dragonflies",
-#                       "mayfly_(Ephemeroptera)" = "Mayflies",
-#                       "stonefly_(Plecoptera)" = "Stoneflies",
-#                       "true_bug_(Hemiptera)" = "True bugs",
-#                       "true_fly_(Diptera)" = "True flies",
-#                       "mollusc" = "Molluscs")
-
-
 # Set taxa group labels
 taxaGroupLabels <- c( "annelid" = "Leeches",
                       "crustacean" = "Crustaceans",
-                      "flatworm.(Turbellaria)" = "Flatworms",
-                      "insect.-.alderfly.(Megaloptera)" = "Alderflies",
-                      "insect.-.beetle.(Coleoptera)" = "Beetles",
-                      "insect.-.caddis.fly.(Trichoptera)" = "Caddisflies",
-                      "insect.-.dragonfly.(Odonata)" = "Dragonflies",
-                      "insect.-.mayfly.(Ephemeroptera)" = "Mayflies",
-                      "insect.-.stonefly.(Plecoptera)" = "Stoneflies",
-                      "insect.-.true.bug.(Hemiptera)" = "True bugs",
-                      "insect.-.true.fly.(Diptera)" = "True flies",
+                      "flatworm_(Turbellaria)" = "Flatworms",
+                      "alderfly_(Megaloptera)" = "Alderflies",
+                      "beetle_(Coleoptera)" = "Beetles",
+                      "caddis_fly_(Trichoptera)" = "Caddisflies",
+                      "dragonfly_(Odonata)" = "Dragonflies",
+                      "mayfly_(Ephemeroptera)" = "Mayflies",
+                      "stonefly_(Plecoptera)" = "Stoneflies",
+                      "true_bug_(Hemiptera)" = "True bugs",
+                      "true_fly_(Diptera)" = "True flies",
                       "mollusc" = "Molluscs")
+
 
 # Set phylopic images (choose uuid manually)
 phylopicImages <- data.frame(taxa = taxaGroups,
@@ -122,6 +86,30 @@ phylopicImages$svg[[12]] <- rotate_phylopic(img = phylopicImages$svg[[12]], angl
 
 # Get attribution using get_attribution():
 #get_attribution(uuid = "5aeaf558-3c48-4173-83b4-dbf2846f8d75")
+
+### LOOP THROUGH WASTEWATER AND NO WASTEWATER ----------------------------------
+
+for (type in c("Wastewater", "NoWastewater")) {
+
+### RELOAD OBJECTS ---------------------------------------------------
+
+# List of brms objects
+brmsList <- c("pesticideDiv_brms", "pesticideToxicity_brms", "NPK_brms",
+              "cattle_brms", "sheep_brms","pigs_brms", "poultry_brms",
+              "modification_brms", "quality_brms", "arable_brms",
+              "urban_brms","grass_brms", "woodland_brms")
+
+if (type == "Wastewater" ) {
+  
+  brmsList <- c(brmsList, "wastewater_brms")
+  
+}
+
+# Load brms objects
+load(paste0(dataDir, type, "_species_brms.Rdata"))
+
+# Load SDM fixed effect summaries
+load(paste0(dataDir, "Species_effects/", type, "/Schedule_2.Rdata"))
 
 # SUMMARISE EFFECT SIZES -------------------------------------------------------
 
@@ -159,7 +147,7 @@ for (i in brmsList) {
     mutate(taxa = "Pooled species")
   
   # Bind taxa draws and pooled draws together, and reorder
-  forestData <- bind_rows(studyDraws,
+  allDraws <- bind_rows(studyDraws,
                           pooledEffectDraws) %>%
     
     ungroup() %>%
@@ -169,14 +157,14 @@ for (i in brmsList) {
                           after = Inf))
   
   # Group by taxa and summarize by intercept
-  forestDataSummary <- group_by(forestData, taxa) %>%
+  allDrawsSummary <- group_by(allDraws, taxa) %>%
     mean_qi(taxa_mean)
   
   # Print taxa summaries, and assign out for plotting
   print( i )
-  print( forestDataSummary )
-  assign(paste0(i, "_draws"), forestData)
-  assign(paste0(i, "_drawsSummary"), forestDataSummary)
+  print( allDraws )
+  assign(paste0(i, "_draws"), allDraws)
+  assign(paste0(i, "_drawsSummary"), allDrawsSummary)
 }
 
 # PLOT TAU ---------------------------------------------------------------------
@@ -204,7 +192,8 @@ for (i in brmsList) {
     theme(panel.grid = element_blank())
   
   # Save
-  ggsave(filename = paste0(plotDir, "/Meta_analysis/Tau/Meta_", i, "tau.png"),
+  ggsave(filename = paste0(plotDir, "Meta_analysis/",
+                           type, "/Tau/Meta_", i, "tau.png"),
          tauPlot,
          dpi = 600,
          units = "px", width = 6000, height = 5000)
@@ -257,20 +246,23 @@ for (i in brmsList) {
                            min(iBrmsDraws$taxa_mean)) / 80,
                       y = taxa,
                       img = svg ),
-                  width = 0.08,
+                  width = (max(iBrmsDraws$taxa_mean) -
+                             min(iBrmsDraws$taxa_mean)) / 10,
                   na.rm = TRUE) +
 
     # Add labels
     labs(x = "Effect size", # summary measure
          y = element_blank()) +
+    ggtitle(gsub("_brms", "", i)) +
     theme_classic() +
     theme(legend.position = "none",
           axis.text.y = element_text(size = 14),
           axis.text.x = element_text(size = 14),
-          axis.title.x = element_text(size = 16))
+          axis.title.x = element_text(size = 16),
+          plot.title = element_text(size = 24))
   
   # Save
-  ggsave(filename = paste0(plotDir, "/Meta_analysis/Effects/Meta_",
+  ggsave(filename = paste0(plotDir, "Meta_analysis/", type, "/Effects/Meta_",
                            i, "_taxaSummaries.png"),
          taxaSummaries,
          dpi = 600,
@@ -278,4 +270,4 @@ for (i in brmsList) {
          width = 5000,
          height = 5000)
 }
-
+}
