@@ -67,6 +67,7 @@ linearEffLabels <- c('pesticideDiv' = "Pesticide diversity",
                      'arable' = "Arable",
                      'grass' = "Intensive grassland",
                      'residential' = "Residential",
+                     'woodland' = "Woodland",
                      'modification' = "Stream modification",
                      'quality' = "Habitat quality")
 
