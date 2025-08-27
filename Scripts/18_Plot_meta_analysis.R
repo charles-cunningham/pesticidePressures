@@ -33,15 +33,6 @@ taxaGroups <- c("annelid",                "crustacean",
                 "true_fly_(Diptera)",     "mollusc")
 
 # Set taxa group labels
-taxaGroupLabels <- c("Leeches", "Crustaceans",                        
-                     "Flatworms",       "Alderflies",
-                     "Beetles",         "Caddisflies",
-                     "Dragonflies",     "Mayflies",
-                     "Stoneflies",      "True bugs",
-                     "True flies",      "Molluscs") 
-
-
-# Set taxa group labels
 taxaGroupLabels <- c( "annelid" = "Leeches",
                       "crustacean" = "Crustaceans",
                       "flatworm_(Turbellaria)" = "Flatworms",
@@ -97,7 +88,7 @@ for (type in c("Wastewater", "NoWastewater")) {
 brmsList <- c("pesticideDiv_brms", "pesticideToxicity_brms", "NPK_brms",
               "cattle_brms", "sheep_brms","pigs_brms", "poultry_brms",
               "modification_brms", "quality_brms", "arable_brms",
-              "urban_brms","grass_brms", "woodland_brms")
+              "residential_brms","grass_brms", "woodland_brms")
 
 if (type == "Wastewater" ) {
   
