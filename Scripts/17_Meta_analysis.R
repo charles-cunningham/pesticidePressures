@@ -195,9 +195,9 @@ arable_brms <- brm(data = effects_wide,
                          cores = 4,
                          chains = 4)
 
-urban_brms <- brm(data = effects_wide,
+residential_brms <- brm(data = effects_wide,
                          family = gaussian,
-                         mean_urban | se(sd_urban) ~
+                         mean_residential | se(sd_residential) ~
                            1 + (1 | taxa) + (1 | taxa:species),
                          prior = c(prior(normal(0, 1), class = Intercept),
                                    prior(cauchy(0, 1), class = sd)),
@@ -262,7 +262,7 @@ if(type == "Wastewater") {
 brmsList <- c("pesticideDiv_brms", "pesticideToxicity_brms", "NPK_brms",
               "cattle_brms", "sheep_brms","pigs_brms", "poultry_brms",
               "wastewater_brms", "modification_brms", "quality_brms",
-              "arable_brms", "urban_brms", "grass_brms", "woodland_brms")
+              "arable_brms", "residential_brms", "grass_brms", "woodland_brms")
 
 # Save brms objects
 save(list = brmsList,
