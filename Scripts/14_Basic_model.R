@@ -392,9 +392,9 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            model = "rw1",
            hyper = rwHyper,
            scale.model = TRUE) +
-      basin(REPORTING_AREA, model = "iid", hyper = iidHyper) +
-      catchment(CATCHMENT, model = "iid", hyper = iidHyper) +
-      #wb(WATER_BODY, model = "iid", hyper = iidHyper) +
+      basin(REPORTING_AREA, model = "iid", constr = TRUE, hyper = iidHyper) +
+      catchment(CATCHMENT, model = "iid", constr = TRUE, hyper = iidHyper) +
+      wb(WATER_BODY, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
     # Model with wastewater
@@ -426,9 +426,9 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            model = "rw1",
            hyper = rwHyper,
            scale.model = TRUE) +
-      basin(REPORTING_AREA, model = "iid", hyper = iidHyper) +
-      catchment(CATCHMENT, model = "iid", hyper = iidHyper) +
-      #wb(WATER_BODY, model = "iid", hyper = iidHyper) +
+      basin(REPORTING_AREA, model = "iid", constr = TRUE, hyper = iidHyper) +
+      catchment(CATCHMENT, model = "iid", constr = TRUE, hyper = iidHyper) +
+      wb(WATER_BODY, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
     # RUN MODEL WITH WASTEWATER
