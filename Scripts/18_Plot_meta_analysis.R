@@ -153,7 +153,7 @@ for (i in brmsList) {
   
   # Print taxa summaries, and assign out for plotting
   print( i )
-  print( allDraws )
+  print( allDrawsSummary )
   assign(paste0(i, "_draws"), allDraws)
   assign(paste0(i, "_drawsSummary"), allDrawsSummary)
 }
