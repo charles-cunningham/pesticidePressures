@@ -192,6 +192,25 @@ for(variable in c("NPK",
   
 }
 
+### CONVERT SITE VARIABLES TO PCA ----------------------------------------------
+
+sitePCA <- invData %>% 
+  select(BIO_ALTITUDE,
+         BIO_SLOPE,
+         BIO_DISTANCE_FROM_SOURCE,
+         BIO_DISCHARGE,
+         BIO_WIDTH,
+         BIO_DEPTH,
+         BIO_BOULDERS_COBBLES,
+         BIO_PEBBLES_GRAVEL,
+         BIO_SAND,
+         BIO_SILT_CLAY) %>%
+  prcomp(.)
+
+summary(sitePCA)
+
+invData <- cbind(invData, sitePCA$x)
+
 ### CORRELATION PLOTS ----------------------------------------------------------
 
 # Create correlation data frame
@@ -210,16 +229,10 @@ corr_df <- invData %>%
          EDF_MEAN,
          HS_HMS_RSB_SubScore,
          HS_HQA,
-         BIO_ALTITUDE,
-         BIO_SLOPE, 
-         BIO_DISTANCE_FROM_SOURCE,
-         BIO_DISCHARGE,
-         BIO_WIDTH,
-         BIO_DEPTH, 
-         BIO_BOULDERS_COBBLES, 
-         BIO_PEBBLES_GRAVEL, 
-         BIO_SAND,
-         BIO_SILT_CLAY,
+         PC1,
+         PC2,
+         PC3,
+         PC4,
          YEAR,
          MONTH_NUM)
 
@@ -244,25 +257,6 @@ corrplot::corrplot(corPredictors,
                    type = "upper", order = "original", diag = FALSE,
                    method = "number", addCoef.col="white", tl.col = "black",
                    tl.srt = 45, tl.cex = 0.5)
-
-### CONVERT SITE VARIABLES TO PCA ----------------------------------------------
-
-sitePCA <- invData %>% 
-  select(BIO_ALTITUDE,
-         BIO_SLOPE,
-         BIO_DISTANCE_FROM_SOURCE,
-         BIO_DISCHARGE,
-         BIO_WIDTH,
-         BIO_DEPTH,
-         BIO_BOULDERS_COBBLES,
-         BIO_PEBBLES_GRAVEL,
-         BIO_SAND,
-         BIO_SILT_CLAY) %>%
-  prcomp(.)
-
-summary(sitePCA)
-
-invData <- cbind(invData, sitePCA$x)
 
 # SCALE VARIABLES --------------------------------------------------------------
 
