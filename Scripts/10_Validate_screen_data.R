@@ -25,6 +25,31 @@ dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 screenData <- readRDS(paste0(dataDir,
                              "/Processed/Screen/Screen_data.Rds"))
 
+# Read pesticide data
+pestData <- read.csv(paste0(dataDir,
+                            "Raw/Pesticide_data/Pesticide_properties.csv"))
+
+### PROCESS PESTICIDE DATA -----------------------------------------------------
+
+# Create joint wieght
+pestData$Exposure <- #pestData$Leachability..GUS_leaching_potential_index. %>%
+  #ifelse(is.na(.), mean(., na.rm = TRUE), .) %>%
+ # ifelse(. <0.01, 0.01, .)# %>%
+  #`*` (
+    ifelse(is.na(pestData$Persistence_.DT.._.typical..),
+            mean(pestData$Persistence_.DT.._.typical.., na.rm = TRUE),
+            pestData$Persistence_.DT.._.typical..)
+ #  )
+           
+   screenData$ExposureWeight <- NA 
+   
+for(pesticide in pestData$Pesticide) {
+
+screenData[which(screenData$PESTICIDE_MOD %in% pesticide), "ExposureWeight"] <- 
+     pestData[which(pestData$Pesticide  %in% pesticide), "Exposure"]
+   
+   }
+
 ### FILTER SCREEN DATA ---------------------------------------------------------
 
 # Filter missing values, and convert to tibble
@@ -48,22 +73,22 @@ lcmsData <- screenData[screenData$method == "LCMS",]
 # Plot relationship between concentration and application per area
 ggplot(data = gcmsData,
        aes(x = log(Concentration), 
-           y = log(APPLICATION_MOD))) +
+           y = log(APP_PER_AREA_MOD *ExposureWeight))) +
   geom_point()
 
-# Check correlation
-cor(gcmsData$Concentration, gcmsData$APPLICATION_MOD)
+# Check correlation# Check correlationExposure
+cor(gcmsData$Concentration, gcmsData$APP_PER_AREA_MOD * gcmsData$ExposureWeight)
 
 # LCMS
 
 # Plot relationship between concentration and application per area
 ggplot(data = lcmsData,
        aes(x = log(Concentration), 
-           y = log(APPLICATION_MOD))) +
+           y = log(APP_PER_AREA_MOD * ExposureWeight))) +
   geom_point()
 
 # Check correlation
-cor(lcmsData$Concentration, lcmsData$APPLICATION_MOD)
+cor(lcmsData$Concentration, lcmsData$APP_PER_AREA_MOD * lcmsData$ExposureWeight)
 
 # TRUNCATED DATA MODEL ---------------------------------------------------------
 
@@ -76,7 +101,7 @@ gcmsTruncated<- gcmsData %>%
                                 Concentration,
                                 LOD))
 
-gcmsTruncModel <- crch::trch ( truncatedConc ~ log(APP_PER_AREA_MOD),
+gcmsTruncModel <- crch::trch ( truncatedConc ~ log(APP_PER_AREA_MOD*ExposureWeight),
                      truncated = TRUE,
                      left =  gcmsTruncated$LOD,
                      link.scale = "log",
@@ -94,7 +119,7 @@ lcmsTruncated <- lcmsData %>%
                                 Concentration,
                                 LOD))
 
-lcmsTruncModel <- crch::trch ( truncatedConc ~ log(APP_PER_AREA_MOD),
+lcmsTruncModel <- crch::trch ( truncatedConc ~ log(APP_PER_AREA_MOD*ExposureWeight),
                                truncated = TRUE,
                                left =  lcmsTruncated$LOD,
                                link.scale = "log",
@@ -111,13 +136,13 @@ summary(lcmsTruncModel)
 # Fit mixed model with concentration as response
 gcmsModMixed <- lme4::glmer(Concentration ~ 1 +
                               # Fixed log-transformed estimated application
-                              log(APP_PER_AREA_MOD) + 
+                              log(APP_PER_AREA_MOD*ExposureWeight) + 
                               # Pesticide name random effect
                               (1| PESTICIDE_MOD) +
                               # # Site random effect
                                (1 | Sample_Site_ID) ,
                             family = Gamma(link = "log"),
-                            data = gcmsData) 
+                            data = gcmsData %>% filter(APP_PER_AREA_MOD>0)) 
 
 # Checl R^2 values
 MuMIn::r.squaredGLMM(gcmsModMixed)
@@ -130,7 +155,7 @@ summary(gcmsModMixed)
 # Fit mixed model with concentration as response
 lcmsModMixed <- lme4::glmer(Concentration ~ 1 +
                               # Fixed log-transformed estimated application
-                              log(APP_PER_AREA_MOD) + 
+                              log(APP_PER_AREA_MOD*ExposureWeight) + 
                               # Pesticide name random effect
                               (1| PESTICIDE_MOD) +
                               # Site random effect
