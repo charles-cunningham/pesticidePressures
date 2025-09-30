@@ -41,6 +41,7 @@ library(cowplot)
 # If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 # If working locally: "../Data/"
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
+plotDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Plots/"
 
 # Create processed Biosys data folder
 lapply(paste0(dataDir, "Processed/Species"), function(x) {
@@ -59,7 +60,10 @@ invData <- tempStoreForTesting
 
 linearEffLabels <- c('pesticideDiv' = "Pesticide diversity",
                      'pesticideToxicity' = "Pesticide combined toxicity",
-                     'NPK' = "Total chemical input (NPK)",
+                     #'NPK' = "Total chemical input (NPK)",
+                     'N' = "Nitrogen",
+                     'P' = "Phosporus",
+                     'K' = "Potassium",
                      'cattle' = "Cattle",
                      'pigs' = "Pigs",
                      'sheep' = "Sheep",
@@ -161,7 +165,7 @@ invDataINNS <- invData %>%
 ### AGGREGATE VARIABLES --------------------------------------------------------
 
 # NPK
-invData$NPK <- invData$fertiliser_k + invData$fertiliser_n + invData$fertiliser_p
+#invData$NPK <- invData$fertiliser_k + invData$fertiliser_n + invData$fertiliser_p
 
 # Woodland
 invData$woodland <- invData$Deciduous_woodland + invData$Coniferous_woodland
@@ -172,7 +176,10 @@ invData$residential <- invData$Urban + invData$Suburban
 # MODIFY UPSTREAM VARIABLES TO PER AREA VALUES----------------------------------
 
 # Divide upstream variables by area (excluding diversity)
-for(variable in c("NPK",
+for(variable in c(#"NPK",
+                  "fertiliser_n",
+                  "fertiliser_p",
+                  "fertiliser_k",
                   "Arable",
                   "residential",
                   "pesticideLoad",
@@ -217,7 +224,10 @@ invData <- cbind(invData, sitePCA$x)
 corr_df <- invData %>%
   select(pesticideShannon,
          pesticideToxicLoad_PerArea,
-         NPK_PerArea,
+         #NPK_PerArea,
+         fertiliser_n_PerArea,
+         fertiliser_p_PerArea,
+         fertiliser_k_PerArea,
          Arable_PerArea,
          residential_PerArea,
          Improved_grassland_PerArea,
@@ -242,10 +252,14 @@ corr_df <- invData %>%
 corPredictors <- filter(corr_df, !(is.na(EDF_MEAN))) %>%
   cor(.) 
 
+png(filename = paste0(plotDir, 'corr_wastewater.png'),
+    width = 40, height = 30, units = "cm", res = 600)
 corrplot::corrplot(corPredictors,
                    type = "upper", order = "original", diag = FALSE,
                    method = "number", addCoef.col="white", tl.col = "black",
-                   tl.srt = 45, tl.cex = 0.6)
+                   tl.srt = 45, tl.cex = 1)
+dev.off()
+
 
 # WITHOUT WASTEWATER
 
@@ -253,17 +267,23 @@ corrplot::corrplot(corPredictors,
 corPredictors <- select(corr_df, !(EDF_MEAN)) %>%
   cor(.) 
 
+png(filename = paste0(plotDir, 'corr_noWastewater.png'),
+    width = 40, height = 30, units = "cm", res = 600)
 corrplot::corrplot(corPredictors,
                    type = "upper", order = "original", diag = FALSE,
                    method = "number", addCoef.col="white", tl.col = "black",
-                   tl.srt = 45, tl.cex = 0.5)
+                   tl.srt = 45, tl.cex = 1)
+dev.off()
 
 # SCALE VARIABLES --------------------------------------------------------------
 
 # List variables to be scaled
 modelVariables <- c(
   # Upstream variables
-  "NPK_PerArea",
+  #"NPK_PerArea",
+  "fertiliser_n_PerArea",
+  "fertiliser_p_PerArea",
+  "fertiliser_k_PerArea",
   "Arable_PerArea",
   "residential_PerArea",
   "Improved_grassland_PerArea",
@@ -295,9 +315,14 @@ for(variable in modelVariables) {
 }
 
 # Convert categorical variables for random effects to factors
-invData$WATER_BODY <- as.factor(invData$WATER_BODY)
-invData$CATCHMENT <- as.factor(invData$CATCHMENT)
-invData$REPORTING_AREA <- as.factor(invData$REPORTING_AREA)
+invData$REPORTING_AREA_NESTED <- as.factor(invData$REPORTING_AREA)
+invData$CATCHMENT_NESTED <- paste( invData$REPORTING_AREA,
+                                    invData$CATCHMENT) %>% 
+  as.factor()
+invData$WATER_BODY_NESTED <- paste( invData$REPORTING_AREA,
+                             invData$CATCHMENT,
+                             invData$WATER_BODY) %>% 
+  as.factor()
 
 ### MODEL SET UP FOR INDIVIDUAL SPECIES ----------------------------------------
 # Loop through taxa then species to preserve ordering
@@ -361,7 +386,10 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     compsWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      NPK(NPK_PerArea_scaled, model = "linear") +
+      #NPK(NPK_PerArea_scaled, model = "linear") +
+      N(fertiliser_n_PerArea, model = "linear") +
+      P(fertiliser_p_PerArea, model = "linear") +
+      K(fertiliser_k_PerArea, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
@@ -386,16 +414,18 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            model = "rw1",
            hyper = rwHyper,
            scale.model = TRUE) +
-      basin(REPORTING_AREA, model = "iid", constr = TRUE, hyper = iidHyper) +
-      catchment(CATCHMENT, model = "iid", constr = TRUE, hyper = iidHyper) +
-      wb(WATER_BODY, model = "iid", constr = TRUE, hyper = iidHyper) +
+      basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
     # Model with wastewater
     compsNoWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      NPK(NPK_PerArea_scaled, model = "linear") +
+      N(fertiliser_n_PerArea, model = "linear") +
+      P(fertiliser_p_PerArea, model = "linear") +
+      K(fertiliser_k_PerArea, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
@@ -420,9 +450,9 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            model = "rw1",
            hyper = rwHyper,
            scale.model = TRUE) +
-      basin(REPORTING_AREA, model = "iid", constr = TRUE, hyper = iidHyper) +
-      catchment(CATCHMENT, model = "iid", constr = TRUE, hyper = iidHyper) +
-      wb(WATER_BODY, model = "iid", constr = TRUE, hyper = iidHyper) +
+      basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
     # RUN MODEL WITH WASTEWATER
