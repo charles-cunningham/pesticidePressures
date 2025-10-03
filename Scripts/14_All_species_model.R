@@ -115,7 +115,7 @@ invData_wAbsences <- NULL
     # SET MODEL COMPONENTS
     
     # Model with wastewater
-    compsWastewater <- speciesAbundance ~
+    compsWastewater <- Abundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
       N(fertiliser_n_PerArea, model = "linear") +
@@ -148,10 +148,11 @@ invData_wAbsences <- NULL
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
     # Model with wastewater
-    compsNoWastewater <- speciesAbundance ~
+    compsNoWastewater <- Abundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
       N(fertiliser_n_PerArea, model = "linear") +
@@ -184,6 +185,7 @@ invData_wAbsences <- NULL
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
     # RUN MODEL WITH WASTEWATER
@@ -191,13 +193,11 @@ invData_wAbsences <- NULL
     # Remove previous model
     if (exists("modelWastewater")) {rm(modelWastewater)}
     
-    # Add escape if model does not converge(
-    try(
-      
+    # Run model
       modelWastewater <- bru(
         components = compsWastewater,
         family = "zeroinflatednbinomial1",
-        data = speciesData %>% filter(., !(is.na(EDF_MEAN))),
+        data = invData_wAbsences %>% filter(., !(is.na(EDF_MEAN))),
         options = list(
           control.fixed = fixedHyper,
           control.compute = list(waic = TRUE,
@@ -205,20 +205,17 @@ invData_wAbsences <- NULL
                                  cpo = TRUE),
           verbose = TRUE)
       )
-    )
-    
+      
     # RUN MODEL WITHOUT WASTEWATER
     
     # Remove previous model
     if (exists("modelNoWastewater")) {rm("modelNoWastewater")}
     
-    # Add escape if model does not converge(
-    try(
-      
+    # Run model
       modelNoWastewater <- bru(
         components = compsNoWastewater,
         family = "zeroinflatednbinomial1",
-        data = speciesData,
+        data = invData_wAbsences,
         options = list(
           control.fixed = fixedHyper,
           control.compute = list(waic = TRUE,
@@ -226,12 +223,7 @@ invData_wAbsences <- NULL
                                  cpo = TRUE),
           verbose = TRUE)
       )
-    )
     
-    # Only plot and save if both models converge
-    if (!is.null(summary(modelWastewater)$inla) & 
-        !is.null(summary(modelNoWastewater)$inla)) {
-      
       # Loop through both models
       for (modelName in c("modelWastewater", "modelNoWastewater")) {
         
@@ -385,67 +377,3 @@ invData_wAbsences <- NULL
                units = "px", dpi = 400,
                limitsize = FALSE)
       }
-    }
-  }
-}
-
-
-
-
-
-# SET MODEL COMPONENTS
-
-
-# Model with wastewater
-compsWastewater <- TOTAL_ABUNDANCE ~
-  pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-  N(fertiliser_n_PerArea, model = "linear") +
-  P(fertiliser_p_PerArea, model = "linear") +
-  K(fertiliser_k_PerArea, model = "linear") +
-  cattle(cattle_PerArea_scaled, model = "linear") +
-  pigs(pigs_PerArea_scaled, model = "linear") +
-  sheep(sheep_PerArea_scaled, model = "linear") +
-  poultry(poultry_PerArea_scaled, model = "linear") +
-  arable(Arable_PerArea_scaled, model = "linear") +
-  grass(Improved_grassland_PerArea_scaled, model = "linear") +
-  residential(residential_PerArea_scaled, model = "linear") +
-  woodland(woodland_PerArea_scaled, model = "linear") +
-  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
-  quality(HS_HQA_scaled, model = "linear") +
-  wastewater(EDF_MEAN_scaled, model = "linear") +
-  PC1(PC1_scaled, model = "linear") +
-  PC2(PC2_scaled, model = "linear") +
-  PC3(PC3_scaled, model = "linear") +
-  PC4(PC4_scaled, model = "linear") +
-  month(main = MONTH_NUM,
-        model = "rw2",
-        cyclic = TRUE,
-        hyper = rwHyper,
-        scale.model = TRUE) +
-  year(YEAR,
-       model = "rw1",
-       hyper = rwHyper,
-       scale.model = TRUE) +
-  basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-  catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-  wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-  species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
-  Intercept(1)
-
-# RUN MODEL WITH WASTEWATER
-
-
-  
-  modelWastewater <- bru(
-    components = compsWastewater,
-    family = "zeroinflatednbinomial1",
-    data = invData,
-    options = list(
-      control.fixed = fixedHyper,
-      control.compute = list(waic = TRUE,
-                             dic = TRUE,
-                             cpo = TRUE),
-      verbose = TRUE)
-  )
-
