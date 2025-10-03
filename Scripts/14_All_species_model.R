@@ -2,7 +2,7 @@
 #
 # Author: Charles Cunningham
 # 
-# Script Name: Model Biosys data using inlabru
+# Script Name: Model abundance of all species (species random effect)
 #
 # Script Description: 
 
@@ -43,24 +43,15 @@ library(cowplot)
 dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
 plotDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Plots/"
 
-# Create processed Biosys data folder
-lapply(paste0(dataDir, "Processed/Species"), function(x) {
-  if (!file.exists(x)) {
-    dir.create(x, recursive = TRUE)
-  }
-})
-
 ### LOAD DATA ------------------------------------------------------------------
 
 # Load Biosys data
-tempStoreForTesting <- readRDS(paste0(dataDir, "Processed/Biosys/invDataSpatialAll.Rds"))
-invData <- tempStoreForTesting
+invData <- readRDS(paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
 
 # SET PARAMETERS ---------------------------------------------------------------
 
 linearEffLabels <- c('pesticideDiv' = "Pesticide diversity",
                      'pesticideToxicity' = "Pesticide combined toxicity",
-                     #'NPK' = "Total chemical input (NPK)",
                      'N' = "Nitrogen",
                      'P' = "Phosporus",
                      'K' = "Potassium",
@@ -78,282 +69,18 @@ linearEffLabels <- c('pesticideDiv' = "Pesticide diversity",
 randomEffLabels <- c( 'month' = "Month",
                       'year' = "Year")
 
-# Set minimum number of records to model
-minRecords <- 100
-
-# PROCESS DATA STRUCTURE -------------------------------------------------------
-
-# Convert to tibble as non-spatially explicit model
-invData <- as_tibble(invData)
-
-# Remove spaces from names for inlabru
-names(invData) <- gsub(" ", "_", names(invData) )
-
-### PROCESS DATES --------------------------------------------------------------
-
-# Covert date to POSIX
-invData <- invData %>%
-  mutate(SAMPLE_DATE = as.POSIXct(SAMPLE_DATE, format = "%d/%m/%Y"))
-
-# Create year column
-invData$YEAR <- invData$SAMPLE_DATE %>%
-  format(., format="%Y") %>% 
-  as.numeric(.)
-
-# Create month name column
-invData$MONTH_NAME <- invData$SAMPLE_DATE %>%
-  format(., format="%B")
-
-# Create month integer column
-invData$MONTH_NUM <- invData$SAMPLE_DATE %>%
-  format(., format="%m") %>%
-  as.numeric()
-
-# Create week column
-invData$WEEK <- invData$SAMPLE_DATE %>%
-  format(., format="%V") %>%
-  as.numeric() 
-
-# FILTER VARIABLES -------------------------------------------------------------
-
-# Filter temporally ( filter years after 2010)
-invData <- invData %>%
-  filter(YEAR > 2010)
-
-# Rescale months and years
-invData$MONTH_NUM <- invData$MONTH_NUM - (min(invData$MONTH_NUM) - 1)
-invData$YEAR <- invData$YEAR - (min(invData$YEAR) - 1)
-
-# Filter available  data
-invData <- invData %>%
-  # Remove rows with no upstream data
-  filter(!(is.na(pesticideLoad))) %>%
-  # Remove rows with no site data
-  filter(!(is.na(HS_HMS_RSB_SubScore))) %>%
-  filter(!(is.na(BIO_DEPTH)))%>%
-  filter(!(is.na(BIO_SAND))) %>%
-  filter(!(is.na(BIO_SILT_CLAY)))
-
-### PROCESS TAXONOMY -----------------------------------------------------------
-
-# Change species names to be file friendly
-invData$TAXON_GROUP_NAME <- invData$TAXON_GROUP_NAME %>%
-  # Remove "insect - " prefix
-  gsub("insect - ", "", .) %>%
-  # Remove spaces
-  gsub(" ", "_", .)
-
-# Change taxanomic group names to be file friendly
-invData$TAXON <- invData$TAXON %>%
-  # Remove spaces
-  gsub(" ", "_", .) %>%
-  # Remove slashes
-  gsub("/", "-", .)
-
-# Schedule 2 species list
-invDataS2 <- invData %>%
-  filter(GROUP == "Schedule 2") %>%
-  distinct(TAXON) %>%
-  .$TAXON
-
-# INNS species list
-invDataINNS <- invData %>%
-  filter(GROUP == "INNS") %>%
-  distinct(TAXON) %>%
-  .$TAXON
-
-### AGGREGATE VARIABLES --------------------------------------------------------
-
-# NPK
-#invData$NPK <- invData$fertiliser_k + invData$fertiliser_n + invData$fertiliser_p
-
-# Woodland
-invData$woodland <- invData$Deciduous_woodland + invData$Coniferous_woodland
-
-# Residential
-invData$residential <- invData$Urban + invData$Suburban
-
-# MODIFY UPSTREAM VARIABLES TO PER AREA VALUES----------------------------------
-
-# Divide upstream variables by area (excluding diversity)
-for(variable in c(#"NPK",
-                  "fertiliser_n",
-                  "fertiliser_p",
-                  "fertiliser_k",
-                  "Arable",
-                  "residential",
-                  "pesticideLoad",
-                  "pesticideToxicLoad",
-                  "cattle",
-                  "pigs",
-                  "sheep",
-                  "poultry",
-                  "woodland",
-                  "Improved_grassland")) {
+### PROCESS TO PSUEDO-ABSENCE FORMAT -------------------------------------------
   
-  # Create new scaled column name
-  colName <- paste0(variable, "_PerArea")
-  
-  # Assign scaled variable to new column
-  invData[, colName] <- invData[, variable] / invData[, "totalArea"]
-  
-}
+invData_wAbsences <- NULL
 
-### CONVERT SITE VARIABLES TO PCA ----------------------------------------------
-
-sitePCA <- invData %>% 
-  select(BIO_ALTITUDE,
-         BIO_SLOPE,
-         BIO_DISTANCE_FROM_SOURCE,
-         BIO_DISCHARGE,
-         BIO_WIDTH,
-         BIO_DEPTH,
-         BIO_BOULDERS_COBBLES,
-         BIO_PEBBLES_GRAVEL,
-         BIO_SAND,
-         BIO_SILT_CLAY) %>%
-  prcomp(.)
-
-summary(sitePCA)
-
-invData <- cbind(invData, sitePCA$x)
-
-### CORRELATION PLOTS ----------------------------------------------------------
-
-# Create correlation data frame
-corr_df <- invData %>%
-  select(pesticideShannon,
-         pesticideToxicLoad_PerArea,
-         #NPK_PerArea,
-         fertiliser_n_PerArea,
-         fertiliser_p_PerArea,
-         fertiliser_k_PerArea,
-         Arable_PerArea,
-         residential_PerArea,
-         Improved_grassland_PerArea,
-         woodland_PerArea,
-         cattle_PerArea,
-         pigs_PerArea,
-         sheep_PerArea,
-         poultry_PerArea,
-         EDF_MEAN,
-         HS_HMS_RSB_SubScore,
-         HS_HQA,
-         PC1,
-         PC2,
-         PC3,
-         PC4,
-         YEAR,
-         MONTH_NUM)
-
-# WITH WASTEWATER
-
-# Filter out missing wastewater values and create correlation object
-corPredictors <- filter(corr_df, !(is.na(EDF_MEAN))) %>%
-  cor(.) 
-
-png(filename = paste0(plotDir, 'corr_wastewater.png'),
-    width = 40, height = 30, units = "cm", res = 600)
-corrplot::corrplot(corPredictors,
-                   type = "upper", order = "original", diag = FALSE,
-                   method = "number", addCoef.col="white", tl.col = "black",
-                   tl.srt = 45, tl.cex = 1)
-dev.off()
-
-
-# WITHOUT WASTEWATER
-
-# Unselect wasterwater column and create correlation object
-corPredictors <- select(corr_df, !(EDF_MEAN)) %>%
-  cor(.) 
-
-png(filename = paste0(plotDir, 'corr_noWastewater.png'),
-    width = 40, height = 30, units = "cm", res = 600)
-corrplot::corrplot(corPredictors,
-                   type = "upper", order = "original", diag = FALSE,
-                   method = "number", addCoef.col="white", tl.col = "black",
-                   tl.srt = 45, tl.cex = 1)
-dev.off()
-
-# SCALE VARIABLES --------------------------------------------------------------
-
-# List variables to be scaled
-modelVariables <- c(
-  # Upstream variables
-  #"NPK_PerArea",
-  "fertiliser_n_PerArea",
-  "fertiliser_p_PerArea",
-  "fertiliser_k_PerArea",
-  "Arable_PerArea",
-  "residential_PerArea",
-  "Improved_grassland_PerArea",
-  "woodland_PerArea",
-  "pesticideShannon",
-  "pesticideLoad_PerArea",
-  "pesticideToxicLoad_PerArea",
-  "cattle_PerArea",
-  "pigs_PerArea",
-  "sheep_PerArea",
-  "poultry_PerArea",
-  # Site variables
-  "EDF_MEAN",
-  "HS_HMS_RSB_SubScore",
-  "HS_HQA",
-  "PC1",
-  "PC2",
-  "PC3",
-  "PC4")
-
-# Create additional scaled column for each modelVariables
-for(variable in modelVariables) {
-  
-  # Create new scaled column name
-  colName <- paste0(variable, "_scaled")
-  
-  # Assign scaled variable to new column
-  invData[, colName] <- scale(invData[[variable]])[,1]
-}
-
-# Convert categorical variables for random effects to factors
-invData$REPORTING_AREA_NESTED <- as.factor(invData$REPORTING_AREA)
-invData$CATCHMENT_NESTED <- paste( invData$REPORTING_AREA,
-                                    invData$CATCHMENT) %>% 
-  as.factor()
-invData$WATER_BODY_NESTED <- paste( invData$REPORTING_AREA,
-                             invData$CATCHMENT,
-                             invData$WATER_BODY) %>% 
-  as.factor()
-
-### MODEL SET UP FOR INDIVIDUAL SPECIES ----------------------------------------
-# Loop through taxa then species to preserve ordering
-
-# Loop through groups
-for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
-  
-  # Find species within taxa
-  taxaSpecies <- invData %>%
+# Loop through species here
+  for (iSpecies in unique(invData$TAXON)) {
     
-    # Filter to TAXON_GROUP
-    filter(TAXON_GROUP_NAME == iTaxa) %>%
-    
-    # Filter only rows of species with over 100 records
-    group_by(TAXON) %>% 
-    filter(n() > minRecords) %>%
-    
-    # Get unique TAXON names
-    .[["TAXON"]] %>%
-    unique()
-  
-  # Loop through species here
-  for (iSpecies in taxaSpecies) {
-    
-    # PROCESS TO PRESENCE-ABSENCE FORMAT
-    
-    # Create iSpecies abundance column with 0s
+    # Create species abundance column with 0s
     speciesData <- invData %>%
-      mutate(speciesAbundance = ifelse(TAXON == iSpecies,
-                                       TOTAL_ABUNDANCE,
-                                       0)) %>%
+      mutate(Abundance = ifelse(TAXON == iSpecies,
+                                TOTAL_ABUNDANCE,
+                                0)) %>%
       # Remove TOTAL_ABUNDANCE column as deprecated
       select(-TOTAL_ABUNDANCE)
     
@@ -362,11 +89,16 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       # For each SAMPLE_ID ...
       group_by(SAMPLE_ID) %>%
       # Extract max abundance value of iSpecies from speciesAbundance
-      slice(which.max(speciesAbundance)) %>%
+      slice(which.max(Abundance)) %>%
       # Ungroup
       ungroup()
     
-    # RUN MODEL ----------------------------------------------------------------
+    # Add to dataframe with all species
+    invData_wAbsences <- rbind(invData_wAbsences, speciesData)
+    
+  }
+
+### RUN MODEL ------------------------------------------------------------------
     
     # SET MODEL PARAMETERS
     
@@ -386,7 +118,6 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     compsWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      #NPK(NPK_PerArea_scaled, model = "linear") +
       N(fertiliser_n_PerArea, model = "linear") +
       P(fertiliser_p_PerArea, model = "linear") +
       K(fertiliser_k_PerArea, model = "linear") +
@@ -657,3 +388,64 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     }
   }
 }
+
+
+
+
+
+# SET MODEL COMPONENTS
+
+
+# Model with wastewater
+compsWastewater <- TOTAL_ABUNDANCE ~
+  pesticideDiv(pesticideShannon_scaled, model = "linear") +
+  pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
+  N(fertiliser_n_PerArea, model = "linear") +
+  P(fertiliser_p_PerArea, model = "linear") +
+  K(fertiliser_k_PerArea, model = "linear") +
+  cattle(cattle_PerArea_scaled, model = "linear") +
+  pigs(pigs_PerArea_scaled, model = "linear") +
+  sheep(sheep_PerArea_scaled, model = "linear") +
+  poultry(poultry_PerArea_scaled, model = "linear") +
+  arable(Arable_PerArea_scaled, model = "linear") +
+  grass(Improved_grassland_PerArea_scaled, model = "linear") +
+  residential(residential_PerArea_scaled, model = "linear") +
+  woodland(woodland_PerArea_scaled, model = "linear") +
+  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+  quality(HS_HQA_scaled, model = "linear") +
+  wastewater(EDF_MEAN_scaled, model = "linear") +
+  PC1(PC1_scaled, model = "linear") +
+  PC2(PC2_scaled, model = "linear") +
+  PC3(PC3_scaled, model = "linear") +
+  PC4(PC4_scaled, model = "linear") +
+  month(main = MONTH_NUM,
+        model = "rw2",
+        cyclic = TRUE,
+        hyper = rwHyper,
+        scale.model = TRUE) +
+  year(YEAR,
+       model = "rw1",
+       hyper = rwHyper,
+       scale.model = TRUE) +
+  basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+  catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+  wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+  species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
+  Intercept(1)
+
+# RUN MODEL WITH WASTEWATER
+
+
+  
+  modelWastewater <- bru(
+    components = compsWastewater,
+    family = "zeroinflatednbinomial1",
+    data = invData,
+    options = list(
+      control.fixed = fixedHyper,
+      control.compute = list(waic = TRUE,
+                             dic = TRUE,
+                             cpo = TRUE),
+      verbose = TRUE)
+  )
+
