@@ -29,7 +29,7 @@ lapply(paste0(dataDir, "Processed/Species"), function(x) {
 ### LOAD DATA ------------------------------------------------------------------
 
 # Load Biosys data
-invData <- readRDS(paste0(dataDir, "Processed/Biosys/invDataSpatialAll.Rds"))
+invData <- readRDS(paste0(dataDir, "Processed/Biosys/invDataSpatial.Rds"))
 
 # PROCESS DATA STRUCTURE -------------------------------------------------------
 
