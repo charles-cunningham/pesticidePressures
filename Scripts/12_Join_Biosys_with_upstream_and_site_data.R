@@ -2,7 +2,7 @@
 #
 # Author: Charles Cunningham
 # 
-# Script Name: Join Biosys and flow data
+# Script Name: Join Biosys and upstream and site data
 #
 # Script Description: Runs overnight
 
@@ -135,6 +135,20 @@ for(site in sites) {
       print()
   }
 }
+
+### JOIN SITE DATA -------------------------------------------------------------
+
+# Collect relevent site variable file names
+siteFiles <- list.files(paste0(dataDir, "/Raw/Site_data/data"), full.names = TRUE) %>%
+  grep("sitevariables.csv", ., value = TRUE)
+
+# Read and bind files
+siteData <- lapply(siteFiles, read.csv) %>% 
+  bind_rows()
+
+# Join data
+invData_sf <- left_join(invData_sf, siteData,
+                        by = c("SITE_ID" = "BIO_SITE_ID"))
 
 ### SAVE -----------------------------------------------------------------------
 
