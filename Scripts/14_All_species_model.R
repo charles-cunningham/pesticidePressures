@@ -141,8 +141,7 @@ invData_wAbsences <- NULL
 # Clear memory
 rm(invData, speciesData)
 gc()
-invData_wAbsences <- invData_wAbsences[sample(nrow(invData_wAbsences),
-                                              round(nrow(invData_wAbsences)/1000)),]
+
 ### RUN MODEL ------------------------------------------------------------------
     
     # SET MODEL PARAMETERS
