@@ -110,7 +110,7 @@ invData <- invData %>%
 # Filter to Schedule 2 species
 invData <- filter(invData, GROUP == "Schedule 2")
 
-# Create empty psuedo-absence table
+# Create empty pseudo-absence table
 invData_wAbsences <- NULL
 
 # Loop through species here
