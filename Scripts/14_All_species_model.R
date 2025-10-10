@@ -70,7 +70,47 @@ randomEffLabels <- c( 'month' = "Month",
                       'year' = "Year")
 
 ### PROCESS TO PSUEDO-ABSENCE FORMAT -------------------------------------------
-  
+
+# Only keep needed columns for memory
+invData <- invData %>%
+  select(REPORTING_AREA,
+         SITE_ID,
+         SAMPLE_ID,
+         TOTAL_ABUNDANCE,
+         YEAR,
+         MONTH_NUM,
+         WEEK,
+         TAXON,
+         fertiliser_n_PerArea_scaled,
+         fertiliser_p_PerArea_scaled,      
+         fertiliser_k_PerArea_scaled,
+         Arable_PerArea_scaled,
+         residential_PerArea_scaled,       
+         Improved_grassland_PerArea_scaled,
+         woodland_PerArea_scaled,
+         pesticideShannon_scaled,
+         pesticideLoad_PerArea_scaled,
+         pesticideToxicLoad_PerArea_scaled,
+         cattle_PerArea_scaled,            
+         pigs_PerArea_scaled,
+         sheep_PerArea_scaled,
+         poultry_PerArea_scaled,          
+         EDF_MEAN_scaled,
+         HS_HMS_RSB_SubScore_scaled,
+         HS_HQA_scaled,                    
+         PC1_scaled,
+         PC2_scaled,
+         PC3_scaled,                       
+         PC4_scaled,
+         REPORTING_AREA_NESTED,
+         CATCHMENT_NESTED,                 
+         WATER_BODY_NESTED,
+         GROUP)
+
+# Filter to Schedule 2 species
+invData <- filter(invData, GROUP == "Schedule 2")
+
+# Create empty psuedo-absence table
 invData_wAbsences <- NULL
 
 # Loop through species here
@@ -98,6 +138,11 @@ invData_wAbsences <- NULL
     
   }
 
+# Clear memory
+rm(invData, speciesData)
+gc()
+invData_wAbsences <- invData_wAbsences[sample(nrow(invData_wAbsences),
+                                              round(nrow(invData_wAbsences)/1000)),]
 ### RUN MODEL ------------------------------------------------------------------
     
     # SET MODEL PARAMETERS
@@ -118,9 +163,9 @@ invData_wAbsences <- NULL
     compsWastewater <- Abundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      N(fertiliser_n_PerArea, model = "linear") +
-      P(fertiliser_p_PerArea, model = "linear") +
-      K(fertiliser_k_PerArea, model = "linear") +
+      N(fertiliser_n_PerArea_scaled, model = "linear") +
+      P(fertiliser_p_PerArea_scaled, model = "linear") +
+      K(fertiliser_k_PerArea_scaled, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
@@ -155,9 +200,9 @@ invData_wAbsences <- NULL
     compsNoWastewater <- Abundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      N(fertiliser_n_PerArea, model = "linear") +
-      P(fertiliser_p_PerArea, model = "linear") +
-      K(fertiliser_k_PerArea, model = "linear") +
+      N(fertiliser_n_PerArea_scaled, model = "linear") +
+      P(fertiliser_p_PerArea_scaled, model = "linear") +
+      K(fertiliser_k_PerArea_scaled, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
@@ -197,7 +242,7 @@ invData_wAbsences <- NULL
       modelWastewater <- bru(
         components = compsWastewater,
         family = "zeroinflatednbinomial1",
-        data = invData_wAbsences %>% filter(., !(is.na(EDF_MEAN))),
+        data = invData_wAbsences %>% filter(., !(is.na(EDF_MEAN_scaled))),
         options = list(
           control.fixed = fixedHyper,
           control.compute = list(waic = TRUE,
@@ -331,47 +376,27 @@ invData_wAbsences <- NULL
           xlab("") +
           ylab("Count")
         
-        # COBINE PLOTS
+        # COMBINE PLOTS
         evalPlot <- plot_grid(fixedEffPlot, randomEffPlot,
                               nrow = 2, ncol = 1)
         
         # SAVE OUTPUT ------------------------------------------------------------
-        
-        # Set folder
-        
-        # If iSpecies is Schedule 2
-        if (iSpecies %in% invDataS2) {
-          group <- "Schedule_2"
-        } else if (iSpecies %in% invDataINNS) {
-          group <- "INNS"
-        }
-        
+    
         # Create directory string for iSpecies
         iSpeciesDir <- paste0(
           dataDir,
           "Processed/Species/",
           "Model_outputs/",
-          gsub("model", "", modelName),
-          "/",
-          group,
-          "/",
-          iTaxa
-        )
-        
-        # Create directories for iTaxa if they don't exist
-        lapply(paste0(iSpeciesDir, c("/ModelSummary", "/ModelPlots")),
-               function(x) {
-                 dir.create(x, recursive = TRUE, showWarnings = FALSE)
-               })
+          gsub("model", "",
+               modelName),
+          "/Schedule_2")
         
         # Save model summaries
         save(modelSummary,
              file = paste0(iSpeciesDir,
-                           "/ModelSummary/",
-                           iSpecies,
-                           ".Rds"))
+                           "/AllSpecies.Rds"))
         ggsave(paste0(iSpeciesDir,
-                      "/ModelPlots/", iSpecies, ".png"),
+                      "/AllSpecies.png"),
                evalPlot,
                width = 3000, height = 3000, 
                units = "px", dpi = 400,
