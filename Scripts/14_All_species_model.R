@@ -145,15 +145,11 @@ rm(invData, speciesData)
     
     # SET MODEL PARAMETERS
     
-    # Priors for fixed effects
-    # fixedHyper <- list( mean = 0,
-    #                     prec = 1 )
-    
     # Priors for random effects
     iidHyper <- list(prec = list(prior = "pc.prec",
-                                 param = c(0.5, 0.01)))
+                                 param = c(100, 0.05)))
     rwHyper <- list(prec = list(prior="pc.prec",
-                                param=c(0.5, 0.01)))
+                                param=c(100, 0.05)))
     
     # SET MODEL COMPONENTS
     
@@ -179,15 +175,15 @@ rm(invData, speciesData)
       PC2(PC2_scaled, model = "linear") +
       PC3(PC3_scaled, model = "linear") +
       PC4(PC4_scaled, model = "linear") +
-      # month(main = MONTH_NUM,
-      #       model = "rw2",
-      #       cyclic = TRUE,
-      #       hyper = rwHyper,
-      #       scale.model = TRUE) +
-      # year(YEAR,
-      #      model = "rw1",
-      #      hyper = rwHyper,
-      #      scale.model = TRUE) +
+      month(main = MONTH_NUM,
+            model = "rw2",
+            cyclic = TRUE,
+            hyper = rwHyper,
+            scale.model = TRUE) +
+      year(YEAR,
+           model = "rw1",
+           hyper = rwHyper,
+           scale.model = TRUE) +
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
@@ -216,15 +212,15 @@ rm(invData, speciesData)
       PC2(PC2_scaled, model = "linear") +
       PC3(PC3_scaled, model = "linear") +
       PC4(PC4_scaled, model = "linear") +
-      # month(main = MONTH_NUM,
-      #       model = "rw2",
-      #       cyclic = TRUE,
-      #       hyper = rwHyper,
-      #       scale.model = TRUE) +
-      # year(YEAR,
-      #      model = "rw1",
-      #      hyper = rwHyper,
-      #      scale.model = TRUE) +
+      month(main = MONTH_NUM,
+            model = "rw2",
+            cyclic = TRUE,
+            hyper = rwHyper,
+            scale.model = TRUE) +
+      year(YEAR,
+           model = "rw1",
+           hyper = rwHyper,
+           scale.model = TRUE) +
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
@@ -242,8 +238,8 @@ rm(invData, speciesData)
         family = "zeroinflatednbinomial1",
         data = invData_wAbsences %>% filter(., !(is.na(EDF_MEAN_scaled))),
         options = list(
-          #control.fixed = fixedHyper,
-          #control.inla= list(int.strategy='eb'),
+          control.fixed = list(prec.intercept = 0.01),
+          int.strategy = 'eb',
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
                                  cpo = TRUE),
@@ -261,8 +257,8 @@ rm(invData, speciesData)
         family = "zeroinflatednbinomial1",
         data = invData_wAbsences,
         options = list(
-          #control.fixed = fixedHyper,
-          #control.inla= list(int.strategy='eb'),
+          control.fixed = list(prec.intercept = 0.01),
+          int.strategy = 'eb',
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
                                  cpo = TRUE),
@@ -271,7 +267,7 @@ rm(invData, speciesData)
     
       # Loop through both models
       for (modelName in c("modelWastewater", "modelNoWastewater")) {
-        
+        modelName <- "modelWastewater"
         # Get model
         model <- get(modelName)
         
