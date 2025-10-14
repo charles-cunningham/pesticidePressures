@@ -140,15 +140,14 @@ invData_wAbsences <- NULL
 
 # Clear memory
 rm(invData, speciesData)
-gc()
 
 ### RUN MODEL ------------------------------------------------------------------
     
     # SET MODEL PARAMETERS
     
     # Priors for fixed effects
-    fixedHyper <- list( mean = 0,
-                        prec = 1 )
+    # fixedHyper <- list( mean = 0,
+    #                     prec = 1 )
     
     # Priors for random effects
     iidHyper <- list(prec = list(prior = "pc.prec",
@@ -180,18 +179,18 @@ gc()
       PC2(PC2_scaled, model = "linear") +
       PC3(PC3_scaled, model = "linear") +
       PC4(PC4_scaled, model = "linear") +
-      month(main = MONTH_NUM,
-            model = "rw2",
-            cyclic = TRUE,
-            hyper = rwHyper,
-            scale.model = TRUE) +
-      year(YEAR,
-           model = "rw1",
-           hyper = rwHyper,
-           scale.model = TRUE) +
+      # month(main = MONTH_NUM,
+      #       model = "rw2",
+      #       cyclic = TRUE,
+      #       hyper = rwHyper,
+      #       scale.model = TRUE) +
+      # year(YEAR,
+      #      model = "rw1",
+      #      hyper = rwHyper,
+      #      scale.model = TRUE) +
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
@@ -217,18 +216,18 @@ gc()
       PC2(PC2_scaled, model = "linear") +
       PC3(PC3_scaled, model = "linear") +
       PC4(PC4_scaled, model = "linear") +
-      month(main = MONTH_NUM,
-            model = "rw2",
-            cyclic = TRUE,
-            hyper = rwHyper,
-            scale.model = TRUE) +
-      year(YEAR,
-           model = "rw1",
-           hyper = rwHyper,
-           scale.model = TRUE) +
+      # month(main = MONTH_NUM,
+      #       model = "rw2",
+      #       cyclic = TRUE,
+      #       hyper = rwHyper,
+      #       scale.model = TRUE) +
+      # year(YEAR,
+      #      model = "rw1",
+      #      hyper = rwHyper,
+      #      scale.model = TRUE) +
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
@@ -243,7 +242,8 @@ gc()
         family = "zeroinflatednbinomial1",
         data = invData_wAbsences %>% filter(., !(is.na(EDF_MEAN_scaled))),
         options = list(
-          control.fixed = fixedHyper,
+          #control.fixed = fixedHyper,
+          #control.inla= list(int.strategy='eb'),
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
                                  cpo = TRUE),
@@ -254,14 +254,15 @@ gc()
     
     # Remove previous model
     if (exists("modelNoWastewater")) {rm("modelNoWastewater")}
-    
+      
     # Run model
       modelNoWastewater <- bru(
         components = compsNoWastewater,
         family = "zeroinflatednbinomial1",
         data = invData_wAbsences,
         options = list(
-          control.fixed = fixedHyper,
+          #control.fixed = fixedHyper,
+          #control.inla= list(int.strategy='eb'),
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
                                  cpo = TRUE),
