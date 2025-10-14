@@ -239,7 +239,7 @@ rm(invData, speciesData)
         data = invData_wAbsences %>% filter(., !(is.na(EDF_MEAN_scaled))),
         options = list(
           control.fixed = list(prec.intercept = 0.01),
-          int.strategy = 'eb',
+          control.inla = list(int.strategy = 'eb'),
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
                                  cpo = TRUE),
@@ -258,7 +258,7 @@ rm(invData, speciesData)
         data = invData_wAbsences,
         options = list(
           control.fixed = list(prec.intercept = 0.01),
-          int.strategy = 'eb',
+          control.inla = list(int.strategy = 'eb'),
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
                                  cpo = TRUE),
