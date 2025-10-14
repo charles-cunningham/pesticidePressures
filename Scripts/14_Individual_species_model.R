@@ -212,7 +212,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         data = speciesData %>% filter(., !(is.na(EDF_MEAN))),
         options = list(
           control.fixed = list(prec.intercept = 0.01),
-          int.strategy = 'eb',
+          control.inla = list(int.strategy = 'eb'),
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
                                  cpo = TRUE),
@@ -234,7 +234,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         data = speciesData,
         options = list(
           control.fixed = list(prec.intercept = 0.01),
-          int.strategy = 'eb',
+          control.inla = list(int.strategy = 'eb'),
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
                                  cpo = TRUE),
