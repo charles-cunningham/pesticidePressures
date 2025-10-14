@@ -171,7 +171,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            scale.model = TRUE) +
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
     # Model with wastewater
@@ -207,7 +207,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            scale.model = TRUE) +
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
     # RUN MODEL WITH WASTEWATER
