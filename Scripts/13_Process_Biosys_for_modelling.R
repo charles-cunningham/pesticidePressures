@@ -100,18 +100,6 @@ invData$TAXON <- invData$TAXON %>%
   # Remove slashes
   gsub("/", "-", .)
 
-# Schedule 2 species list
-invDataS2 <- invData %>%
-  filter(GROUP == "Schedule 2") %>%
-  distinct(TAXON) %>%
-  .$TAXON
-
-# INNS species list
-invDataINNS <- invData %>%
-  filter(GROUP == "INNS") %>%
-  distinct(TAXON) %>%
-  .$TAXON
-
 ### AGGREGATE VARIABLES --------------------------------------------------------
 
 # Woodland
