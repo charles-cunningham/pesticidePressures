@@ -178,16 +178,14 @@ rm(invData, speciesData)
       month(main = MONTH_NUM,
             model = "rw2",
             cyclic = TRUE,
-            hyper = rwHyper,
-            scale.model = TRUE) +
+            hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
-           hyper = rwHyper,
-           scale.model = TRUE) +
-      basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
+           hyper = rwHyper) +
+      basin(REPORTING_AREA_NESTED, model = "iid", hyper = iidHyper) +
+      catchment(CATCHMENT_NESTED, model = "iid", hyper = iidHyper) +
+      #wb(WATER_BODY_NESTED, model = "iid", hyper = iidHyper) +
+      species(TAXON, model = "iid", hyper = iidHyper) +
       Intercept(1)
     
     # Model with wastewater
@@ -215,16 +213,14 @@ rm(invData, speciesData)
       month(main = MONTH_NUM,
             model = "rw2",
             cyclic = TRUE,
-            hyper = rwHyper,
-            scale.model = TRUE) +
+            hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
-           hyper = rwHyper,
-           scale.model = TRUE) +
-      basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
+           hyper = rwHyper) +
+      basin(REPORTING_AREA_NESTED, model = "iid", hyper = iidHyper) +
+      catchment(CATCHMENT_NESTED, model = "iid", hyper = iidHyper) +
+      #wb(WATER_BODY_NESTED, model = "iid", hyper = iidHyper) +
+      species(TAXON, model = "iid", hyper = iidHyper) +
       Intercept(1)
     
     # RUN MODEL WITH WASTEWATER
@@ -387,6 +383,12 @@ rm(invData, speciesData)
                modelName),
           "/Schedule_2")
         
+        # Create directories if they don't exist
+        lapply(paste0(iSpeciesDir, c("/ModelSummary", "/ModelPlots")),
+               function(x) {
+                 dir.create(x, recursive = TRUE, showWarnings = FALSE)
+               })
+      
         # Save model summaries
         save(modelSummary,
              file = paste0(iSpeciesDir,
