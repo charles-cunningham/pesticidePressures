@@ -84,9 +84,9 @@ invData <- invData %>%
          fertiliser_n_PerArea_scaled,
          fertiliser_p_PerArea_scaled,      
          fertiliser_k_PerArea_scaled,
-         Arable_PerArea_scaled,
+         #Arable_PerArea_scaled,
          residential_PerArea_scaled,       
-         Improved_grassland_PerArea_scaled,
+         #Improved_grassland_PerArea_scaled,
          woodland_PerArea_scaled,
          pesticideShannon_scaled,
          pesticideLoad_PerArea_scaled,
@@ -140,6 +140,7 @@ invData_wAbsences <- NULL
 
 # Clear memory
 rm(invData, speciesData)
+gc()
 
 ### RUN MODEL ------------------------------------------------------------------
     
@@ -164,8 +165,8 @@ rm(invData, speciesData)
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
       poultry(poultry_PerArea_scaled, model = "linear") +
-      arable(Arable_PerArea_scaled, model = "linear") +
-      grass(Improved_grassland_PerArea_scaled, model = "linear") +
+      #arable(Arable_PerArea_scaled, model = "linear") +
+      #grass(Improved_grassland_PerArea_scaled, model = "linear") +
       residential(residential_PerArea_scaled, model = "linear") +
       woodland(woodland_PerArea_scaled, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
@@ -199,8 +200,8 @@ rm(invData, speciesData)
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
       poultry(poultry_PerArea_scaled, model = "linear") +
-      arable(Arable_PerArea_scaled, model = "linear") +
-      grass(Improved_grassland_PerArea_scaled, model = "linear") +
+      #arable(Arable_PerArea_scaled, model = "linear") +
+      #grass(Improved_grassland_PerArea_scaled, model = "linear") +
       residential(residential_PerArea_scaled, model = "linear") +
       woodland(woodland_PerArea_scaled, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
@@ -223,11 +224,30 @@ rm(invData, speciesData)
       species(TAXON, model = "iid", hyper = iidHyper) +
       Intercept(1)
     
+    # RUN MODEL WITHOUT WASTEWATER
+    
+    # Remove previous model
+    if (exists("modelNoWastewater")) {rm("modelNoWastewater")}
+    gc()
+    # Run model
+    modelNoWastewater <- bru(
+      components = compsNoWastewater,
+      family = "zeroinflatednbinomial1",
+      data = invData_wAbsences,
+      options = list(
+        control.fixed = list(prec.intercept = 0.01),
+        control.inla = list(cmin=0),
+        # control.compute = list(waic = TRUE,
+        #                        dic = TRUE,
+        #                        cpo = TRUE),
+        verbose = TRUE)
+    )
+    
     # RUN MODEL WITH WASTEWATER
     
     # Remove previous model
     if (exists("modelWastewater")) {rm(modelWastewater)}
-    
+    gc()
     # Run model
       modelWastewater <- bru(
         components = compsWastewater,
@@ -236,31 +256,12 @@ rm(invData, speciesData)
         options = list(
           control.fixed = list(prec.intercept = 0.01),
           control.inla = list(cmin=0),
-          control.compute = list(waic = TRUE,
-                                 dic = TRUE,
-                                 cpo = TRUE),
+          # control.compute = list(waic = TRUE,
+          #                        dic = TRUE,
+          #                        cpo = TRUE),
           verbose = TRUE)
       )
       
-    # RUN MODEL WITHOUT WASTEWATER
-    
-    # Remove previous model
-    if (exists("modelNoWastewater")) {rm("modelNoWastewater")}
-      
-    # Run model
-      modelNoWastewater <- bru(
-        components = compsNoWastewater,
-        family = "zeroinflatednbinomial1",
-        data = invData_wAbsences,
-        options = list(
-          control.fixed = list(prec.intercept = 0.01),
-          control.inla = list(cmin=0),
-          control.compute = list(waic = TRUE,
-                                 dic = TRUE,
-                                 cpo = TRUE),
-          verbose = TRUE)
-      )
-    
       # Loop through both models
       for (modelName in c("modelWastewater", "modelNoWastewater")) {
         modelName <- "modelWastewater"
