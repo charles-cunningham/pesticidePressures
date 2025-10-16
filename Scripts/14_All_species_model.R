@@ -36,6 +36,9 @@ library(corrplot)
 library(GGally)
 library(cowplot)
 
+# Set number of threads
+inla.setOption( num.threads = 4 )
+
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 # Set data directory
 # If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
@@ -185,7 +188,7 @@ gc()
            hyper = rwHyper) +
       basin(REPORTING_AREA_NESTED, model = "iid", hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", hyper = iidHyper) +
-      #wb(WATER_BODY_NESTED, model = "iid", hyper = iidHyper) +
+      wb(WATER_BODY_NESTED, model = "iid", hyper = iidHyper) +
       species(TAXON, model = "iid", hyper = iidHyper) +
       Intercept(1)
     
@@ -220,7 +223,7 @@ gc()
            hyper = rwHyper) +
       basin(REPORTING_AREA_NESTED, model = "iid", hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", hyper = iidHyper) +
-      #wb(WATER_BODY_NESTED, model = "iid", hyper = iidHyper) +
+      wb(WATER_BODY_NESTED, model = "iid", hyper = iidHyper) +
       species(TAXON, model = "iid", hyper = iidHyper) +
       Intercept(1)
     
@@ -237,9 +240,9 @@ gc()
       options = list(
         control.fixed = list(prec.intercept = 0.01),
         control.inla = list(cmin=0),
-        # control.compute = list(waic = TRUE,
-        #                        dic = TRUE,
-        #                        cpo = TRUE),
+        control.compute = list(waic = TRUE,
+                               dic = TRUE,
+                               cpo = TRUE),
         verbose = TRUE)
     )
     
@@ -256,9 +259,9 @@ gc()
         options = list(
           control.fixed = list(prec.intercept = 0.01),
           control.inla = list(cmin=0),
-          # control.compute = list(waic = TRUE,
-          #                        dic = TRUE,
-          #                        cpo = TRUE),
+          control.compute = list(waic = TRUE,
+                                 dic = TRUE,
+                                 cpo = TRUE),
           verbose = TRUE)
       )
       
