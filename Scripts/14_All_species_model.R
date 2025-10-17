@@ -267,7 +267,7 @@ gc()
       
       # Loop through both models
       for (modelName in c("modelWastewater", "modelNoWastewater")) {
-        modelName <- "modelWastewater"
+        
         # Get model
         model <- get(modelName)
         
