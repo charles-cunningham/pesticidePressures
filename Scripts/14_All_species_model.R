@@ -59,8 +59,6 @@ linearEffLabels <- c('pesticideDiv' = "Pesticide diversity",
                      'pigs' = "Pigs",
                      'sheep' = "Sheep",
                      'poultry' = "Poultry",
-                     'arable' = "Arable",
-                     'grass' = "Intensive grassland",
                      'residential' = "Residential",
                      'woodland' = "Woodland",
                      'modification' = "Stream modification",
@@ -84,9 +82,7 @@ invData <- invData %>%
          fertiliser_n_PerArea_scaled,
          fertiliser_p_PerArea_scaled,      
          fertiliser_k_PerArea_scaled,
-         Arable_PerArea_scaled,
          residential_PerArea_scaled,       
-         Improved_grassland_PerArea_scaled,
          woodland_PerArea_scaled,
          pesticideShannon_scaled,
          pesticideLoad_PerArea_scaled,
@@ -165,8 +161,6 @@ gc()
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
       poultry(poultry_PerArea_scaled, model = "linear") +
-      arable(Arable_PerArea_scaled, model = "linear") +
-      grass(Improved_grassland_PerArea_scaled, model = "linear") +
       residential(residential_PerArea_scaled, model = "linear") +
       woodland(woodland_PerArea_scaled, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
@@ -200,8 +194,6 @@ gc()
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
       poultry(poultry_PerArea_scaled, model = "linear") +
-      arable(Arable_PerArea_scaled, model = "linear") +
-      grass(Improved_grassland_PerArea_scaled, model = "linear") +
       residential(residential_PerArea_scaled, model = "linear") +
       woodland(woodland_PerArea_scaled, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
@@ -228,7 +220,7 @@ gc()
     
     # Remove previous model
     if (exists("modelNoWastewater")) {rm("modelNoWastewater")}
-    gc()
+
     # Run model
     modelNoWastewater <- bru(
       components = compsNoWastewater,
@@ -242,12 +234,13 @@ gc()
                                cpo = TRUE),
         verbose = TRUE)
     )
+    gc()
     
     # RUN MODEL WITH WASTEWATER
     
     # Remove previous model
     if (exists("modelWastewater")) {rm(modelWastewater)}
-    gc()
+
     # Run model
       modelWastewater <- bru(
         components = compsWastewater,
@@ -261,6 +254,7 @@ gc()
                                  cpo = TRUE),
           verbose = TRUE)
       )
+      gc()
       
       # Loop through both models
       for (modelName in c("modelWastewater", "modelNoWastewater")) {
