@@ -36,6 +36,8 @@ library(corrplot)
 library(GGally)
 library(cowplot)
 
+inla.setOption(num.threads = 8)
+
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 # Set data directory
 # If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
