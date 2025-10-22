@@ -172,15 +172,17 @@ gc()
       PC4(PC4_scaled, model = "linear") +
       month(main = MONTH_NUM,
             model = "rw2",
+            scale.model = TRUE,
             cyclic = TRUE,
             hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
+           scale.model = TRUE,
            hyper = rwHyper) +
-      basin(REPORTING_AREA_NESTED, model = "iid", hyper = iidHyper) +
-      catchment(CATCHMENT_NESTED, model = "iid", hyper = iidHyper) +
-      #wb(WATER_BODY_NESTED, model = "iid", hyper = iidHyper) +
-      species(TAXON, model = "iid", hyper = iidHyper) +
+      basin(REPORTING_AREA_NESTED, model = "iid", scale.model = TRUE,  hyper = iidHyper) +
+      catchment(CATCHMENT_NESTED, model = "iid", scale.model = TRUE, hyper = iidHyper) +
+      wb(WATER_BODY_NESTED, model = "iid", scale.model = TRUE, hyper = iidHyper) +
+      species(TAXON, model = "iid", scale.model = TRUE, hyper = iidHyper) +
       Intercept(1)
     
     # Model without wastewater
@@ -205,15 +207,17 @@ gc()
       PC4(PC4_scaled, model = "linear") +
       month(main = MONTH_NUM,
             model = "rw2",
+            scale.model = TRUE,
             cyclic = TRUE,
             hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
+           scale.model = TRUE,
            hyper = rwHyper) +
-      basin(REPORTING_AREA_NESTED, model = "iid", hyper = iidHyper) +
-      catchment(CATCHMENT_NESTED, model = "iid", hyper = iidHyper) +
-      #wb(WATER_BODY_NESTED, model = "iid", hyper = iidHyper) +
-      species(TAXON, model = "iid", hyper = iidHyper) +
+      basin(REPORTING_AREA_NESTED, model = "iid", scale.model = TRUE,  hyper = iidHyper) +
+      catchment(CATCHMENT_NESTED, model = "iid", scale.model = TRUE, hyper = iidHyper) +
+      wb(WATER_BODY_NESTED, model = "iid", scale.model = TRUE, hyper = iidHyper) +
+      species(TAXON, model = "iid", scale.model = TRUE, hyper = iidHyper) +
       Intercept(1)
     
     # RUN MODEL WITHOUT WASTEWATER
