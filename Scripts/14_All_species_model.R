@@ -100,7 +100,7 @@ invData <- invData %>%
          PC4_scaled,
          REPORTING_AREA_NESTED,
          CATCHMENT_NESTED,                 
-         WATER_BODY_NESTED,
+         #WATER_BODY_NESTED,
          GROUP)
 
 # Filter to Schedule 2 species
@@ -179,11 +179,11 @@ gc()
            hyper = rwHyper) +
       basin(REPORTING_AREA_NESTED, model = "iid", hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", hyper = iidHyper) +
-      wb(WATER_BODY_NESTED, model = "iid", hyper = iidHyper) +
+      #wb(WATER_BODY_NESTED, model = "iid", hyper = iidHyper) +
       species(TAXON, model = "iid", hyper = iidHyper) +
       Intercept(1)
     
-    # Model with wastewater
+    # Model without wastewater
     compsNoWastewater <- Abundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
@@ -212,7 +212,7 @@ gc()
            hyper = rwHyper) +
       basin(REPORTING_AREA_NESTED, model = "iid", hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", hyper = iidHyper) +
-      wb(WATER_BODY_NESTED, model = "iid", hyper = iidHyper) +
+      #wb(WATER_BODY_NESTED, model = "iid", hyper = iidHyper) +
       species(TAXON, model = "iid", hyper = iidHyper) +
       Intercept(1)
     
@@ -256,16 +256,19 @@ gc()
       )
       gc()
       
+      # PLOTS ------------------------------------------------------------------
+      
       # Loop through both models
-      for (modelName in c("modelWastewater", "modelNoWastewater")) {
+      models <- list(modelWastewater = modelWastewater,
+                     modelNoWastewater = modelNoWastewater)
+      
+      for (modelName in names(models)) {
         
         # Get model
-        model <- get(modelName)
+        model <- models[[modelName]]
         
         # Model summary
         modelSummary <- summary(model)
-        
-        # PLOTS ------------------------------------------------------------------
         
         # FIXED EFFECTS
         
