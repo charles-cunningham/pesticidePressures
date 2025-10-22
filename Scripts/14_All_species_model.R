@@ -100,7 +100,7 @@ invData <- invData %>%
          PC4_scaled,
          REPORTING_AREA_NESTED,
          CATCHMENT_NESTED,                 
-         #WATER_BODY_NESTED,
+         WATER_BODY_NESTED,
          GROUP)
 
 # Filter to Schedule 2 species
@@ -179,10 +179,10 @@ gc()
            model = "rw1",
            scale.model = TRUE,
            hyper = rwHyper) +
-      basin(REPORTING_AREA_NESTED, model = "iid", scale.model = TRUE,  hyper = iidHyper) +
-      catchment(CATCHMENT_NESTED, model = "iid", scale.model = TRUE, hyper = iidHyper) +
-      wb(WATER_BODY_NESTED, model = "iid", scale.model = TRUE, hyper = iidHyper) +
-      species(TAXON, model = "iid", scale.model = TRUE, hyper = iidHyper) +
+      basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
     # Model without wastewater
@@ -214,10 +214,10 @@ gc()
            model = "rw1",
            scale.model = TRUE,
            hyper = rwHyper) +
-      basin(REPORTING_AREA_NESTED, model = "iid", scale.model = TRUE,  hyper = iidHyper) +
-      catchment(CATCHMENT_NESTED, model = "iid", scale.model = TRUE, hyper = iidHyper) +
-      wb(WATER_BODY_NESTED, model = "iid", scale.model = TRUE, hyper = iidHyper) +
-      species(TAXON, model = "iid", scale.model = TRUE, hyper = iidHyper) +
+      basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
     # RUN MODEL WITHOUT WASTEWATER
