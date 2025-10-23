@@ -36,7 +36,7 @@ library(corrplot)
 library(GGally)
 library(cowplot)
 
-inla.setOption(num.threads = 8)
+inla.setOption(num.threads = 4)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 # Set data directory
@@ -52,7 +52,7 @@ invData <- readRDS(paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
 
 # SET PARAMETERS ---------------------------------------------------------------
 
-linearEffLabels <- c('pesticideDiv' = "Pesticide diversity",
+linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
                      'pesticideToxicity' = "Pesticide combined toxicity",
                      'N' = "Nitrogen",
                      'P' = "Phosporus",
@@ -66,8 +66,11 @@ linearEffLabels <- c('pesticideDiv' = "Pesticide diversity",
                      'modification' = "Stream modification",
                      'quality' = "Habitat quality")
 
-randomEffLabels <- c( 'month' = "Month",
-                      'year' = "Year")
+linearLabels_W <- c(linearLabels_NoW,
+                      'wastewater' = "Wastewater")
+
+randomLabels <- c( 'month' = "Month",
+                   'year' = "Year")
 
 ### PROCESS TO PSUEDO-ABSENCE FORMAT -------------------------------------------
 
@@ -102,7 +105,7 @@ invData <- invData %>%
          PC4_scaled,
          REPORTING_AREA_NESTED,
          CATCHMENT_NESTED,                 
-         WATER_BODY_NESTED,
+         #WATER_BODY_NESTED,
          GROUP)
 
 # Filter to Schedule 2 species
@@ -273,13 +276,17 @@ gc()
         # Get model
         model <- models[[modelName]]
         
-        # Model summary
+        # Get model summary
         modelSummary <- summary(model)
+        
+        # Get linear effect labels
+        if (modelName == "modelNoWastewater") { linearLabels <- linearLabels_NoW}
+        if (modelName == "modelWastewater") { linearLabels <- linearLabels_W}
         
         # FIXED EFFECTS
         
         # Loop through variables and extract estimates
-        for (i in names(linearEffLabels)) {
+        for (i in names(linearLabels)) {
           
           # For covariate i, extract effect size
           effectSize <- modelSummary$inla$fixed[i,] %>%
@@ -290,7 +297,7 @@ gc()
           effectSize$Covariate <- i
           
           # If first covariate
-          if (i == names(linearEffLabels)[1]) {
+          if (i == names(linearLabels)[1]) {
             # Create a new data frame
             effectSizeAll <- effectSize
             
@@ -320,8 +327,8 @@ gc()
                      fill = "black",
                      stroke = 0.1) +
           scale_x_discrete(name = "",
-                           limits = rev(names(linearEffLabels)),
-                           labels = as_labeller(linearEffLabels)) +
+                           limits = rev(names(linearLabels)),
+                           labels = as_labeller(linearLabels)) +
           scale_y_continuous(name = "Effect size") +
           coord_flip() +
           theme_minimal() +
@@ -365,7 +372,7 @@ gc()
           # Thematics
           facet_wrap( ~ randomEff,
                       scale = 'free_x',
-                      labeller = as_labeller(randomEffLabels))  +
+                      labeller = as_labeller(randomLabels))  +
           ggtitle("Non-linear random effects") +
           theme(plot.title = element_text(hjust = 0.5),
                 strip.text.x = element_text(size = 10)) +
