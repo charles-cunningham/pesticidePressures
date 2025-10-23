@@ -394,11 +394,8 @@ gc()
                modelName),
           "/Schedule_2")
         
-        # Create directories if they don't exist
-        lapply(paste0(iSpeciesDir, c("/ModelSummary", "/ModelPlots")),
-               function(x) {
-                 dir.create(x, recursive = TRUE, showWarnings = FALSE)
-               })
+        # Create directory
+        dir.create(iSpeciesDir, recursive = TRUE, showWarnings = FALSE)
       
         # Save model summaries
         save(modelSummary,
