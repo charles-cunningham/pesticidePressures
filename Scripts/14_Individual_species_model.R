@@ -277,7 +277,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         # FIXED EFFECTS
         
         # Loop through variables and extract estimates
-        for (i in names(linearEffLabels)) {
+        for (i in names(linearLabels)) {
           
           # For covariate i, extract effect size
           effectSize <- modelSummary$inla$fixed[i,] %>%
