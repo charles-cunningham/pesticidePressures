@@ -36,7 +36,9 @@ library(corrplot)
 library(GGally)
 library(cowplot)
 
+# Set inla options
 inla.setOption(num.threads = "16:1")
+inla.setOption(inla.timeout = 600) # 10 minutes
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 # Set data directory
@@ -216,7 +218,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     
     # Add escape if model does not converge(
     try(
-      
+
       modelWastewater <- bru(
         components = compsWastewater,
         family = "zeroinflatednbinomial1",
