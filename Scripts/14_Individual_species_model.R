@@ -135,9 +135,9 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
 
     # Priors for random effects
     iidHyper <- list(prec = list(prior = "pc.prec",
-                                 param = c(10, 0.05)))
+                                 param = c(100, 0.05)))
     rwHyper <- list(prec = list(prior="pc.prec",
-                                param=c(10, 0.05)))
+                                param=c(100, 0.05)))
     
     # SET MODEL COMPONENTS
     
