@@ -73,7 +73,7 @@ randomLabels <- c( 'month' = "Month",
                    'year' = "Year")
 
 # Set minimum number of records to model - only commonly recorded species
-minRecords <- 5000
+minRecords <- 1000
 
 # Schedule 2 species list
 invDataS2 <- invData %>%
@@ -135,9 +135,9 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
 
     # Priors for random effects
     iidHyper <- list(prec = list(prior = "pc.prec",
-                                 param = c(100, 0.05)))
+                                 param = c(10, 0.05)))
     rwHyper <- list(prec = list(prior="pc.prec",
-                                param=c(100, 0.05)))
+                                param=c(10, 0.05)))
     
     # SET MODEL COMPONENTS
     
