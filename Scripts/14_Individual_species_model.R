@@ -36,6 +36,8 @@ library(corrplot)
 library(GGally)
 library(cowplot)
 
+inla.setOption(num.threads = "16:1")
+
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 # Set data directory
 # If working on Databricks: "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticides/Data/"
@@ -50,27 +52,28 @@ invData <- readRDS(paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
 
 # SET PARAMETERS ---------------------------------------------------------------
 
-linearEffLabels <- c('pesticideDiv' = "Pesticide diversity",
-                     'pesticideToxicity' = "Pesticide combined toxicity",
-                     'N' = "Nitrogen",
-                     'P' = "Phosporus",
-                     'K' = "Potassium",
-                     'cattle' = "Cattle",
-                     'pigs' = "Pigs",
-                     'sheep' = "Sheep",
-                     'poultry' = "Poultry",
-                     'arable' = "Arable",
-                     'grass' = "Intensive grassland",
-                     'residential' = "Residential",
-                     'woodland' = "Woodland",
-                     'modification' = "Stream modification",
-                     'quality' = "Habitat quality")
+linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
+                      'pesticideToxicity' = "Pesticide combined toxicity",
+                      'N' = "Nitrogen",
+                      'P' = "Phosporus",
+                      'K' = "Potassium",
+                      'cattle' = "Cattle",
+                      'pigs' = "Pigs",
+                      'sheep' = "Sheep",
+                      'poultry' = "Poultry",
+                      'residential' = "Residential",
+                      'woodland' = "Woodland",
+                      'modification' = "Stream modification",
+                      'quality' = "Habitat quality")
 
-randomEffLabels <- c( 'month' = "Month",
-                      'year' = "Year")
+linearLabels_W <- c(linearLabels_NoW,
+                    'wastewater' = "Wastewater")
+
+randomLabels <- c( 'month' = "Month",
+                   'year' = "Year")
 
 # Set minimum number of records to model - only commonly recorded species
-minRecords <- 1000
+minRecords <- 5000
 
 # Schedule 2 species list
 invDataS2 <- invData %>%
@@ -142,15 +145,13 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     compsWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      N(fertiliser_n_PerArea, model = "linear") +
-      P(fertiliser_p_PerArea, model = "linear") +
-      K(fertiliser_k_PerArea, model = "linear") +
+      N(fertiliser_n_PerArea_scaled, model = "linear") +
+      P(fertiliser_p_PerArea_scaled, model = "linear") +
+      K(fertiliser_k_PerArea_scaled, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
       poultry(poultry_PerArea_scaled, model = "linear") +
-      arable(Arable_PerArea_scaled, model = "linear") +
-      grass(Improved_grassland_PerArea_scaled, model = "linear") +
       residential(residential_PerArea_scaled, model = "linear") +
       woodland(woodland_PerArea_scaled, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
@@ -162,13 +163,13 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       PC4(PC4_scaled, model = "linear") +
       month(main = MONTH_NUM,
             model = "rw2",
+            scale.model = TRUE,
             cyclic = TRUE,
-            hyper = rwHyper,
-            scale.model = TRUE) +
+            hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
-           hyper = rwHyper,
-           scale.model = TRUE) +
+           scale.model = TRUE,
+           hyper = rwHyper) +
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
@@ -178,15 +179,13 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     compsNoWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      N(fertiliser_n_PerArea, model = "linear") +
-      P(fertiliser_p_PerArea, model = "linear") +
-      K(fertiliser_k_PerArea, model = "linear") +
+      N(fertiliser_n_PerArea_scaled, model = "linear") +
+      P(fertiliser_p_PerArea_scaled, model = "linear") +
+      K(fertiliser_k_PerArea_scaled, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
       poultry(poultry_PerArea_scaled, model = "linear") +
-      arable(Arable_PerArea_scaled, model = "linear") +
-      grass(Improved_grassland_PerArea_scaled, model = "linear") +
       residential(residential_PerArea_scaled, model = "linear") +
       woodland(woodland_PerArea_scaled, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
@@ -198,13 +197,13 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       PC4(PC4_scaled, model = "linear") +
       month(main = MONTH_NUM,
             model = "rw2",
+            scale.model = TRUE,
             cyclic = TRUE,
-            hyper = rwHyper,
-            scale.model = TRUE) +
+            hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
-           hyper = rwHyper,
-           scale.model = TRUE) +
+           scale.model = TRUE,
+           hyper = rwHyper) +
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
@@ -224,7 +223,6 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         data = speciesData %>% filter(., !(is.na(EDF_MEAN))),
         options = list(
           control.fixed = list(prec.intercept = 0.01),
-          control.inla = list(int.strategy = 'eb'),
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
                                  cpo = TRUE),
@@ -246,7 +244,6 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         data = speciesData,
         options = list(
           control.fixed = list(prec.intercept = 0.01),
-          control.inla = list(int.strategy = 'eb'),
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
                                  cpo = TRUE),
@@ -261,11 +258,19 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       # Loop through both models
       for (modelName in c("modelWastewater", "modelNoWastewater")) {
         
-        # Get model
-        model <- get(modelName)
+        # Loop through both models
+        models <- list(modelWastewater = modelWastewater,
+                       modelNoWastewater = modelNoWastewater)
         
-        # Model summary
+        # Get model
+        model <- models[[modelName]]
+        
+        # Get model summary
         modelSummary <- summary(model)
+        
+        # Get linear effect labels
+        if (modelName == "modelNoWastewater") { linearLabels <- linearLabels_NoW}
+        if (modelName == "modelWastewater") { linearLabels <- linearLabels_W}
         
         # PLOTS ------------------------------------------------------------------
         
@@ -283,7 +288,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
           effectSize$Covariate <- i
           
           # If first covariate
-          if (i == names(linearEffLabels)[1]) {
+          if (i == names(linearLabels)[1]) {
             # Create a new data frame
             effectSizeAll <- effectSize
             
@@ -313,8 +318,8 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
                      fill = "black",
                      stroke = 0.1) +
           scale_x_discrete(name = "",
-                           limits = rev(names(linearEffLabels)),
-                           labels = as_labeller(linearEffLabels)) +
+                           limits = rev(names(linearLabels)),
+                           labels = as_labeller(linearLabels)) +
           scale_y_continuous(name = "Effect size") +
           coord_flip() +
           theme_minimal() +
@@ -358,7 +363,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
           # Thematics
           facet_wrap( ~ randomEff,
                       scale = 'free_x',
-                      labeller = as_labeller(randomEffLabels))  +
+                      labeller = as_labeller(randomLabels))  +
           ggtitle("Non-linear random effects") +
           theme(plot.title = element_text(hjust = 0.5),
                 strip.text.x = element_text(size = 10)) +
