@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = 4)
+inla.setOption(num.threads = 2)
 inla.setOption(inla.timeout = 0)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
