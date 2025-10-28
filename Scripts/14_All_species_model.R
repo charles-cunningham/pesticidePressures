@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = 2)
+inla.setOption(num.threads = 4)
 inla.setOption(inla.timeout = 0)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -55,10 +55,12 @@ invData <- readRDS(paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
 # SET PARAMETERS ---------------------------------------------------------------
 
 linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
-                     'pesticideToxicity' = "Pesticide combined toxicity",
+                     'insecticideToxicity' = "Insecticide combined toxicity",
+                     'herbicideToxicity' = "Herbicide combined toxicity",
+                     'FungicideToxicity' = "Fungticide combined toxicity",
                      'N' = "Nitrogen",
                      'P' = "Phosporus",
-                     'K' = "Potassium",
+                     #'K' = "Potassium",
                      'cattle' = "Cattle",
                      'pigs' = "Pigs",
                      'sheep' = "Sheep",
@@ -88,12 +90,13 @@ invData <- invData %>%
          TAXON,
          fertiliser_n_PerArea_scaled,
          fertiliser_p_PerArea_scaled,      
-         fertiliser_k_PerArea_scaled,
+         #fertiliser_k_PerArea_scaled,
          residential_PerArea_scaled,       
          woodland_PerArea_scaled,
          pesticideShannon_scaled,
-         pesticideLoad_PerArea_scaled,
-         pesticideToxicLoad_PerArea_scaled,
+         insecticideToxicLoad_PerArea_scaled,
+         herbicideToxicLoad_PerArea_scaled,
+         fungicideToxicLoad_PerArea_scaled,
          cattle_PerArea_scaled,            
          pigs_PerArea_scaled,
          sheep_PerArea_scaled,
@@ -160,10 +163,12 @@ gc()
     # Model with wastewater
     compsWastewater <- Abundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
+      insecticideToxicity(insecticideToxicLoad_PerArea_scaled, model = "linear") +
+      herbicideToxicity(herbicideToxicLoad_PerArea_scaled, model = "linear") +
+      fungicideToxicity(fungicideToxicLoad_PerArea_scaled, model = "linear") +
       N(fertiliser_n_PerArea_scaled, model = "linear") +
       P(fertiliser_p_PerArea_scaled, model = "linear") +
-      K(fertiliser_k_PerArea_scaled, model = "linear") +
+      #K(fertiliser_k_PerArea_scaled, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
@@ -195,10 +200,12 @@ gc()
     # Model without wastewater
     compsNoWastewater <- Abundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
+      insecticideToxicity(insecticideToxicLoad_PerArea_scaled, model = "linear") +
+      herbicideToxicity(herbicideToxicLoad_PerArea_scaled, model = "linear") +
+      fungicideToxicity(fungicideToxicLoad_PerArea_scaled, model = "linear") +
       N(fertiliser_n_PerArea_scaled, model = "linear") +
       P(fertiliser_p_PerArea_scaled, model = "linear") +
-      K(fertiliser_k_PerArea_scaled, model = "linear") +
+      #K(fertiliser_k_PerArea_scaled, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
