@@ -157,7 +157,7 @@ flowDataAll <- flowDataAll %>%
                                         insecticide[cur_column()] ),
                                na.rm = TRUE)))
 
-# Create insecticideToxicLoad column as sum of herbicide application
+# Create herbicideToxicLoad column as sum of herbicide application
 flowDataAll <- flowDataAll %>%
   mutate(herbicideToxicLoad =
            # If any pesticide layers are not NA ...
@@ -173,7 +173,7 @@ flowDataAll <- flowDataAll %>%
                                         herbicide[cur_column()] ),
                                na.rm = TRUE)))
 
-# Create insecticideToxicLoad column as sum of all fungicide application
+# Create fungicideToxicLoad column as sum of all fungicide application
 flowDataAll <- flowDataAll %>%
   mutate(fungicideToxicLoad =
            # If any pesticide layers are not NA ...
