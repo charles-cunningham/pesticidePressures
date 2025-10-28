@@ -114,17 +114,17 @@ invData$residential <- invData$Urban + invData$Suburban
 for(variable in c(
   "fertiliser_n",
   "fertiliser_p",
-  "fertiliser_k",
   "Arable",
   "residential",
   "pesticideLoad",
-  "pesticideToxicLoad",
+  "insecticideToxicLoad",
+  "herbicideToxicLoad",
+  "fungicideToxicLoad",
   "cattle",
   "pigs",
   "sheep",
   "poultry",
-  "woodland",
-  "Improved_grassland")) {
+  "woodland")) {
   
   # Create new scaled column name
   colName <- paste0(variable, "_PerArea")
@@ -158,13 +158,13 @@ invData <- cbind(invData, sitePCA$x)
 # Create correlation data frame
 corr_df <- invData %>%
   select(pesticideShannon,
-         pesticideToxicLoad_PerArea,
+         insecticideToxicLoad_PerArea,
+         herbicideToxicLoad_PerArea,
+         fungicideToxicLoad_PerArea,
          fertiliser_n_PerArea,
          fertiliser_p_PerArea,
-         fertiliser_k_PerArea,
          Arable_PerArea,
          residential_PerArea,
-         Improved_grassland_PerArea,
          woodland_PerArea,
          cattle_PerArea,
          pigs_PerArea,
@@ -215,14 +215,13 @@ modelVariables <- c(
   # Upstream variables
   "fertiliser_n_PerArea",
   "fertiliser_p_PerArea",
-  "fertiliser_k_PerArea",
-  "Arable_PerArea",
+  #"fertiliser_k_PerArea",
   "residential_PerArea",
-  "Improved_grassland_PerArea",
   "woodland_PerArea",
   "pesticideShannon",
-  "pesticideLoad_PerArea",
-  "pesticideToxicLoad_PerArea",
+  "insecticideToxicLoad_PerArea",
+  "herbicideToxicLoad_PerArea",
+  "fungicideToxicLoad_PerArea",
   "cattle_PerArea",
   "pigs_PerArea",
   "sheep_PerArea",
