@@ -132,8 +132,8 @@ for(i in unique(st_geometry(screenData))) {
                                                      flowChemData,
                                                      check_crs = FALSE),]
   
-  # IF nearest feature is within 100m (only use these sites)
-  if (lengths(st_is_within_distance(i, iNearestSegment, dist = 100)) == 1) {
+  # IF nearest feature is within 50m (only use these sites)
+  if (lengths(st_is_within_distance(i, iNearestSegment, dist = 50)) == 1) {
     
     # Find flow accumulation for later per area calculation
     iMaxflowacc <- iNearestSegment$maxflowacc
