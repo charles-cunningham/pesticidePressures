@@ -11,6 +11,7 @@
 # Load packages
 library(tidyverse)
 library(sf)
+library(lme4)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 
@@ -31,22 +32,15 @@ pestData <- read.csv(paste0(dataDir,
 
 ### PROCESS PESTICIDE DATA -----------------------------------------------------
 
-# Create joint wieght
-pestData$Exposure <- #pestData$Leachability..GUS_leaching_potential_index. %>%
-  #ifelse(is.na(.), mean(., na.rm = TRUE), .) %>%
- # ifelse(. <0.01, 0.01, .)# %>%
-  #`*` (
-    ifelse(is.na(pestData$Persistence_.DT.._.typical..),
-            mean(pestData$Persistence_.DT.._.typical.., na.rm = TRUE),
-            pestData$Persistence_.DT.._.typical..)
- #  )
-           
-   screenData$ExposureWeight <- NA 
+screenData$leachability <- NA 
    
 for(pesticide in pestData$Pesticide) {
 
-screenData[which(screenData$PESTICIDE_MOD %in% pesticide), "ExposureWeight"] <- 
-     pestData[which(pestData$Pesticide  %in% pesticide), "Exposure"]
+screenData[which(screenData$PESTICIDE_MOD %in% pesticide), "leachability"] <- 
+     pestData[which(pestData$Pesticide %in% pesticide),
+              "Leachability..GUS_leaching_potential_index."] %>%
+  ifelse(is.na(.), 0, .) %>%
+  ifelse(. <0, 0, .)
    
    }
 
@@ -72,77 +66,40 @@ lcmsData <- screenData[screenData$method == "LCMS",]
 
 # Plot relationship between concentration and application per area
 ggplot(data = gcmsData,
-       aes(x = log(Concentration), 
-           y = log(APP_PER_AREA_MOD *ExposureWeight))) +
+       aes(x = Concentration, 
+           y = APP_PER_AREA_MOD *leachability)) +
   geom_point()
 
 # Check correlation# Check correlationExposure
-cor(gcmsData$Concentration, gcmsData$APP_PER_AREA_MOD * gcmsData$ExposureWeight)
+cor(gcmsData$Concentration, gcmsData$APP_PER_AREA_MOD * gcmsData$leachability)
 
 # LCMS
 
 # Plot relationship between concentration and application per area
 ggplot(data = lcmsData,
-       aes(x = log(Concentration), 
-           y = log(APP_PER_AREA_MOD * ExposureWeight))) +
+       aes(x = Concentration, 
+           y = APP_PER_AREA_MOD * leachability)) +
   geom_point()
 
 # Check correlation
-cor(lcmsData$Concentration, lcmsData$APP_PER_AREA_MOD * lcmsData$ExposureWeight)
-
-# TRUNCATED DATA MODEL ---------------------------------------------------------
-
-# GCMS 
-
-#
-gcmsTruncated<- gcmsData %>%
-  filter(APP_PER_AREA_MOD > 0 ) %>%
-  mutate(truncatedConc = ifelse(Concentration> LOD,
-                                Concentration,
-                                LOD))
-
-gcmsTruncModel <- crch::trch ( truncatedConc ~ log(APP_PER_AREA_MOD*ExposureWeight),
-                     truncated = TRUE,
-                     left =  gcmsTruncated$LOD,
-                     link.scale = "log",
-                     data = gcmsTruncated)
-
-
-summary(gcmsTruncModel)
-
-# LCMS
-
-#
-lcmsTruncated <- lcmsData %>%
-  filter(APP_PER_AREA_MOD > 0 ) %>%
-  mutate(truncatedConc = ifelse(Concentration > LOD,
-                                Concentration,
-                                LOD))
-
-lcmsTruncModel <- crch::trch ( truncatedConc ~ log(APP_PER_AREA_MOD*ExposureWeight),
-                               truncated = TRUE,
-                               left =  lcmsTruncated$LOD,
-                               link.scale = "log",
-                               data = lcmsTruncated)
-
-
-summary(lcmsTruncModel)
-
+cor(lcmsData$Concentration, lcmsData$APP_PER_AREA_MOD * lcmsData$leachability)
 
 ### MIXED-EFFECTS MODEL --------------------------------------------------------
 
 # GCMS
 
 # Fit mixed model with concentration as response
-gcmsModMixed <- lme4::glmer(Concentration ~ 1 +
+gcmsModMixed <- glmer(Concentration ~ 1 +
                               # Fixed log-transformed estimated application
-                              log(APP_PER_AREA_MOD*ExposureWeight) + 
+                              log(APP_PER_AREA_MOD * leachability) + 
                               # Pesticide name random effect
                               (1| PESTICIDE_MOD) +
                               # # Site random effect
                                (1 | Sample_Site_ID) ,
                             family = Gamma(link = "log"),
-                            data = gcmsData %>% filter(APP_PER_AREA_MOD>0)) 
+                      data = gcmsData %>% 
+                        filter(APP_PER_AREA_MOD>0) %>%
+                        filter(leachability >0)) 
 
 # Checl R^2 values
 MuMIn::r.squaredGLMM(gcmsModMixed)
@@ -153,15 +110,17 @@ summary(gcmsModMixed)
 # LCMS
 
 # Fit mixed model with concentration as response
-lcmsModMixed <- lme4::glmer(Concentration ~ 1 +
+lcmsModMixed <- glmer(Concentration ~ 1 +
                               # Fixed log-transformed estimated application
-                              log(APP_PER_AREA_MOD*ExposureWeight) + 
+                              log(APP_PER_AREA_MOD*leachability) + 
                               # Pesticide name random effect
                               (1| PESTICIDE_MOD) +
                               # Site random effect
                               (1 | Sample_Site_ID) ,
                             family = Gamma(link = "log"),
-                            data = lcmsData) 
+                            data =  lcmsData %>% 
+                        filter(APP_PER_AREA_MOD>0) %>%
+                        filter(leachability >0)) 
 
 
 # Check R^2 values
