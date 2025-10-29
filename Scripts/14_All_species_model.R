@@ -165,7 +165,7 @@ gc()
       #insecticideToxicity(insecticideToxicLoad_PerArea_scaled, model = "linear") +
       #herbicideToxicity(herbicideToxicLoad_PerArea_scaled, model = "linear") +
       #fungicideToxicity(fungicideToxicLoad_PerArea_scaled, model = "linear") +
-      euthrop(eutroph_n_PerArea_scaled, model = "linear") +
+      eutroph(eutroph_PerArea_scaled, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
@@ -201,7 +201,7 @@ gc()
       #insecticideToxicity(insecticideToxicLoad_PerArea_scaled, model = "linear") +
       #herbicideToxicity(herbicideToxicLoad_PerArea_scaled, model = "linear") +
       #fungicideToxicity(fungicideToxicLoad_PerArea_scaled, model = "linear") +
-      euthrop(eutroph_n_PerArea_scaled, model = "linear") +
+      eutroph(eutroph_PerArea_scaled, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
@@ -241,8 +241,7 @@ gc()
       family = "zeroinflatednbinomial1",
       data = invData_wAbsences,
       options = list(
-        control.fixed = list(prec.intercept = 0.01),
-        control.inla = list(cmin=0),
+        control.inla=list(cmin=0),
         control.compute = list(waic = TRUE,
                                dic = TRUE,
                                cpo = TRUE),
@@ -261,8 +260,7 @@ gc()
         family = "zeroinflatednbinomial1",
         data = invData_wAbsences %>% filter(., !(is.na(EDF_MEAN_scaled))),
         options = list(
-          control.fixed = list(prec.intercept = 0.01),
-          control.inla = list(cmin=0),
+          control.inla=list(cmin=0),
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
                                  cpo = TRUE),
