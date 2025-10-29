@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = 8)
+inla.setOption(num.threads = 2)
 inla.setOption(inla.timeout = 0)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -108,7 +108,7 @@ invData <- invData %>%
          PC4_scaled,
          REPORTING_AREA_NESTED,
          CATCHMENT_NESTED,                 
-         #WATER_BODY_NESTED,
+         WATER_BODY_NESTED,
          GROUP)
 
 # Filter to Schedule 2 species
@@ -180,17 +180,18 @@ gc()
       PC3(PC3_scaled, model = "linear") +
       PC4(PC4_scaled, model = "linear") +
       month(main = MONTH_NUM,
-            model = "rw2",
+            model = "rw1",
             scale.model = TRUE,
-            cyclic = TRUE,
+            constr = TRUE, 
             hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
            scale.model = TRUE,
+           constr = TRUE,
            hyper = rwHyper) +
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
@@ -216,17 +217,18 @@ gc()
       PC3(PC3_scaled, model = "linear") +
       PC4(PC4_scaled, model = "linear") +
       month(main = MONTH_NUM,
-            model = "rw2",
+            model = "rw1",
             scale.model = TRUE,
-            cyclic = TRUE,
+            constr = TRUE, 
             hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
            scale.model = TRUE,
+           constr = TRUE,
            hyper = rwHyper) +
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
