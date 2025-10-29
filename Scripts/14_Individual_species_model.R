@@ -145,7 +145,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     # SET MODEL COMPONENTS
     
     # Model with wastewater
-    compsWastewater <- Abundance ~
+    compsWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
       #insecticideToxicity(insecticideToxicLoad_PerArea_scaled, model = "linear") +
@@ -181,7 +181,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       Intercept(1)
     
     # Model without wastewater
-    compsNoWastewater <- Abundance ~
+    compsNoWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
       #insecticideToxicity(insecticideToxicLoad_PerArea_scaled, model = "linear") +
