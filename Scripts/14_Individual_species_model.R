@@ -56,9 +56,10 @@ invData <- readRDS(paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
 
 linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
                       'pesticideToxicity' = "Pesticide combined toxicity",
-                      'N' = "Nitrogen",
-                      'P' = "Phosporus",
-                      'K' = "Potassium",
+                      #'insecticideToxicity' = "Insecticide combined toxicity",
+                      #'herbicideToxicity' = "Herbicide combined toxicity",
+                      #'FungicideToxicity' = "Fungicide combined toxicity",
+                      'eutroph' = "Average Nitrogen and Potassium input",
                       'cattle' = "Cattle",
                       'pigs' = "Pigs",
                       'sheep' = "Sheep",
@@ -144,12 +145,13 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     # SET MODEL COMPONENTS
     
     # Model with wastewater
-    compsWastewater <- speciesAbundance ~
+    compsWastewater <- Abundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      N(fertiliser_n_PerArea_scaled, model = "linear") +
-      P(fertiliser_p_PerArea_scaled, model = "linear") +
-      K(fertiliser_k_PerArea_scaled, model = "linear") +
+      #insecticideToxicity(insecticideToxicLoad_PerArea_scaled, model = "linear") +
+      #herbicideToxicity(herbicideToxicLoad_PerArea_scaled, model = "linear") +
+      #fungicideToxicity(fungicideToxicLoad_PerArea_scaled, model = "linear") +
+      eutroph(eutroph_PerArea_scaled, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
@@ -164,26 +166,28 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       PC3(PC3_scaled, model = "linear") +
       PC4(PC4_scaled, model = "linear") +
       month(main = MONTH_NUM,
-            model = "rw2",
+            model = "rw1",
             scale.model = TRUE,
-            cyclic = TRUE,
+            constr = TRUE, 
             hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
            scale.model = TRUE,
+           constr = TRUE,
            hyper = rwHyper) +
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
     
-    # Model with wastewater
-    compsNoWastewater <- speciesAbundance ~
+    # Model without wastewater
+    compsNoWastewater <- Abundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      N(fertiliser_n_PerArea_scaled, model = "linear") +
-      P(fertiliser_p_PerArea_scaled, model = "linear") +
-      K(fertiliser_k_PerArea_scaled, model = "linear") +
+      #insecticideToxicity(insecticideToxicLoad_PerArea_scaled, model = "linear") +
+      #herbicideToxicity(herbicideToxicLoad_PerArea_scaled, model = "linear") +
+      #fungicideToxicity(fungicideToxicLoad_PerArea_scaled, model = "linear") +
+      eutroph(eutroph_PerArea_scaled, model = "linear") +
       cattle(cattle_PerArea_scaled, model = "linear") +
       pigs(pigs_PerArea_scaled, model = "linear") +
       sheep(sheep_PerArea_scaled, model = "linear") +
@@ -198,60 +202,57 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       PC3(PC3_scaled, model = "linear") +
       PC4(PC4_scaled, model = "linear") +
       month(main = MONTH_NUM,
-            model = "rw2",
+            model = "rw1",
             scale.model = TRUE,
-            cyclic = TRUE,
+            constr = TRUE, 
             hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
            scale.model = TRUE,
+           constr = TRUE,
            hyper = rwHyper) +
       basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      #wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
       Intercept(1)
+    
+    # RUN MODEL WITH WASTEWATER
+    
+    # Remove previous model
+    if (exists("modelNoWastewater")) {rm("modelNoWastewater")}
+    
+    # Run model
+    modelNoWastewater <- bru(
+      components = compsNoWastewater,
+      family = "zeroinflatednbinomial1",
+      data = invData_wAbsences,
+      options = list(
+        control.fixed = list(prec.intercept = 0.01),
+        control.compute = list(waic = TRUE,
+                               dic = TRUE,
+                               cpo = TRUE),
+        verbose = TRUE)
+    )
+    gc()
     
     # RUN MODEL WITH WASTEWATER
     
     # Remove previous model
     if (exists("modelWastewater")) {rm(modelWastewater)}
     
-    # Add escape if model does not converge(
-    try(
-
-      modelWastewater <- bru(
-        components = compsWastewater,
-        family = "zeroinflatednbinomial1",
-        data = speciesData %>% filter(., !(is.na(EDF_MEAN))),
-        options = list(
-          control.fixed = list(prec.intercept = 0.01),
-          control.compute = list(waic = TRUE,
-                                 dic = TRUE,
-                                 cpo = TRUE),
-          verbose = TRUE)
-      )
+    # Run model
+    modelWastewater <- bru(
+      components = compsWastewater,
+      family = "zeroinflatednbinomial1",
+      data = invData_wAbsences %>% filter(., !(is.na(EDF_MEAN_scaled))),
+      options = list(
+        control.fixed = list(prec.intercept = 0.01),
+        control.compute = list(waic = TRUE,
+                               dic = TRUE,
+                               cpo = TRUE),
+        verbose = TRUE)
     )
-    
-    # RUN MODEL WITHOUT WASTEWATER
-    
-    # Remove previous model
-    if (exists("modelNoWastewater")) {rm("modelNoWastewater")}
-    
-    # Add escape if model does not converge(
-    try(
-      
-      modelNoWastewater <- bru(
-        components = compsNoWastewater,
-        family = "zeroinflatednbinomial1",
-        data = speciesData,
-        options = list(
-          control.fixed = list(prec.intercept = 0.01),
-          control.compute = list(waic = TRUE,
-                                 dic = TRUE,
-                                 cpo = TRUE),
-          verbose = TRUE)
-      )
-    )
+    gc()
     
     # Only plot and save if both models converge
     if (!is.null(summary(modelWastewater)$inla) & 
