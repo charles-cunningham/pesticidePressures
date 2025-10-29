@@ -225,7 +225,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     modelNoWastewater <- bru(
       components = compsNoWastewater,
       family = "zeroinflatednbinomial1",
-      data = invData_wAbsences,
+      data = speciesData,
       options = list(
         control.fixed = list(prec.intercept = 0.01),
         control.compute = list(waic = TRUE,
@@ -244,7 +244,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     modelWastewater <- bru(
       components = compsWastewater,
       family = "zeroinflatednbinomial1",
-      data = invData_wAbsences %>% filter(., !(is.na(EDF_MEAN_scaled))),
+      data = speciesData %>% filter(., !(is.na(EDF_MEAN_scaled))),
       options = list(
         control.fixed = list(prec.intercept = 0.01),
         control.compute = list(waic = TRUE,
