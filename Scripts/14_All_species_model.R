@@ -241,7 +241,7 @@ gc()
       family = "zeroinflatednbinomial1",
       data = invData_wAbsences,
       options = list(
-        control.inla=list(cmin=0),
+        control.fixed = list(prec.intercept = 0.01),
         control.compute = list(waic = TRUE,
                                dic = TRUE,
                                cpo = TRUE),
@@ -260,7 +260,7 @@ gc()
         family = "zeroinflatednbinomial1",
         data = invData_wAbsences %>% filter(., !(is.na(EDF_MEAN_scaled))),
         options = list(
-          control.inla=list(cmin=0),
+          control.fixed = list(prec.intercept = 0.01),
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
                                  cpo = TRUE),
