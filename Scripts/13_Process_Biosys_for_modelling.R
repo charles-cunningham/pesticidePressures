@@ -109,18 +109,20 @@ invData$woodland <- invData$Deciduous_woodland + invData$Coniferous_woodland
 # Residential
 invData$residential <- invData$Urban + invData$Suburban
 
+# Eutrophication risk
+invData$eutroph <- mean(invData$fertiliser_n + invData$fertiliser_p)
+
 # MODIFY UPSTREAM VARIABLES TO PER AREA VALUES----------------------------------
 
 # Divide upstream variables by area (excluding diversity)
 for(variable in c(
-  "fertiliser_n",
-  "fertiliser_p",
+  "eutroph",
   "Arable",
   "residential",
-  "pesticideLoad",
-  "insecticideToxicLoad",
-  "herbicideToxicLoad",
-  "fungicideToxicLoad",
+  "pesticideToxicLoad",
+  #"insecticideToxicLoad",
+  #"herbicideToxicLoad",
+  #"fungicideToxicLoad",
   "cattle",
   "pigs",
   "sheep",
@@ -159,12 +161,11 @@ invData <- cbind(invData, sitePCA$x)
 # Create correlation data frame
 corr_df <- invData %>%
   select(pesticideShannon,
-         insecticideToxicLoad_PerArea,
-         herbicideToxicLoad_PerArea,
-         fungicideToxicLoad_PerArea,
-         fertiliser_n_PerArea,
-         fertiliser_p_PerArea,
-         Arable_PerArea,
+         pesticideToxicLoad,
+         #insecticideToxicLoad_PerArea,
+         #herbicideToxicLoad_PerArea,
+         #fungicideToxicLoad_PerArea,
+         eutroph_PerArea,
          residential_PerArea,
          woodland_PerArea,
          cattle_PerArea,
@@ -214,15 +215,14 @@ dev.off()
 # List variables to be scaled
 modelVariables <- c(
   # Upstream variables
-  "fertiliser_n_PerArea",
-  "fertiliser_p_PerArea",
-  #"fertiliser_k_PerArea",
+  "eutroph_PerArea",
   "residential_PerArea",
   "woodland_PerArea",
   "pesticideShannon",
-  "insecticideToxicLoad_PerArea",
-  "herbicideToxicLoad_PerArea",
-  "fungicideToxicLoad_PerArea",
+  "pesticideToxicLoad_PerArea",
+  #"insecticideToxicLoad_PerArea",
+  #"herbicideToxicLoad_PerArea",
+  #"fungicideToxicLoad_PerArea",
   "cattle_PerArea",
   "pigs_PerArea",
   "sheep_PerArea",
