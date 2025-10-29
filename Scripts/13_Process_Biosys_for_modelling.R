@@ -161,7 +161,7 @@ invData <- cbind(invData, sitePCA$x)
 # Create correlation data frame
 corr_df <- invData %>%
   select(pesticideShannon,
-         pesticideToxicLoad,
+         pesticideToxicLoad_PerArea,
          #insecticideToxicLoad_PerArea,
          #herbicideToxicLoad_PerArea,
          #fungicideToxicLoad_PerArea,
