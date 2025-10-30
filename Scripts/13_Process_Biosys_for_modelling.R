@@ -246,14 +246,19 @@ for(variable in modelVariables) {
   invData[, colName] <- scale(invData[[variable]])[,1]
 }
 
-# Convert categorical variables for random effects to factors
-invData$REPORTING_AREA_NESTED <- as.factor(invData$REPORTING_AREA)
-invData$CATCHMENT_NESTED <- paste( invData$REPORTING_AREA,
-                                   invData$CATCHMENT) %>% 
+# Convert categorical variables for nested random effects to factors
+# (Convert catchment and water body to numeric to save memory)
+invData$BASIN_F <- as.factor(invData$REPORTING_AREA)
+invData$CATCHMENT_F <- paste( invData$REPORTING_AREA,
+                              invData$CATCHMENT) %>%
+  as.factor() %>%
+  as.numeric() %>%
   as.factor()
-invData$WATER_BODY_NESTED <- paste( invData$REPORTING_AREA,
-                                    invData$CATCHMENT,
-                                    invData$WATER_BODY) %>% 
+invData$WATER_BODY_F <-paste( invData$REPORTING_AREA,
+                              invData$CATCHMENT,
+                              invData$WATER_BODY) %>%
+  as.factor() %>%
+  as.numeric() %>%
   as.factor()
 
 ### SAVE DATASET ---------------------------------------------------------------
