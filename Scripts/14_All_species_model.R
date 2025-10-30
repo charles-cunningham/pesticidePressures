@@ -106,9 +106,9 @@ invData <- invData %>%
          PC2_scaled,
          PC3_scaled,                       
          PC4_scaled,
-         REPORTING_AREA_NESTED,
-         CATCHMENT_NESTED,                 
-         WATER_BODY_NESTED,
+         BASIN_F,
+         CATCHMENT_F,                 
+         WATER_BODY_F,
          GROUP)
 
 # Filter to Schedule 2 species
