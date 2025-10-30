@@ -67,7 +67,9 @@ linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
                       'residential' = "Residential",
                       'woodland' = "Woodland",
                       'modification' = "Stream modification",
-                      'quality' = "Habitat quality")
+                      'quality' = "Habitat quality",
+                      'Intercept' = "Intercept")
+
 
 linearLabels_W <- c(linearLabels_NoW,
                     'wastewater' = "Wastewater")
@@ -168,19 +170,17 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       month(main = MONTH_NUM,
             model = "rw1",
             scale.model = TRUE,
-            constr = TRUE, 
             hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
            scale.model = TRUE,
-           constr = TRUE,
            hyper = rwHyper) +
-      basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+      wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
       Intercept(1)
     
-    # Model without wastewater
+    # Model with wastewater
     compsNoWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
@@ -204,55 +204,57 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       month(main = MONTH_NUM,
             model = "rw1",
             scale.model = TRUE,
-            constr = TRUE, 
             hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
            scale.model = TRUE,
-           constr = TRUE,
            hyper = rwHyper) +
-      basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
+      basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+      wb(WATER_BODY_F, model = "iid",  hyper = iidHyper) +
       Intercept(1)
-    
-    # RUN MODEL WITH WASTEWATER
-    
-    # Remove previous model
-    if (exists("modelNoWastewater")) {rm("modelNoWastewater")}
-    
-    # Run model
-    modelNoWastewater <- bru(
-      components = compsNoWastewater,
-      family = "zeroinflatednbinomial1",
-      data = speciesData,
-      options = list(
-        control.fixed = list(prec.intercept = 0.01),
-        control.compute = list(waic = TRUE,
-                               dic = TRUE,
-                               cpo = TRUE),
-        verbose = TRUE)
-    )
-    gc()
     
     # RUN MODEL WITH WASTEWATER
     
     # Remove previous model
     if (exists("modelWastewater")) {rm(modelWastewater)}
     
-    # Run model
-    modelWastewater <- bru(
-      components = compsWastewater,
-      family = "zeroinflatednbinomial1",
-      data = speciesData %>% filter(., !(is.na(EDF_MEAN_scaled))),
-      options = list(
-        control.fixed = list(prec.intercept = 0.01),
-        control.compute = list(waic = TRUE,
-                               dic = TRUE,
-                               cpo = TRUE),
-        verbose = TRUE)
+    # Add escape if model does not converge(
+    try(
+
+      modelWastewater <- bru(
+        components = compsWastewater,
+        family = "zeroinflatednbinomial1",
+        data = speciesData %>% filter(., !(is.na(EDF_MEAN))),
+        options = list(
+          control.fixed = list(prec.intercept = 0.01),
+          control.compute = list(waic = TRUE,
+                                 dic = TRUE,
+                                 cpo = TRUE),
+          verbose = TRUE)
+      )
     )
-    gc()
+    
+    # RUN MODEL WITHOUT WASTEWATER
+    
+    # Remove previous model
+    if (exists("modelNoWastewater")) {rm("modelNoWastewater")}
+    
+    # Add escape if model does not converge(
+    try(
+      
+      modelNoWastewater <- bru(
+        components = compsNoWastewater,
+        family = "zeroinflatednbinomial1",
+        data = speciesData,
+        options = list(
+          control.fixed = list(prec.intercept = 0.01),
+          control.compute = list(waic = TRUE,
+                                 dic = TRUE,
+                                 cpo = TRUE),
+          verbose = TRUE)
+      )
+    )
     
     # Only plot and save if both models converge
     if (!is.null(summary(modelWastewater)$inla) & 
