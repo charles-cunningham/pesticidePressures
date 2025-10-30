@@ -144,7 +144,7 @@ invData_Ab_wZeroes <- NULL
       ungroup()
     
     # Add to dataframe with all species
-    invData_Ab_wZeroes <- rbind(invData_Abun_wZeroes, speciesData)
+    invData_Ab_wZeroes <- rbind(invData_Ab_wZeroes, speciesData)
     
   }
 
@@ -185,8 +185,8 @@ compsWastewater_SR <- numSpecies ~
        scale.model = TRUE,
        hyper = rwHyper) +
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
-  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
   Intercept(1)
 
 # Richness model without wastewater
@@ -218,8 +218,8 @@ compsNoWastewater_SR <- numSpecies ~
        scale.model = TRUE,
        hyper = rwHyper) +
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
-  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
   Intercept(1)
 
 # RUN RICHNESS MODEL WITHOUT WASTEWATER
@@ -283,8 +283,8 @@ compsWastewater_Ab <- Abundance ~
        scale.model = TRUE,
        hyper = rwHyper) +
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
-  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
   Intercept(1)
 
 # Abundance model without wastewater
@@ -316,8 +316,8 @@ compsNoWastewater_Ab <- Abundance ~
        scale.model = TRUE,
        hyper = rwHyper) +
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
-  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
   Intercept(1)
     
 # RUN ABUNDANCE MODEL WITHOUT WASTEWATER
