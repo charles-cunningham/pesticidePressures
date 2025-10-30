@@ -284,7 +284,7 @@ compsWastewater_Ab <- Abundance ~
        hyper = rwHyper) +
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
   catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
   Intercept(1)
 
 # Abundance model without wastewater
@@ -317,7 +317,7 @@ compsNoWastewater_Ab <- Abundance ~
        hyper = rwHyper) +
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
   catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
   Intercept(1)
     
 # RUN ABUNDANCE MODEL WITHOUT WASTEWATER
