@@ -38,7 +38,7 @@ library(cowplot)
 
 # Set inla options
 inla.setOption(num.threads = "16:1")
-inla.setOption(inla.timeout = 600) # 10 minutes
+inla.setOption(inla.timeout = 300) # 5 minutes
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 # Set data directory
