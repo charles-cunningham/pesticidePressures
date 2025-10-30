@@ -121,7 +121,7 @@ invData_SR <- add_count(invData, SAMPLE_ID, name = "numSpecies")
 ### PROCESS TO PSUEDO-ABSENCE FORMAT -------------------------------------------
 
 # Create empty pseudo-absence table
-invData_Abun_wZeroes <- NULL
+invData_Ab_wZeroes <- NULL
 
 # Loop through species here
   for (iSpecies in unique(invData$TAXON)) {
@@ -144,7 +144,7 @@ invData_Abun_wZeroes <- NULL
       ungroup()
     
     # Add to dataframe with all species
-    invData_Abun_wZeroes <- rbind(invData_Abun_wZeroes, speciesData)
+    invData_Ab_wZeroes <- rbind(invData_Abun_wZeroes, speciesData)
     
   }
 
@@ -326,7 +326,7 @@ compsNoWastewater_Ab <- Abundance ~
 modelNoWastewater_Ab <- bru(
   components = compsNoWastewater_Ab,
   family = "zeroinflatednbinomial1",
-  data = invData_Abun_wZeroes,
+  data = invData_Ab_wZeroes,
   options = list(
     control.fixed = list(prec.intercept = 0.01),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
@@ -341,7 +341,7 @@ gc()
 modelWastewater_Ab <- bru(
   components = compsWastewater_Ab,
   family = "zeroinflatednbinomial1",
-  data = invData_Abun_wZeroes %>% filter(., !(is.na(EDF_MEAN_scaled))),
+  data = invData_Ab_wZeroes %>% filter(., !(is.na(EDF_MEAN_scaled))),
   options = list(
     control.fixed = list(prec.intercept = 0.01),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
@@ -483,8 +483,8 @@ for (modelName in names(models)) {
                         ncol = 1)
   
   # SAVE OUTPUT ------------------------------------------------------------
-
- # Create directory string for iSpecies
+  
+  # Create directory string for iSpecies
   if (modelName %in% c("modelNoWastewater_SR", "modelNoWastewater_Ab")) {
     # Create directory string for iSpecies
     iSpeciesDir <- paste0(
