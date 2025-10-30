@@ -56,9 +56,6 @@ invData <- readRDS(paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
 
 linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
                       'pesticideToxicity' = "Pesticide combined toxicity",
-                      #'insecticideToxicity' = "Insecticide combined toxicity",
-                      #'herbicideToxicity' = "Herbicide combined toxicity",
-                      #'FungicideToxicity' = "Fungicide combined toxicity",
                      'eutroph' = "Average Nitrogen and Potassium input",
                      'cattle' = "Cattle",
                      'pigs' = "Pigs",
@@ -75,7 +72,13 @@ linearLabels_W <- c(linearLabels_NoW,
 randomLabels <- c( 'month' = "Month",
                    'year' = "Year")
 
-### PROCESS TO PSUEDO-ABSENCE FORMAT -------------------------------------------
+# Priors for random effects
+iidHyper <- list(prec = list(prior = "pc.prec",
+                             param = c(100, 0.05)))
+rwHyper <- list(prec = list(prior="pc.prec",
+                            param=c(100, 0.05)))
+
+### FILTER DATA ----------------------------------------------------------------
 
 # Only keep needed columns for memory
 invData <- invData %>%
@@ -92,9 +95,6 @@ invData <- invData %>%
          woodland_PerArea_scaled,
          pesticideShannon_scaled,
          pesticideToxicLoad_PerArea_scaled,
-         #insecticideToxicLoad_PerArea_scaled,
-         #herbicideToxicLoad_PerArea_scaled,
-         #fungicideToxicLoad_PerArea_scaled,
          cattle_PerArea_scaled,            
          pigs_PerArea_scaled,
          sheep_PerArea_scaled,
@@ -114,8 +114,14 @@ invData <- invData %>%
 # Filter to Schedule 2 species
 invData <- filter(invData, GROUP == "Schedule 2")
 
+### PROCESS TO RICHNESS FORMAT -------------------------------------------------
+
+invData_SR <- add_count(invData, SAMPLE_ID, name = "numSpecies")
+
+### PROCESS TO PSUEDO-ABSENCE FORMAT -------------------------------------------
+
 # Create empty pseudo-absence table
-invData_wAbsences <- NULL
+invData_Abun_wZeroes <- NULL
 
 # Loop through species here
   for (iSpecies in unique(invData$TAXON)) {
@@ -138,7 +144,7 @@ invData_wAbsences <- NULL
       ungroup()
     
     # Add to dataframe with all species
-    invData_wAbsences <- rbind(invData_wAbsences, speciesData)
+    invData_Abun_wZeroes <- rbind(invData_Abun_wZeroes, speciesData)
     
   }
 
@@ -146,270 +152,359 @@ invData_wAbsences <- NULL
 rm(invData, speciesData)
 gc()
 
-### RUN MODEL ------------------------------------------------------------------
+### RUN RICHNESS MODELS --------------------------------------------------------
     
-    # SET MODEL PARAMETERS
-    
-    # Priors for random effects
-    iidHyper <- list(prec = list(prior = "pc.prec",
-                                 param = c(100, 0.05)))
-    rwHyper <- list(prec = list(prior="pc.prec",
-                                param=c(100, 0.05)))
-    
-    # SET MODEL COMPONENTS
-    
-    # Model with wastewater
-    compsWastewater <- Abundance ~
-      pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      #insecticideToxicity(insecticideToxicLoad_PerArea_scaled, model = "linear") +
-      #herbicideToxicity(herbicideToxicLoad_PerArea_scaled, model = "linear") +
-      #fungicideToxicity(fungicideToxicLoad_PerArea_scaled, model = "linear") +
-      eutroph(eutroph_PerArea_scaled, model = "linear") +
-      cattle(cattle_PerArea_scaled, model = "linear") +
-      pigs(pigs_PerArea_scaled, model = "linear") +
-      sheep(sheep_PerArea_scaled, model = "linear") +
-      poultry(poultry_PerArea_scaled, model = "linear") +
-      residential(residential_PerArea_scaled, model = "linear") +
-      woodland(woodland_PerArea_scaled, model = "linear") +
-      modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
-      quality(HS_HQA_scaled, model = "linear") +
-      wastewater(EDF_MEAN_scaled, model = "linear") +
-      PC1(PC1_scaled, model = "linear") +
-      PC2(PC2_scaled, model = "linear") +
-      PC3(PC3_scaled, model = "linear") +
-      PC4(PC4_scaled, model = "linear") +
-      month(main = MONTH_NUM,
-            model = "rw1",
-            scale.model = TRUE,
-            constr = TRUE, 
-            hyper = rwHyper) +
-      year(YEAR,
-           model = "rw1",
-           scale.model = TRUE,
-           constr = TRUE,
-           hyper = rwHyper) +
-      basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
-      Intercept(1)
-    
-    # Model without wastewater
-    compsNoWastewater <- Abundance ~
-      pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      #insecticideToxicity(insecticideToxicLoad_PerArea_scaled, model = "linear") +
-      #herbicideToxicity(herbicideToxicLoad_PerArea_scaled, model = "linear") +
-      #fungicideToxicity(fungicideToxicLoad_PerArea_scaled, model = "linear") +
-      eutroph(eutroph_PerArea_scaled, model = "linear") +
-      cattle(cattle_PerArea_scaled, model = "linear") +
-      pigs(pigs_PerArea_scaled, model = "linear") +
-      sheep(sheep_PerArea_scaled, model = "linear") +
-      poultry(poultry_PerArea_scaled, model = "linear") +
-      residential(residential_PerArea_scaled, model = "linear") +
-      woodland(woodland_PerArea_scaled, model = "linear") +
-      modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
-      quality(HS_HQA_scaled, model = "linear") +
-      #wastewater(EDF_MEAN_scaled, model = "linear") +
-      PC1(PC1_scaled, model = "linear") +
-      PC2(PC2_scaled, model = "linear") +
-      PC3(PC3_scaled, model = "linear") +
-      PC4(PC4_scaled, model = "linear") +
-      month(main = MONTH_NUM,
-            model = "rw1",
-            scale.model = TRUE,
-            constr = TRUE, 
-            hyper = rwHyper) +
-      year(YEAR,
-           model = "rw1",
-           scale.model = TRUE,
-           constr = TRUE,
-           hyper = rwHyper) +
-      basin(REPORTING_AREA_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      catchment(CATCHMENT_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      wb(WATER_BODY_NESTED, model = "iid", constr = TRUE, hyper = iidHyper) +
-      species(TAXON, model = "iid", constr = TRUE, hyper = iidHyper) +
-      Intercept(1)
-    
-    # RUN MODEL WITHOUT WASTEWATER
-    
-    # Remove previous model
-    if (exists("modelNoWastewater")) {rm("modelNoWastewater")}
+# SET MODEL COMPONENTS
 
-    # Run model
-    modelNoWastewater <- bru(
-      components = compsNoWastewater,
-      family = "zeroinflatednbinomial1",
-      data = invData_wAbsences,
-      options = list(
-        control.fixed = list(prec.intercept = 0.01),
-        control.compute = list(waic = TRUE,
-                               dic = TRUE,
-                               cpo = TRUE),
-        verbose = TRUE)
+# Richness model with wastewater
+compsWastewater_SR <- numSpecies ~
+  pesticideDiv(pesticideShannon_scaled, model = "linear") +
+  pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
+  eutroph(eutroph_PerArea_scaled, model = "linear") +
+  cattle(cattle_PerArea_scaled, model = "linear") +
+  pigs(pigs_PerArea_scaled, model = "linear") +
+  sheep(sheep_PerArea_scaled, model = "linear") +
+  poultry(poultry_PerArea_scaled, model = "linear") +
+  residential(residential_PerArea_scaled, model = "linear") +
+  woodland(woodland_PerArea_scaled, model = "linear") +
+  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+  quality(HS_HQA_scaled, model = "linear") +
+  wastewater(EDF_MEAN_scaled, model = "linear") +
+  PC1(PC1_scaled, model = "linear") +
+  PC2(PC2_scaled, model = "linear") +
+  PC3(PC3_scaled, model = "linear") +
+  PC4(PC4_scaled, model = "linear") +
+  month(
+    main = MONTH_NUM,
+    model = "rw1",
+    scale.model = TRUE,
+    hyper = rwHyper
+  ) +
+  year(YEAR,
+       model = "rw1",
+       scale.model = TRUE,
+       hyper = rwHyper) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper) +
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  Intercept(1)
+
+# Richness model without wastewater
+compsNoWastewater_SR <- numSpecies ~
+  pesticideDiv(pesticideShannon_scaled, model = "linear") +
+  pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
+  eutroph(eutroph_PerArea_scaled, model = "linear") +
+  cattle(cattle_PerArea_scaled, model = "linear") +
+  pigs(pigs_PerArea_scaled, model = "linear") +
+  sheep(sheep_PerArea_scaled, model = "linear") +
+  poultry(poultry_PerArea_scaled, model = "linear") +
+  residential(residential_PerArea_scaled, model = "linear") +
+  woodland(woodland_PerArea_scaled, model = "linear") +
+  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+  quality(HS_HQA_scaled, model = "linear") +
+  #wastewater(EDF_MEAN_scaled, model = "linear") +
+  PC1(PC1_scaled, model = "linear") +
+  PC2(PC2_scaled, model = "linear") +
+  PC3(PC3_scaled, model = "linear") +
+  PC4(PC4_scaled, model = "linear") +
+  month(
+    main = MONTH_NUM,
+    model = "rw1",
+    scale.model = TRUE,
+    hyper = rwHyper
+  ) +
+  year(YEAR,
+       model = "rw1",
+       scale.model = TRUE,
+       hyper = rwHyper) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper) +
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  Intercept(1)
+
+# RUN RICHNESS MODEL WITHOUT WASTEWATER
+
+# Run model
+modelNoWastewater_SR <- bru(
+  components = compsNoWastewater_SR,
+  family = "poisson",
+  data = invData_SR,
+  options = list(
+    control.fixed = list(prec.intercept = 0.01),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+
+# RUN RICHNESS MODEL WITH WASTEWATER
+
+# Run model
+modelWastewater_SR <- bru(
+  components = compsWastewater_SR,
+  family = "poisson",
+  data = invData_SR %>% filter(., !(is.na(EDF_MEAN_scaled))),
+  options = list(
+    control.fixed = list(prec.intercept = 0.01),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+
+gc()
+
+### RUN ABUNDANCE MODELS -------------------------------------------------------
+
+# Abundance model with wastewater
+compsWastewater_Ab <- Abundance ~
+  pesticideDiv(pesticideShannon_scaled, model = "linear") +
+  pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
+  eutroph(eutroph_PerArea_scaled, model = "linear") +
+  cattle(cattle_PerArea_scaled, model = "linear") +
+  pigs(pigs_PerArea_scaled, model = "linear") +
+  sheep(sheep_PerArea_scaled, model = "linear") +
+  poultry(poultry_PerArea_scaled, model = "linear") +
+  residential(residential_PerArea_scaled, model = "linear") +
+  woodland(woodland_PerArea_scaled, model = "linear") +
+  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+  quality(HS_HQA_scaled, model = "linear") +
+  wastewater(EDF_MEAN_scaled, model = "linear") +
+  PC1(PC1_scaled, model = "linear") +
+  PC2(PC2_scaled, model = "linear") +
+  PC3(PC3_scaled, model = "linear") +
+  PC4(PC4_scaled, model = "linear") +
+  month(
+    main = MONTH_NUM,
+    model = "rw1",
+    scale.model = TRUE,
+    hyper = rwHyper
+  ) +
+  year(YEAR,
+       model = "rw1",
+       scale.model = TRUE,
+       hyper = rwHyper) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper) +
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  Intercept(1)
+
+# Abundance model without wastewater
+compsNoWastewater_Ab <- Abundance ~
+  pesticideDiv(pesticideShannon_scaled, model = "linear") +
+  pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
+  eutroph(eutroph_PerArea_scaled, model = "linear") +
+  cattle(cattle_PerArea_scaled, model = "linear") +
+  pigs(pigs_PerArea_scaled, model = "linear") +
+  sheep(sheep_PerArea_scaled, model = "linear") +
+  poultry(poultry_PerArea_scaled, model = "linear") +
+  residential(residential_PerArea_scaled, model = "linear") +
+  woodland(woodland_PerArea_scaled, model = "linear") +
+  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+  quality(HS_HQA_scaled, model = "linear") +
+  #wastewater(EDF_MEAN_scaled, model = "linear") +
+  PC1(PC1_scaled, model = "linear") +
+  PC2(PC2_scaled, model = "linear") +
+  PC3(PC3_scaled, model = "linear") +
+  PC4(PC4_scaled, model = "linear") +
+  month(
+    main = MONTH_NUM,
+    model = "rw1",
+    scale.model = TRUE,
+    hyper = rwHyper
+  ) +
+  year(YEAR,
+       model = "rw1",
+       scale.model = TRUE,
+       hyper = rwHyper) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper) +
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  Intercept(1)
+    
+# RUN ABUNDANCE MODEL WITHOUT WASTEWATER
+    
+# Run model
+modelNoWastewater_Ab <- bru(
+  components = compsNoWastewater_Ab,
+  family = "zeroinflatednbinomial1",
+  data = invData_Abun_wZeroes,
+  options = list(
+    control.fixed = list(prec.intercept = 0.01),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+gc()
+
+# RUN ABUNDANCE MODEL WITH WASTEWATER
+
+# Run model
+modelWastewater_Ab <- bru(
+  components = compsWastewater_Ab,
+  family = "zeroinflatednbinomial1",
+  data = invData_Abun_wZeroes %>% filter(., !(is.na(EDF_MEAN_scaled))),
+  options = list(
+    control.fixed = list(prec.intercept = 0.01),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+gc()
+      
+# PLOTS ------------------------------------------------------------------
+
+# Loop through both models
+models <- list(modelWastewater_SR = modelWastewater_SR,
+               modelNoWastewater_SR = modelNoWastewater_SR,
+               modelWastewater_Ab = modelWastewater_Ab,
+               modelNoWastewater_Ab = modelNoWastewater_Ab)
+      
+for (modelName in names(models)) {
+  
+  # Get model
+  model <- models[[modelName]]
+  
+  # Get model summary
+  modelSummary <- summary(model)
+  
+  # Get linear effect labels
+  if (modelName %in% c("modelNoWastewater_SR", "modelNoWastewater_Ab")) {
+    linearLabels <- linearLabels_NoW
+  }
+  if (modelName %in% c("modelWastewater_SR", "modelWastewater_Ab")) {
+    linearLabels <- linearLabels_W
+  }
+  
+  # FIXED EFFECTS
+  
+  # Loop through variables and extract estimates
+  for (i in names(linearLabels)) {
+    # For covariate i, extract effect size
+    effectSize <- modelSummary$inla$fixed[i, ] %>%
+      t %>% # Transpose
+      data.frame
+    
+    # Add covariate
+    effectSize$Covariate <- i
+    
+    # If first covariate
+    if (i == names(linearLabels)[1]) {
+      # Create a new data frame
+      effectSizeAll <- effectSize
+      
+    }  else {
+      # Join data frames together
+      effectSizeAll <- rbind(effectSizeAll, effectSize)
+      
+    }
+  }
+  
+  # Plot fixed effects
+  fixedEffPlot <- ggplot(
+    effectSizeAll,
+    aes(
+      y = X0.5quant,
+      x = Covariate,
+      ymin = X0.025quant,
+      ymax = X0.975quant,
+      col = Covariate,
+      fill = Covariate
     )
-    gc()
+  ) +
+    # Specify position here
+    geom_linerange(linewidth = 4, colour = "lightblue") +
+    ggtitle("Linear effects") +
+    geom_hline(yintercept = 0, lty = 2) +
+    geom_point(
+      size = 2,
+      shape = 21,
+      colour = "white",
+      fill = "black",
+      stroke = 0.1
+    ) +
+    scale_x_discrete(
+      name = "",
+      limits = rev(names(linearLabels)),
+      labels = as_labeller(linearLabels)
+    ) +
+    scale_y_continuous(name = "Effect size") +
+    coord_flip() +
+    theme_minimal() +
+    guides(colour = "none") +
+    theme(
+      axis.text.y = element_text(size = 12),
+      axis.title.x = element_text(size = 12),
+      legend.text = element_text(size = 16),
+      plot.title = element_text(hjust = 0.5, vjust = -0.5)
+    )
+  
+  # RANDOM EFFECTS
+  
+  # Extract random effects from model, and exclude spatial
+  randomEff_df <- model$summary.random
+  
+  # Add name of random effect to each dataframe in list
+  randomEff_df <- imap(randomEff_df, ~ mutate(.x, randomEff = .y))
+  
+  # Unlist, then rename and select quantile columns
+  randomEff_df <- do.call(rbind, randomEff_df) %>%
+    rename("q0.025" = "0.025quant",
+           "q0.5" = "0.5quant",
+           "q0.975" = "0.975quant") %>%
+    filter(randomEff %in% c("year", "month")) %>%
+    select(ID, q0.025, q0.5, q0.975, randomEff)
+  
+  ### Plot
+  
+  randomEffPlot <- ggplot(randomEff_df) +
     
-    # RUN MODEL WITH WASTEWATER
+    # Random effect size
+    geom_line(aes(x = as.numeric(ID), y = q0.5)) +
+    geom_line(aes(x = as.numeric(ID), y = q0.025),
+              lty = 2,
+              alpha = .5) +
+    geom_line(aes(x = as.numeric(ID), y = q0.975),
+              lty = 2,
+              alpha = .5) +
     
-    # Remove previous model
-    if (exists("modelWastewater")) {rm(modelWastewater)}
-
-    # Run model
-      modelWastewater <- bru(
-        components = compsWastewater,
-        family = "zeroinflatednbinomial1",
-        data = invData_wAbsences %>% filter(., !(is.na(EDF_MEAN_scaled))),
-        options = list(
-          control.fixed = list(prec.intercept = 0.01),
-          control.compute = list(waic = TRUE,
-                                 dic = TRUE,
-                                 cpo = TRUE),
-          verbose = TRUE)
-      )
-      gc()
-      
-      # PLOTS ------------------------------------------------------------------
-      
-      # Loop through both models
-      models <- list(modelWastewater = modelWastewater,
-                     modelNoWastewater = modelNoWastewater)
-      
-      for (modelName in names(models)) {
-        
-        # Get model
-        model <- models[[modelName]]
-        
-        # Get model summary
-        modelSummary <- summary(model)
-        
-        # Get linear effect labels
-        if (modelName == "modelNoWastewater") { linearLabels <- linearLabels_NoW}
-        if (modelName == "modelWastewater") { linearLabels <- linearLabels_W}
-        
-        # FIXED EFFECTS
-        
-        # Loop through variables and extract estimates
-        for (i in names(linearLabels)) {
-          
-          # For covariate i, extract effect size
-          effectSize <- modelSummary$inla$fixed[i,] %>%
-            t %>% # Transpose
-            data.frame
-          
-          # Add covariate
-          effectSize$Covariate <- i
-          
-          # If first covariate
-          if (i == names(linearLabels)[1]) {
-            # Create a new data frame
-            effectSizeAll <- effectSize
-            
-          }  else {
-            # Join data frames together
-            effectSizeAll <- rbind(effectSizeAll, effectSize)
-            
-          }
-        }
-        
-        # Plot fixed effects
-        fixedEffPlot <- ggplot(
-          effectSizeAll,
-          aes(y = X0.5quant,
-              x = Covariate,
-              ymin = X0.025quant,
-              ymax = X0.975quant,
-              col = Covariate,
-              fill = Covariate )) +
-          # Specify position here
-          geom_linerange(linewidth = 4, colour = "lightblue") +
-          ggtitle("Linear effects") +
-          geom_hline(yintercept = 0, lty = 2) +
-          geom_point(size = 2,
-                     shape = 21,
-                     colour = "white",
-                     fill = "black",
-                     stroke = 0.1) +
-          scale_x_discrete(name = "",
-                           limits = rev(names(linearLabels)),
-                           labels = as_labeller(linearLabels)) +
-          scale_y_continuous(name = "Effect size") +
-          coord_flip() +
-          theme_minimal() +
-          guides(colour = "none") +
-          theme(
-            axis.text.y = element_text(size = 12),
-            axis.title.x = element_text(size = 12),
-            legend.text = element_text(size = 16),
-            plot.title = element_text(hjust = 0.5, vjust = -0.5)
-          )
-        
-        # RANDOM EFFECTS
-        
-        # Extract random effects from model, and exclude spatial
-        randomEff_df <- model$summary.random
-        
-        # Add name of random effect to each dataframe in list
-        randomEff_df <- imap(randomEff_df, ~ mutate(.x, randomEff = .y))
-        
-        # Unlist, then rename and select quantile columns
-        randomEff_df <- do.call(rbind, randomEff_df) %>%
-          rename("q0.025" = "0.025quant",
-                 "q0.5" = "0.5quant",
-                 "q0.975" = "0.975quant") %>%
-          filter(randomEff %in% c("year", "month")) %>%
-          select(ID, q0.025, q0.5, q0.975, randomEff)
-        
-        ### Plot
-        
-        randomEffPlot <- ggplot(randomEff_df) +
-          
-          # Random effect size
-          geom_line(aes(x = as.numeric(ID), y = q0.5)) +
-          geom_line(aes(x = as.numeric(ID), y = q0.025),
-                    lty = 2,
-                    alpha = .5) +
-          geom_line(aes(x = as.numeric(ID), y = q0.975),
-                    lty = 2,
-                    alpha = .5) +
-          
-          # Thematics
-          facet_wrap( ~ randomEff,
-                      scale = 'free_x',
-                      labeller = as_labeller(randomLabels))  +
-          ggtitle("Non-linear random effects") +
-          theme(plot.title = element_text(hjust = 0.5),
-                strip.text.x = element_text(size = 10)) +
-          xlab("") +
-          ylab("Count")
-        
-        # COMBINE PLOTS
-        evalPlot <- plot_grid(fixedEffPlot, randomEffPlot,
-                              nrow = 2, ncol = 1)
-        
-        # SAVE OUTPUT ------------------------------------------------------------
-    
-        # Create directory string for iSpecies
-        iSpeciesDir <- paste0(
-          dataDir,
-          "Processed/Species/",
-          "Model_outputs/",
-          gsub("model", "",
-               modelName),
-          "/Schedule_2")
-        
-        # Create directory
-        dir.create(iSpeciesDir, recursive = TRUE, showWarnings = FALSE)
-      
-        # Save model summaries
-        save(modelSummary,
-             file = paste0(iSpeciesDir,
-                           "/AllSpecies.Rds"))
-        ggsave(paste0(iSpeciesDir,
-                      "/AllSpecies.png"),
-               evalPlot,
-               width = 3000, height = 3000, 
-               units = "px", dpi = 400,
-               limitsize = FALSE)
-      }
+    # Thematics
+    facet_wrap(~ randomEff,
+               scale = 'free_x',
+               labeller = as_labeller(randomLabels))  +
+    ggtitle("Non-linear random effects") +
+    theme(plot.title = element_text(hjust = 0.5),
+          strip.text.x = element_text(size = 10)) +
+    xlab("") +
+    ylab("Count")
+  
+  # COMBINE PLOTS
+  evalPlot <- plot_grid(fixedEffPlot,
+                        randomEffPlot,
+                        nrow = 2,
+                        ncol = 1)
+  
+  # SAVE OUTPUT ------------------------------------------------------------
+  
+  # Create directory string for iSpecies
+  iSpeciesDir <- paste0(
+    dataDir,
+    "Processed/Species/",
+    "Model_outputs/",
+    gsub("model", "", modelName),
+    "/Schedule_2"
+  )
+  
+  # Create directory
+  dir.create(iSpeciesDir, recursive = TRUE, showWarnings = FALSE)
+  
+  # Save model summaries
+  save(modelSummary, file = paste0(iSpeciesDir, "/AllSpecies.Rds"))
+  ggsave(
+    paste0(iSpeciesDir, "/AllSpecies.png"),
+    evalPlot,
+    width = 3000,
+    height = 3000,
+    units = "px",
+    dpi = 400,
+    limitsize = FALSE
+  )
+}
