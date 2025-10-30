@@ -483,15 +483,18 @@ for (modelName in names(models)) {
                         ncol = 1)
   
   # SAVE OUTPUT ------------------------------------------------------------
-  
-  # Create directory string for iSpecies
-  iSpeciesDir <- paste0(
-    dataDir,
-    "Processed/Species/",
-    "Model_outputs/",
-    gsub("model", "", modelName),
-    "/Schedule_2"
-  )
+
+ # Create directory string for iSpecies
+  if (modelName %in% c("modelNoWastewater_SR", "modelNoWastewater_Ab")) {
+    # Create directory string for iSpecies
+    iSpeciesDir <- paste0(
+      dataDir,
+      "Processed/Species/Model_outputs/NoWastewater/Schedule_2/AllSpecies")
+  } else {
+    iSpeciesDir <- paste0(
+      dataDir,
+      "Processed/Species/Model_outputs/Wastewater/Schedule_2/AllSpecies")
+  }
   
   # Create directory
   dir.create(iSpeciesDir, recursive = TRUE, showWarnings = FALSE)
