@@ -81,9 +81,11 @@ invData <- invData %>%
   filter(!(is.na(pesticideLoad))) %>%
   # Remove rows with no site data
   filter(!(is.na(HS_HMS_RSB_SubScore))) %>%
-  filter(!(is.na(BIO_DEPTH)))%>%
-  filter(!(is.na(BIO_SAND))) %>%
-  filter(!(is.na(BIO_SILT_CLAY)))
+  # Remove_rows with missing BIOSYS site data
+  filter(!(is.na(DEPTH)))%>%
+  filter(!(is.na(SAND))) %>%
+  filter(!(is.na(ALKALINITY))) %>%
+  filter(!(is.na(SILT_CLAY))) 
 
 ### PROCESS TAXONOMY -----------------------------------------------------------
 
@@ -136,17 +138,18 @@ for(variable in c(
 
 ### CONVERT SITE VARIABLES TO PCA ----------------------------------------------
 
-sitePCA <- invData %>% 
-  select(BIO_ALTITUDE,
-         BIO_SLOPE,
-         BIO_DISTANCE_FROM_SOURCE,
-         BIO_DISCHARGE,
-         BIO_WIDTH,
-         BIO_DEPTH,
-         BIO_BOULDERS_COBBLES,
-         BIO_PEBBLES_GRAVEL,
-         BIO_SAND,
-         BIO_SILT_CLAY) %>%
+sitePCA <- invData %>%
+  select(ALTITUDE,
+         SLOPE,
+         DIST_FROM_SOURCE,
+         DISCHARGE,
+         WIDTH,
+         DEPTH,
+         BOULDERS_COBBLES,
+         PEBBLES_GRAVEL,
+         SAND,
+         SILT_CLAY,
+         ALKALINITY) %>%
   prcomp(.)
 
 summary(sitePCA)
