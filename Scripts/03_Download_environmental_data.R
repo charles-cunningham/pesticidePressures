@@ -194,10 +194,10 @@ unlink(paste0(catchmentDir, "Catchment_data.zip"), recursive = TRUE)
 ### DOWNLOAD AND PROCESS ENGLAND BOUNDARY FOR ANALYSIS [AUTOMATED] -------------
 
 # Information on data here:
-# https://www.data.gov.uk/dataset/d03eb8db-ebbe-4976-b9ca-32274b2b1078/countries-december-2024-boundaries-uk-bsc
+# https://www.data.gov.uk/dataset/8580e329-83c9-4646-bf93-d0411f00c53a/countries-december-2024-boundaries-uk-buc
 
 # Set download url
-url <- "https://open-geography-portalx-ons.hub.arcgis.com/api/download/v1/items/6f18dfc308d04372929dea6afa44b2c7/shapefile?layers=0"
+url <- "https://open-geography-portalx-ons.hub.arcgis.com/api/download/v1/items/06d13e0421784911aa669768f25dcb18/shapefile?layers=0"
 
 # Download
 download.file(url = url,
@@ -211,7 +211,7 @@ unzip(paste0(countryDir, "England.zip"),
 
 # Read in boundary
 boundaryUK <- paste0(countryDir,
-                     "EnglandUnzip/CTRY_DEC_2024_UK_BSC.shp") %>%
+                     "EnglandUnzip/CTRY_DEC_2024_UK_BUC.shp") %>%
   vect
 
 # Filter to England only
