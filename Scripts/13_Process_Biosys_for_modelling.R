@@ -34,9 +34,6 @@ invData <- readRDS(paste0(dataDir, "Processed/Biosys/invDataSpatial.Rds"))
 
 # PROCESS DATA STRUCTURE -------------------------------------------------------
 
-# Convert to tibble as non-spatially explicit model
-invData <- as_tibble(invData)
-
 # Remove spaces from names for inlabru
 names(invData) <- gsub(" ", "_", names(invData) )
 
@@ -119,7 +116,6 @@ invData$eutroph <- mean(invData$fertiliser_n + invData$fertiliser_p)
 # Divide upstream variables by area (excluding diversity)
 for(variable in c(
   "eutroph",
-  "Arable",
   "residential",
   "pesticideToxicLoad",
   "cattle",
@@ -132,13 +128,14 @@ for(variable in c(
   colName <- paste0(variable, "_PerArea")
   
   # Assign scaled variable to new column
-  invData[, colName] <- invData[, variable] / invData[, "totalArea"]
+  invData[[colName]] <- invData[[ variable]] / invData[[ "totalArea"]]
   
 }
 
 ### CONVERT SITE VARIABLES TO PCA ----------------------------------------------
 
 sitePCA <- invData %>%
+  as_tibble(.) %>%
   select(ALTITUDE,
          SLOPE,
          DIST_FROM_SOURCE,
@@ -160,6 +157,7 @@ invData <- cbind(invData, sitePCA$x)
 
 # Create correlation data frame
 corr_df <- invData %>%
+  as_tibble(.) %>%
   select(pesticideShannon,
          pesticideToxicLoad_PerArea,
          eutroph_PerArea,
@@ -237,7 +235,7 @@ for(variable in modelVariables) {
   colName <- paste0(variable, "_scaled")
   
   # Assign scaled variable to new column
-  invData[, colName] <- scale(invData[[variable]])[,1]
+  invData[[colName]] <- scale(invData[[variable]])[,1]
 }
 
 # Convert categorical variables for nested random effects to factors
