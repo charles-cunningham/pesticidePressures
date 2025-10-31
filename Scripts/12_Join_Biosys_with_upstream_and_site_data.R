@@ -37,31 +37,6 @@ invData_sf <- readRDS(file = paste0(dataDir, "Processed/Biosys/invData.Rds")) %>
 # Read processed flow data
 flowData <- readRDS(file = paste0(dataDir,
                                       "/Processed/Flow/Flow_aggregated_data.Rds"))
-names(flowData)
-# List land cover classes
-classLCM <- c(
-  "Deciduous woodland",
-  "Coniferous woodland",
-  "Arable",
-  "Improved grassland",
-  "Neutral grassland",
-  "Calcareous grassland",
-  "Acid grassland",
-  "Fen",
-  "Heather",
-  "Heather grassland",
-  "Bog",
-  "Inland rock",
-  "Saltwater",
-  "Freshwater",
-  "Supralittoral rock",
-  "Supralittoral sediment",
-  "Littoral rock",
-  "Littoral sediment",
-  "Saltmarsh",
-  "Urban",
-  "Suburban"
-)
 
 # List flowData columns to join to invData_sf
 upstreamData <- as_tibble(flowData) %>%
@@ -102,13 +77,13 @@ for(site in sites) {
   # Filter flowChemData to waterbodies for i (both datasets have this)
   waterbodyFlowData <- flowData[flowData$ea_wb_id %in% iWaterbody,]
   
-  # Find any waterbody segments nearby (within 100m)
+  # Find any waterbody segments nearby (within 50m)
   nearbySegments <- st_is_within_distance(siteGeometry[[1]], 
                                           waterbodyFlowData,
-                                          dist = 100)[[1]] %>%
+                                          dist = 50)[[1]] %>%
     waterbodyFlowData[. ,]
 
-  # If any flow segments are within 100m...
+  # If any flow segments are within 50m...
   if (NROW(nearbySegments) > 0) {
  
     # Find nearest feature from nearby segments
