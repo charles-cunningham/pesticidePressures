@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = "16:1")
+inla.setOption(num.threads = "24")
 inla.setOption(inla.timeout = 300) # 5 minutes
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -93,6 +93,12 @@ invDataINNS <- invData %>%
   filter(GROUP == "INNS") %>%
   distinct(TAXON) %>%
   .$TAXON
+
+### Download BNG WKT string
+download.file(url = "https://epsg.io/27700.wkt2?download=1",
+              destfile = paste0(dataDir, "bng.prj"))
+
+bng <- sf::st_crs(paste0(dataDir, "bng.prj"))$wkt
 
 ### CREATE MESH ----------------------------------------------------------------
 
