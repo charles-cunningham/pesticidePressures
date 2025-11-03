@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = 2)
+inla.setOption(num.threads = 8)
 inla.setOption(inla.timeout = 0)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -51,6 +51,9 @@ plotDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 
 # Load Biosys data
 invData <- readRDS(paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
+
+# England boundary
+englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
 
 # SET PARAMETERS ---------------------------------------------------------------
 
@@ -78,6 +81,12 @@ iidHyper <- list(prec = list(prior = "pc.prec",
 rwHyper <- list(prec = list(prior="pc.prec",
                             param=c(100, 0.05)))
 
+### Download BNG WKT string
+download.file(url = "https://epsg.io/27700.wkt2?download=1",
+              destfile = paste0(dataDir, "bng.prj"))
+
+bng <- sf::st_crs(paste0(dataDir, "bng.prj"))$wkt
+
 ### FILTER DATA ----------------------------------------------------------------
 
 # Only keep needed columns for memory
@@ -90,15 +99,15 @@ invData <- invData %>%
          MONTH_NUM,
          WEEK,
          TAXON,
-         eutroph_PerArea_scaled,
-         residential_PerArea_scaled,       
-         woodland_PerArea_scaled,
+         eutroph_scaled,
+         residential_scaled,       
+         woodland_scaled,
          pesticideShannon_scaled,
-         pesticideToxicLoad_PerArea_scaled,
-         cattle_PerArea_scaled,            
-         pigs_PerArea_scaled,
-         sheep_PerArea_scaled,
-         poultry_PerArea_scaled,          
+         pesticideToxicLoad_scaled,
+         cattle_scaled,            
+         pigs_scaled,
+         sheep_scaled,
+         poultry_scaled,          
          EDF_MEAN_scaled,
          HS_HMS_RSB_SubScore_scaled,
          HS_HQA_scaled,                    
@@ -152,6 +161,23 @@ invData_Ab_wZeroes <- NULL
 rm(invData, speciesData)
 gc()
 
+### CREATE MESH ----------------------------------------------------------------
+
+# Max edge is as a rule of thumb (range/3 to range/10)
+maxEdge <- 50
+
+# Create mesh
+mesh <- inla.mesh.2d(boundary = englandSmooth,
+                     max.edge =  maxEdge,
+                     cutoff = maxEdge/2,
+                     crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
+
+# Define spatial SPDE priors
+mySpace <- inla.spde2.pcmatern(
+  mesh,
+  prior.range = c(1 * maxEdge, 0.5),
+  prior.sigma = c(1, 0.5))
+
 ### RUN RICHNESS MODELS --------------------------------------------------------
     
 # SET MODEL COMPONENTS
@@ -159,14 +185,14 @@ gc()
 # Richness model with wastewater
 compsWastewater_SR <- numSpecies ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-  eutroph(eutroph_PerArea_scaled, model = "linear") +
-  cattle(cattle_PerArea_scaled, model = "linear") +
-  pigs(pigs_PerArea_scaled, model = "linear") +
-  sheep(sheep_PerArea_scaled, model = "linear") +
-  poultry(poultry_PerArea_scaled, model = "linear") +
-  residential(residential_PerArea_scaled, model = "linear") +
-  woodland(woodland_PerArea_scaled, model = "linear") +
+  pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
+  cattle(cattle_scaled, model = "linear") +
+  pigs(pigs_scaled, model = "linear") +
+  sheep(sheep_scaled, model = "linear") +
+  poultry(poultry_scaled, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
   wastewater(EDF_MEAN_scaled, model = "linear") +
@@ -187,19 +213,21 @@ compsWastewater_SR <- numSpecies ~
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  spaceTime(main = geometry,
+            model = mySpace) +
   Intercept(1)
 
 # Richness model without wastewater
 compsNoWastewater_SR <- numSpecies ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-  eutroph(eutroph_PerArea_scaled, model = "linear") +
-  cattle(cattle_PerArea_scaled, model = "linear") +
-  pigs(pigs_PerArea_scaled, model = "linear") +
-  sheep(sheep_PerArea_scaled, model = "linear") +
-  poultry(poultry_PerArea_scaled, model = "linear") +
-  residential(residential_PerArea_scaled, model = "linear") +
-  woodland(woodland_PerArea_scaled, model = "linear") +
+  pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
+  cattle(cattle_scaled, model = "linear") +
+  pigs(pigs_scaled, model = "linear") +
+  sheep(sheep_scaled, model = "linear") +
+  poultry(poultry_scaled, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
   #wastewater(EDF_MEAN_scaled, model = "linear") +
@@ -220,6 +248,8 @@ compsNoWastewater_SR <- numSpecies ~
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  spaceTime(main = geometry,
+            model = mySpace) +
   Intercept(1)
 
 # RUN RICHNESS MODEL WITHOUT WASTEWATER
@@ -257,14 +287,14 @@ gc()
 # Abundance model with wastewater
 compsWastewater_Ab <- Abundance ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-  eutroph(eutroph_PerArea_scaled, model = "linear") +
-  cattle(cattle_PerArea_scaled, model = "linear") +
-  pigs(pigs_PerArea_scaled, model = "linear") +
-  sheep(sheep_PerArea_scaled, model = "linear") +
-  poultry(poultry_PerArea_scaled, model = "linear") +
-  residential(residential_PerArea_scaled, model = "linear") +
-  woodland(woodland_PerArea_scaled, model = "linear") +
+  pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
+  cattle(cattle_scaled, model = "linear") +
+  pigs(pigs_scaled, model = "linear") +
+  sheep(sheep_scaled, model = "linear") +
+  poultry(poultry_scaled, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
   wastewater(EDF_MEAN_scaled, model = "linear") +
@@ -285,19 +315,21 @@ compsWastewater_Ab <- Abundance ~
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  spaceTime(main = geometry,
+            model = mySpace) +
   Intercept(1)
 
 # Abundance model without wastewater
 compsNoWastewater_Ab <- Abundance ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-  eutroph(eutroph_PerArea_scaled, model = "linear") +
-  cattle(cattle_PerArea_scaled, model = "linear") +
-  pigs(pigs_PerArea_scaled, model = "linear") +
-  sheep(sheep_PerArea_scaled, model = "linear") +
-  poultry(poultry_PerArea_scaled, model = "linear") +
-  residential(residential_PerArea_scaled, model = "linear") +
-  woodland(woodland_PerArea_scaled, model = "linear") +
+  pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
+  cattle(cattle_scaled, model = "linear") +
+  pigs(pigs_scaled, model = "linear") +
+  sheep(sheep_scaled, model = "linear") +
+  poultry(poultry_scaled, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
   #wastewater(EDF_MEAN_scaled, model = "linear") +
@@ -318,6 +350,8 @@ compsNoWastewater_Ab <- Abundance ~
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  spaceTime(main = geometry,
+            model = mySpace) +
   Intercept(1)
     
 # RUN ABUNDANCE MODEL WITHOUT WASTEWATER
