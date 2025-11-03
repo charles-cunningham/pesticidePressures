@@ -112,14 +112,15 @@ invData$TAXON <- invData$TAXON %>%
 
 ### AGGREGATE VARIABLES --------------------------------------------------------
 
-# Woodland
-invData$woodland <- invData$Deciduous_woodland + invData$Coniferous_woodland
-
-# Residential
-invData$residential <- invData$Urban + invData$Suburban
-
-# Eutrophication risk
-invData$eutroph <- mean(invData$fertiliser_n + invData$fertiliser_p)
+invData <- invData %>%
+  rowwise() %>% 
+  # Woodland
+  mutate(woodland = Deciduous_woodland + Coniferous_woodland) %>%
+  # Residential
+  mutate(residential = Urban + Suburban) %>%
+  # Eutrophication risk
+  rowwise %>%
+  mutate(eutroph = mean(fertiliser_n, fertiliser_p))
 
 # MODIFY UPSTREAM VARIABLES TO PER AREA VALUES----------------------------------
 
@@ -133,13 +134,13 @@ for(variable in c(
   "sheep",
   "poultry",
   "woodland")) {
-  
+
   # Create new scaled column name
   colName <- paste0(variable, "_PerArea")
-  
+
   # Assign scaled variable to new column
   invData[[colName]] <- invData[[ variable]] / invData[[ "totalArea"]]
-  
+
 }
 
 ### CONVERT SITE VARIABLES TO PCA ----------------------------------------------
@@ -286,7 +287,7 @@ england_R <- rasterize(england, lcm2015,
                        touches = TRUE,
                        cover = TRUE)
 
-# Restrict to majority cover cells
+# Restrict to cells with more than a small fraction (10% of land cover)
 england_R <- ifel(england_R > 0.1,
              yes = 1,
              no = NA)
