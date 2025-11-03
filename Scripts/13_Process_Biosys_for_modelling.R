@@ -12,6 +12,7 @@
 library(tidyverse)
 library(sf)
 library(corrplot)
+library(terra)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
 # Set data directory
@@ -31,6 +32,15 @@ lapply(paste0(dataDir, "Processed/Species"), function(x) {
 
 # Load Biosys data
 invData <- readRDS(paste0(dataDir, "Processed/Biosys/invDataSpatial.Rds"))
+
+# England boundary
+england <- readRDS(paste0(dataDir, "Raw/Country_data/England.Rds"))
+
+# Read land cover data as 1km spatRast file for raster template
+lcm2015 <- paste0(dataDir, "Raw/Land_cover_data/lcm2015gb25m.tif") %>%
+  rast() %>%
+  .[[1]] %>%
+  terra::aggregate(., fact = 200)
 
 # PROCESS DATA STRUCTURE -------------------------------------------------------
 
@@ -253,7 +263,46 @@ invData$WATER_BODY_F <-paste( invData$REPORTING_AREA,
   as.numeric() %>%
   as.factor()
 
-### SAVE DATASET ---------------------------------------------------------------
+### PROCESS ENGLAND ------------------------------------------------------------
+
+### Remove small islands
+
+# Disaggregate
+england <- disagg(england)
+
+# Calculate area
+england$area_sqkm <- expanse(england, unit = "km")
+
+# Remove polygons with < 50km ^2 area
+england <- england[england$area_sqkm > 50]
+
+# Aggregate back
+england <- aggregate(england)
+
+### Smooth
+
+# Convert to raster
+england_R <- rasterize(england, lcm2015,
+                       touches = TRUE,
+                       cover = TRUE)
+
+# Restrict to majority cover cells
+england_R <- ifel(england_R > 0.5,
+             yes = 1,
+             no = NA)
+
+# Convert to sf object
+england_sf <- as.polygons(england_R) %>% # Convert to polygon 
+  st_as_sf(.) # Convert to sf object for smoothing
+
+# Smooth
+# N.B. This is used to created mesh and functions as modelling boundary (domain)
+englandSmooth <- england_sf %>% 
+  smoothr::smooth(., method = "chaikin") %>%
+  smoothr::fill_holes(., threshold = Inf)
+
+### SAVE DATASETS ---------------------------------------------------------------
 
 # Save file
 saveRDS(invData, file = paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
+saveRDS(englandSmooth, file = paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
