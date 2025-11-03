@@ -82,12 +82,14 @@ minRecords <- 1000
 
 # Schedule 2 species list
 invDataS2 <- invData %>%
+  as_tibble() %>%
   filter(GROUP == "Schedule 2") %>%
   distinct(TAXON) %>%
   .$TAXON
 
 # INNS species list
 invDataINNS <- invData %>%
+  as_tibble() %>%
   filter(GROUP == "INNS") %>%
   distinct(TAXON) %>%
   .$TAXON
