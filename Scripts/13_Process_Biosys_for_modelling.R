@@ -124,24 +124,24 @@ invData <- invData %>%
 
 # MODIFY UPSTREAM VARIABLES TO PER AREA VALUES----------------------------------
 
-# Divide upstream variables by area (excluding diversity)
-for(variable in c(
-  "eutroph",
-  "residential",
-  "pesticideToxicLoad",
-  "cattle",
-  "pigs",
-  "sheep",
-  "poultry",
-  "woodland")) {
-
-  # Create new scaled column name
-  colName <- paste0(variable, "_PerArea")
-
-  # Assign scaled variable to new column
-  invData[[colName]] <- invData[[ variable]] / invData[[ "totalArea"]]
-
-}
+# # Divide upstream variables by area (excluding diversity)
+# for(variable in c(
+#   "eutroph",
+#   "residential",
+#   "pesticideToxicLoad",
+#   "cattle",
+#   "pigs",
+#   "sheep",
+#   "poultry",
+#   "woodland")) {
+# 
+#   # Create new scaled column name
+#   colName <- paste0(variable, "_PerArea")
+# 
+#   # Assign scaled variable to new column
+#   invData[[colName]] <- invData[[ variable]] / invData[[ "totalArea"]]
+# 
+# }
 
 ### CONVERT SITE VARIABLES TO PCA ----------------------------------------------
 
@@ -170,14 +170,15 @@ invData <- cbind(invData, sitePCA$x)
 corr_df <- invData %>%
   as_tibble(.) %>%
   select(pesticideShannon,
-         pesticideToxicLoad_PerArea,
-         eutroph_PerArea,
-         residential_PerArea,
-         woodland_PerArea,
-         cattle_PerArea,
-         pigs_PerArea,
-         sheep_PerArea,
-         poultry_PerArea,
+         pesticideToxicLoad,
+         eutroph,
+         residential,
+         woodland,
+         cattle,
+         pigs,
+         sheep,
+         poultry,
+         totalArea,
          EDF_MEAN,
          HS_HMS_RSB_SubScore,
          HS_HQA,
@@ -221,15 +222,15 @@ dev.off()
 # List variables to be scaled
 modelVariables <- c(
   # Upstream variables
-  "eutroph_PerArea",
-  "residential_PerArea",
-  "woodland_PerArea",
+  "eutroph",
+  "residential",
+  "woodland",
   "pesticideShannon",
-  "pesticideToxicLoad_PerArea",
-  "cattle_PerArea",
-  "pigs_PerArea",
-  "sheep_PerArea",
-  "poultry_PerArea",
+  "pesticideToxicLoad",
+  "cattle",
+  "pigs",
+  "sheep",
+  "poultry",
   # Site variables
   "EDF_MEAN",
   "HS_HMS_RSB_SubScore",
