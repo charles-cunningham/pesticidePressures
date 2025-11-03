@@ -287,7 +287,7 @@ england_R <- rasterize(england, lcm2015,
                        cover = TRUE)
 
 # Restrict to majority cover cells
-england_R <- ifel(england_R > 0.5,
+england_R <- ifel(england_R > 0.1,
              yes = 1,
              no = NA)
 
