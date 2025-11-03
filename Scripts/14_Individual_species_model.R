@@ -52,13 +52,13 @@ plotDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 # Load Biosys data
 invData <- readRDS(paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
 
+# England boundary
+englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
+
 # SET PARAMETERS ---------------------------------------------------------------
 
 linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
                       'pesticideToxicity' = "Pesticide combined toxicity",
-                      #'insecticideToxicity' = "Insecticide combined toxicity",
-                      #'herbicideToxicity' = "Herbicide combined toxicity",
-                      #'FungicideToxicity' = "Fungicide combined toxicity",
                       'eutroph' = "Average Nitrogen and Potassium input",
                       'cattle' = "Cattle",
                       'pigs' = "Pigs",
@@ -91,6 +91,23 @@ invDataINNS <- invData %>%
   filter(GROUP == "INNS") %>%
   distinct(TAXON) %>%
   .$TAXON
+
+### CREATE MESH ----------------------------------------------------------------
+
+# Max edge is as a rule of thumb (range/3 to range/10)
+maxEdge <- 50
+
+# Create mesh
+mesh <- inla.mesh.2d(boundary = englandSmooth,
+                     max.edge =  maxEdge,
+                     cutoff = maxEdge/2,
+                     crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
+
+# Define spatial SPDE priors
+mySpace <- inla.spde2.pcmatern(
+  mesh,
+  prior.range = c(1 * maxEdge, 0.5),
+  prior.sigma = c(1, 0.5))
 
 ### MODEL SET UP FOR INDIVIDUAL SPECIES ----------------------------------------
 # Loop through taxa then species to preserve ordering
@@ -149,17 +166,14 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     # Model with wastewater
     compsWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      #insecticideToxicity(insecticideToxicLoad_PerArea_scaled, model = "linear") +
-      #herbicideToxicity(herbicideToxicLoad_PerArea_scaled, model = "linear") +
-      #fungicideToxicity(fungicideToxicLoad_PerArea_scaled, model = "linear") +
-      eutroph(eutroph_PerArea_scaled, model = "linear") +
-      cattle(cattle_PerArea_scaled, model = "linear") +
-      pigs(pigs_PerArea_scaled, model = "linear") +
-      sheep(sheep_PerArea_scaled, model = "linear") +
-      poultry(poultry_PerArea_scaled, model = "linear") +
-      residential(residential_PerArea_scaled, model = "linear") +
-      woodland(woodland_PerArea_scaled, model = "linear") +
+      pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+      eutroph(eutroph_scaled, model = "linear") +
+      cattle(cattle_scaled, model = "linear") +
+      pigs(pigs_scaled, model = "linear") +
+      sheep(sheep_scaled, model = "linear") +
+      poultry(poultry_scaled, model = "linear") +
+      residential(residential_scaled, model = "linear") +
+      woodland(woodland_scaled, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
       wastewater(EDF_MEAN_scaled, model = "linear") +
@@ -176,24 +190,23 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            scale.model = TRUE,
            hyper = rwHyper) +
       basin(BASIN_F, model = "iid", hyper = iidHyper) +
-      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
       wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+      spaceTime(main = geometry,
+                model = mySpace) +
       Intercept(1)
     
     # Model with wastewater
     compsNoWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      pesticideToxicity(pesticideToxicLoad_PerArea_scaled, model = "linear") +
-      #insecticideToxicity(insecticideToxicLoad_PerArea_scaled, model = "linear") +
-      #herbicideToxicity(herbicideToxicLoad_PerArea_scaled, model = "linear") +
-      #fungicideToxicity(fungicideToxicLoad_PerArea_scaled, model = "linear") +
-      eutroph(eutroph_PerArea_scaled, model = "linear") +
-      cattle(cattle_PerArea_scaled, model = "linear") +
-      pigs(pigs_PerArea_scaled, model = "linear") +
-      sheep(sheep_PerArea_scaled, model = "linear") +
-      poultry(poultry_PerArea_scaled, model = "linear") +
-      residential(residential_PerArea_scaled, model = "linear") +
-      woodland(woodland_PerArea_scaled, model = "linear") +
+      pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+      eutroph(eutroph_scaled, model = "linear") +
+      cattle(cattle_scaled, model = "linear") +
+      pigs(pigs_scaled, model = "linear") +
+      sheep(sheep_scaled, model = "linear") +
+      poultry(poultry_scaled, model = "linear") +
+      residential(residential_scaled, model = "linear") +
+      woodland(woodland_scaled, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
       #wastewater(EDF_MEAN_scaled, model = "linear") +
@@ -210,8 +223,10 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            scale.model = TRUE,
            hyper = rwHyper) +
       basin(BASIN_F, model = "iid", hyper = iidHyper) +
-      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-      wb(WATER_BODY_F, model = "iid",  hyper = iidHyper) +
+      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+      wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+      spaceTime(main = geometry,
+                model = mySpace) +
       Intercept(1)
     
     # RUN MODEL WITH WASTEWATER
