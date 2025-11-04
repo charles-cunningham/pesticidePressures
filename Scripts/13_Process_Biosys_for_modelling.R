@@ -110,28 +110,9 @@ invData$TAXON <- invData$TAXON %>%
   # Remove slashes
   gsub("/", "-", .)
 
-# MODIFY UPSTREAM VARIABLES TO PER AREA VALUES----------------------------------
+# PROCESS VARIABLES --------------------------------------------------------------
 
-# # Divide upstream variables by area (excluding diversity)
-# for(variable in c(
-#   "eutroph",
-#   "residential",
-#   "pesticideToxicLoad",
-#   "cattle",
-#   "pigs",
-#   "sheep",
-#   "poultry",
-#   "woodland")) {
-# 
-#   # Create new scaled column name
-#   colName <- paste0(variable, "_PerArea")
-# 
-#   # Assign scaled variable to new column
-#   invData[[colName]] <- invData[[ variable]] / invData[[ "totalArea"]]
-# 
-# }
-
-# SCALE VARIABLES --------------------------------------------------------------
+### SCALE VARIABLES
 
 # List variables to be scaled
 modelVariables <- c(
@@ -157,17 +138,18 @@ modelVariables <- c(
   "EDF_MEAN",
   "HS_HMS_RSB_SubScore",
   "HS_HQA",
-  "ALTITUDE",
-  "SLOPE",
-  "DIST_FROM_SOURCE",
-  "DISCHARGE",
-  "WIDTH",
-  "DEPTH",
+  #"ALTITUDE",
+  #"SLOPE",
+  #"DIST_FROM_SOURCE",
+  #"DISCHARGE",
+  #"WIDTH",
+  #"DEPTH",
   "BOULDERS_COBBLES",
   "PEBBLES_GRAVEL",
   "SAND",
   "SILT_CLAY",
-  "ALKALINITY")
+ # "ALKALINITY"
+ )
 
 # Create additional scaled column for each modelVariables
 for(variable in modelVariables) {
@@ -178,6 +160,8 @@ for(variable in modelVariables) {
   # Assign scaled variable to new column
   invData[[colName]] <- scale(invData[[variable]])[,1]
 }
+
+### CONVERT IID EFFECTS TO FACTORS
 
 # Convert categorical variables for nested random effects to factors
 # (Convert catchment and water body to numeric to save memory)
@@ -194,23 +178,38 @@ invData$WATER_BODY_F <-paste( invData$REPORTING_AREA,
   as.numeric() %>%
   as.factor()
 
+### CONVERT RW EFFECTS TO DISCRETE DATA
+
+# Loop through site variables used for random effects
+for (i in c("ALTITUDE",
+            "SLOPE",
+            "DIST_FROM_SOURCE",
+            "DISCHARGE",
+            "ALKALINITY")) {
+# Group to 10 evenly sized bins and assign to new column
+  invData[, paste(i, "_GRP")] <- INLA::inla.group(invData[[i]],
+                                                  n = 10, 
+                                                  method = "cut")
+  
+}
 
 ### CONVERT SAMPLING SITE ABIOTIC VARIABLES TO PCA ----------------------------------------------
 
 # Carry out PCA
 sitePCA <- invData %>%
   as_tibble(.) %>%
-  select(ALTITUDE_scaled,
-         SLOPE_scaled,
-         DIST_FROM_SOURCE_scaled,
-         DISCHARGE_scaled,
-         WIDTH_scaled,
-         DEPTH_scaled,
+  select(#ALTITUDE_scaled,
+         #SLOPE_scaled,
+        # DIST_FROM_SOURCE_scaled,
+         #DISCHARGE_scaled,
+         #WIDTH_scaled,
+         #DEPTH_scaled,
          BOULDERS_COBBLES_scaled,
          PEBBLES_GRAVEL_scaled,
          SAND_scaled,
          SILT_CLAY_scaled,
-         ALKALINITY_scaled,) %>%
+         #ALKALINITY_scaled
+         ) %>%
   prcomp(.)
 
 # Print summary
@@ -247,10 +246,10 @@ corr_df <- invData %>%
          PC1,
          PC2,
          PC3,
-         PC4,
-         PC5,
-         PC6,
-         PC8,
+         # PC4,
+         # PC5,
+         # PC6,
+         # PC8,
          YEAR,
          MONTH_NUM)
 
@@ -333,11 +332,11 @@ corr_df <- invData %>%
          PC1,
          PC2,
          PC3,
-         PC4,
-         PC5,
-         PC6,
-         PC7,
-         PC8,
+         # PC4,
+         # PC5,
+         # PC6,
+         # PC7,
+         # PC8,
          YEAR,
          MONTH_NUM)
 
