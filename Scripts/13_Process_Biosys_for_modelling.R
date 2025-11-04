@@ -110,18 +110,6 @@ invData$TAXON <- invData$TAXON %>%
   # Remove slashes
   gsub("/", "-", .)
 
-### AGGREGATE VARIABLES --------------------------------------------------------
-
-invData <- invData %>%
-  rowwise() %>% 
-  # Woodland
-  mutate(woodland = Deciduous_woodland + Coniferous_woodland) %>%
-  # Residential
-  mutate(residential = Urban + Suburban) %>%
-  # Eutrophication risk
-  rowwise %>%
-  mutate(eutroph = mean(fertiliser_n, fertiliser_p))
-
 # MODIFY UPSTREAM VARIABLES TO PER AREA VALUES----------------------------------
 
 # # Divide upstream variables by area (excluding diversity)
@@ -143,102 +131,43 @@ invData <- invData %>%
 # 
 # }
 
-### CONVERT SITE VARIABLES TO PCA ----------------------------------------------
-
-sitePCA <- invData %>%
-  as_tibble(.) %>%
-  select(ALTITUDE,
-         SLOPE,
-         DIST_FROM_SOURCE,
-         DISCHARGE,
-         WIDTH,
-         DEPTH,
-         BOULDERS_COBBLES,
-         PEBBLES_GRAVEL,
-         SAND,
-         SILT_CLAY,
-         ALKALINITY) %>%
-  prcomp(.)
-
-summary(sitePCA)
-
-invData <- cbind(invData, sitePCA$x)
-
-### CORRELATION PLOTS ----------------------------------------------------------
-
-# Create correlation data frame
-corr_df <- invData %>%
-  as_tibble(.) %>%
-  select(pesticideShannon,
-         pesticideToxicLoad,
-         eutroph,
-         residential,
-         woodland,
-         cattle,
-         pigs,
-         sheep,
-         poultry,
-         totalArea,
-         EDF_MEAN,
-         HS_HMS_RSB_SubScore,
-         HS_HQA,
-         PC1,
-         PC2,
-         PC3,
-         PC4,
-         YEAR,
-         MONTH_NUM)
-
-# WITH WASTEWATER
-
-# Filter out missing wastewater values and create correlation object
-corPredictors <- filter(corr_df, !(is.na(EDF_MEAN))) %>%
-  cor(.) 
-
-png(filename = paste0(plotDir, 'corr_wastewater.png'),
-    width = 40, height = 30, units = "cm", res = 600)
-corrplot::corrplot(corPredictors,
-                   type = "upper", order = "original", diag = FALSE,
-                   method = "number", addCoef.col="white", tl.col = "black",
-                   tl.srt = 45, tl.cex = 1)
-dev.off()
-
-# WITHOUT WASTEWATER
-
-# Unselect wasterwater column and create correlation object
-corPredictors <- select(corr_df, !(EDF_MEAN)) %>%
-  cor(.) 
-
-png(filename = paste0(plotDir, 'corr_noWastewater.png'),
-    width = 40, height = 30, units = "cm", res = 600)
-corrplot::corrplot(corPredictors,
-                   type = "upper", order = "original", diag = FALSE,
-                   method = "number", addCoef.col="white", tl.col = "black",
-                   tl.srt = 45, tl.cex = 1)
-dev.off()
-
 # SCALE VARIABLES --------------------------------------------------------------
 
 # List variables to be scaled
 modelVariables <- c(
   # Upstream variables
-  "eutroph",
-  "residential",
-  "woodland",
   "pesticideShannon",
   "pesticideToxicLoad",
+  "insecticideToxicLoad",
+  "herbicideToxicLoad",
+  "fungicideToxicLoad",
+  "fertiliser_k",
+  "fertiliser_n",
+  "fertiliser_p",
+  "Urban",
+  "Suburban",
+  "Deciduous_woodland",
+  "Coniferous_woodland",
   "cattle",
   "pigs",
   "sheep",
   "poultry",
+  "totalArea",
   # Site variables
   "EDF_MEAN",
   "HS_HMS_RSB_SubScore",
   "HS_HQA",
-  "PC1",
-  "PC2",
-  "PC3",
-  "PC4")
+  "ALTITUDE",
+  "SLOPE",
+  "DIST_FROM_SOURCE",
+  "DISCHARGE",
+  "WIDTH",
+  "DEPTH",
+  "BOULDERS_COBBLES",
+  "PEBBLES_GRAVEL",
+  "SAND",
+  "SILT_CLAY",
+  "ALKALINITY")
 
 # Create additional scaled column for each modelVariables
 for(variable in modelVariables) {
@@ -264,6 +193,181 @@ invData$WATER_BODY_F <-paste( invData$REPORTING_AREA,
   as.factor() %>%
   as.numeric() %>%
   as.factor()
+
+
+### CONVERT SAMPLING SITE ABIOTIC VARIABLES TO PCA ----------------------------------------------
+
+# Carry out PCA
+sitePCA <- invData %>%
+  as_tibble(.) %>%
+  select(ALTITUDE_scaled,
+         SLOPE_scaled,
+         DIST_FROM_SOURCE_scaled,
+         DISCHARGE_scaled,
+         WIDTH_scaled,
+         DEPTH_scaled,
+         BOULDERS_COBBLES_scaled,
+         PEBBLES_GRAVEL_scaled,
+         SAND_scaled,
+         SILT_CLAY_scaled,
+         ALKALINITY_scaled,) %>%
+  prcomp(.)
+
+# Print summary
+sitePCA; summary(sitePCA)
+
+# Join to invData
+invData <- cbind(invData, sitePCA$x)
+
+### CORRELATION PLOTS WITH ALL VARIABLES ----------------------------------------------------------
+
+# Create correlation data frame
+corr_df <- invData %>%
+  as_tibble(.) %>%
+  select(pesticideShannon_scaled,
+         pesticideToxicLoad_scaled,
+         insecticideToxicLoad_scaled,
+         herbicideToxicLoad_scaled,
+         fungicideToxicLoad_scaled,
+         fertiliser_k_scaled,
+         fertiliser_n_scaled,
+         fertiliser_p_scaled,
+         Urban_scaled,
+         Suburban_scaled,
+         Deciduous_woodland_scaled,
+         Coniferous_woodland_scaled,
+         cattle_scaled,
+         pigs_scaled,
+         sheep_scaled,
+         poultry_scaled,
+         totalArea_scaled,
+         EDF_MEAN_scaled,
+         HS_HMS_RSB_SubScore_scaled,
+         HS_HQA_scaled,
+         PC1,
+         PC2,
+         PC3,
+         PC4,
+         PC5,
+         PC6,
+         PC8,
+         YEAR,
+         MONTH_NUM)
+
+# WITH WASTEWATER
+
+# Filter out missing wastewater values and create correlation object
+corPredictors <- filter(corr_df, !(is.na(EDF_MEAN_scaled))) %>%
+  cor(.) 
+
+png(filename = paste0(plotDir, 'corr_wastewater.png'),
+    width = 40, height = 30, units = "cm", res = 600)
+corrplot::corrplot(corPredictors,
+                   type = "upper", order = "original", diag = FALSE,
+                   method = "number", addCoef.col="white", tl.col = "black",
+                   tl.srt = 45, tl.cex = 1)
+dev.off()
+
+# WITHOUT WASTEWATER
+
+# Unselect wasterwater column and create correlation object
+corPredictors <- select(corr_df, !(EDF_MEAN_scaled)) %>%
+  cor(.) 
+
+png(filename = paste0(plotDir, 'corr_noWastewater.png'),
+    width = 40, height = 30, units = "cm", res = 600)
+corrplot::corrplot(corPredictors,
+                   type = "upper", order = "original", diag = FALSE,
+                   method = "number", addCoef.col="white", tl.col = "black",
+                   tl.srt = 45, tl.cex = 1)
+dev.off()
+
+### AGGREGATE VARIABLES --------------------------------------------------------
+
+invData <- invData %>%
+  rowwise() %>%
+  # Woodland
+  mutate(woodland = Deciduous_woodland_scaled + Coniferous_woodland_scaled) %>%
+  # Residential
+  mutate(residential = Urban_scaled + Suburban_scaled) %>%
+  # Eutrophication risk
+  mutate(eutroph = mean(fertiliser_n_scaled, fertiliser_p_scaled))
+
+# PCA CHEMICAL INPUT ----------------------------------------------------------
+
+# PCA eutrophication chemicals and pesticide load as very correlated
+chemPCA <- invData %>%
+  as_tibble(.) %>%
+  select(
+    pesticideToxicLoad_scaled,
+    eutroph
+  ) %>%
+  prcomp(.)
+
+# Change names to aid interpretation
+dimnames(chemPCA$x)[[2]] <- c("chemicalApp", "lessPesticide")
+
+# Print summary
+chemPCA; summary(chemPCA)
+
+# Join to invData
+invData <- cbind(invData, chemPCA$x)
+
+### CORRELATION PLOTS WITH AGGREAGTED VARIABLES -------------------------------------------------------
+
+# Create correlation data frame
+corr_df <- invData %>%
+  as_tibble(.) %>%
+  select(pesticideShannon_scaled,
+         chemicalApp,
+         lessPesticide,
+         residential,
+         woodland,
+         cattle_scaled,,
+         pigs_scaled,,
+         sheep_scaled,,
+         poultry_scaled,,
+         EDF_MEAN_scaled,,
+         HS_HMS_RSB_SubScore_scaled,,
+         HS_HQA_scaled,
+         PC1,
+         PC2,
+         PC3,
+         PC4,
+         PC5,
+         PC6,
+         PC7,
+         PC8,
+         YEAR,
+         MONTH_NUM)
+
+# WITH WASTEWATER
+
+# Filter out missing wastewater values and create correlation object
+corPredictors <- filter(corr_df, !(is.na(EDF_MEAN_scaled))) %>%
+  cor(.) 
+
+png(filename = paste0(plotDir, 'corr_wastewater_agg.png'),
+    width = 40, height = 30, units = "cm", res = 600)
+corrplot::corrplot(corPredictors,
+                   type = "upper", order = "original", diag = FALSE,
+                   method = "number", addCoef.col="white", tl.col = "black",
+                   tl.srt = 45, tl.cex = 1)
+dev.off()
+
+# WITHOUT WASTEWATER
+
+# Unselect wasterwater column and create correlation object
+corPredictors <- select(corr_df, !(EDF_MEAN_scaled)) %>%
+  cor(.) 
+
+png(filename = paste0(plotDir, 'corr_noWastewater_agg.png'),
+    width = 40, height = 30, units = "cm", res = 600)
+corrplot::corrplot(corPredictors,
+                   type = "upper", order = "original", diag = FALSE,
+                   method = "number", addCoef.col="white", tl.col = "black",
+                   tl.srt = 45, tl.cex = 1)
+dev.off()
 
 ### PROCESS ENGLAND ------------------------------------------------------------
 
