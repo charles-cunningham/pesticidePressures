@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = "24")
+inla.setOption(num.threads = "32")
 inla.setOption(inla.timeout = 300) # 5 minutes
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -58,8 +58,8 @@ englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
 # SET PARAMETERS ---------------------------------------------------------------
 
 linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
-                      'pesticideToxicity' = "Pesticide combined toxicity",
-                      'eutroph' = "Average Nitrogen and Potassium input",
+                      'chemApp' = "Pesticides and NP",
+                      'lessPest' = "More NP than pesticide",
                       'cattle' = "Cattle",
                       'pigs' = "Pigs",
                       'sheep' = "Sheep",
@@ -67,8 +67,7 @@ linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
                       'residential' = "Residential",
                       'woodland' = "Woodland",
                       'modification' = "Stream modification",
-                      'quality' = "Habitat quality",
-                      'Intercept' = "Intercept")
+                      'quality' = "Habitat quality")
 
 
 linearLabels_W <- c(linearLabels_NoW,
@@ -174,25 +173,33 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     # Model with wastewater
     compsWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
-      eutroph(eutroph_scaled, model = "linear") +
+      #pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+      #eutroph(ChemicalApplication_scaled, model = "linear") +
+      chemApp(chemicalApp, model = "linear") +
+      lessPest(lessPesticide, model = "linear") +
       cattle(cattle_scaled, model = "linear") +
       pigs(pigs_scaled, model = "linear") +
       sheep(sheep_scaled, model = "linear") +
       poultry(poultry_scaled, model = "linear") +
-      residential(residential_scaled, model = "linear") +
-      woodland(woodland_scaled, model = "linear") +
+      residential(residential, model = "linear") +
+      woodland(woodland, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
-      wastewater(EDF_MEAN_scaled, model = "linear") +
-      PC1(PC1_scaled, model = "linear") +
-      PC2(PC2_scaled, model = "linear") +
-      PC3(PC3_scaled, model = "linear") +
-      PC4(PC4_scaled, model = "linear") +
-      month(main = MONTH_NUM,
-            model = "rw1",
-            scale.model = TRUE,
-            hyper = rwHyper) +
+       wastewater(EDF_MEAN_scaled, model = "linear") +
+      PC1(PC1, model = "linear") +
+      PC2(PC2, model = "linear") +
+      PC3(PC3, model = "linear") +
+      PC4(PC4, model = "linear") +
+      PC5(PC5, model = "linear") +
+      PC6(PC6, model = "linear") +
+      PC7(PC7, model = "linear") +
+      PC8(PC8, model = "linear") +
+      month(
+        main = MONTH_NUM,
+        model = "rw1",
+        scale.model = TRUE,
+        hyper = rwHyper
+      ) +
       year(YEAR,
            model = "rw1",
            scale.model = TRUE,
@@ -200,32 +207,40 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       basin(BASIN_F, model = "iid", hyper = iidHyper) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
       wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-      spaceTime(main = geometry,
-                model = mySpace) +
+      # spaceTime(main = geometry,
+      #           model = mySpace) +
       Intercept(1)
     
-    # Model with wastewater
+    # Model without wastewater
     compsNoWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
-      eutroph(eutroph_scaled, model = "linear") +
+      #pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+      #eutroph(ChemicalApplication_scaled, model = "linear") +
+      chemApp(chemicalApp, model = "linear") +
+      lessPest(lessPesticide, model = "linear") +
       cattle(cattle_scaled, model = "linear") +
       pigs(pigs_scaled, model = "linear") +
       sheep(sheep_scaled, model = "linear") +
       poultry(poultry_scaled, model = "linear") +
-      residential(residential_scaled, model = "linear") +
-      woodland(woodland_scaled, model = "linear") +
+      residential(residential, model = "linear") +
+      woodland(woodland, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
-      #wastewater(EDF_MEAN_scaled, model = "linear") +
-      PC1(PC1_scaled, model = "linear") +
-      PC2(PC2_scaled, model = "linear") +
-      PC3(PC3_scaled, model = "linear") +
-      PC4(PC4_scaled, model = "linear") +
-      month(main = MONTH_NUM,
-            model = "rw1",
-            scale.model = TRUE,
-            hyper = rwHyper) +
+      # wastewater(EDF_MEAN_scaled, model = "linear") +
+      PC1(PC1, model = "linear") +
+      PC2(PC2, model = "linear") +
+      PC3(PC3, model = "linear") +
+      PC4(PC4, model = "linear") +
+      PC5(PC5, model = "linear") +
+      PC6(PC6, model = "linear") +
+      PC7(PC7, model = "linear") +
+      PC8(PC8, model = "linear") +
+      month(
+        main = MONTH_NUM,
+        model = "rw1",
+        scale.model = TRUE,
+        hyper = rwHyper
+      ) +
       year(YEAR,
            model = "rw1",
            scale.model = TRUE,
@@ -233,8 +248,8 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       basin(BASIN_F, model = "iid", hyper = iidHyper) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
       wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-      spaceTime(main = geometry,
-                model = mySpace) +
+      # spaceTime(main = geometry,
+      #           model = mySpace) +
       Intercept(1)
     
     # RUN MODEL WITH WASTEWATER
