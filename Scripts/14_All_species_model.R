@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = 8)
+inla.setOption(num.threads = 4)
 inla.setOption(inla.timeout = 0)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -58,8 +58,8 @@ englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
 # SET PARAMETERS ---------------------------------------------------------------
 
 linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
-                      'pesticideToxicity' = "Pesticide combined toxicity",
-                     'eutroph' = "Average Nitrogen and Potassium input",
+                      'chemApp' = "Pesticides and NP",
+                     'lessPest' = "More NP than pesticide",
                      'cattle' = "Cattle",
                      'pigs' = "Pigs",
                      'sheep' = "Sheep",
@@ -73,13 +73,22 @@ linearLabels_W <- c(linearLabels_NoW,
                     'wastewater' = "Wastewater")
 
 randomLabels <- c( 'month' = "Month",
-                   'year' = "Year")
+                   'year' = "Year",
+                   'altitude' = "Altitude",
+                   'slope' = "Slope",
+                   'length' = "Distance from source",
+                   'discharge' = "Discharge",
+                   'ph' = "Alkalinity")
 
 # Priors for random effects
-iidHyper <- list(prec = list(prior = "pc.prec",
+iidHyper_SR <- list(prec = list(prior = "pc.prec",
                              param = c(100, 0.05)))
-rwHyper <- list(prec = list(prior="pc.prec",
+rwHyper_SR <- list(prec = list(prior="pc.prec",
                             param=c(100, 0.05)))
+iidHyper_Ab <- list(prec = list(prior = "pc.prec",
+                                param = c(200, 0.05)))
+rwHyper_Ab <- list(prec = list(prior="pc.prec",
+                               param=c(200, 0.05)))
 
 ### Download BNG WKT string
 download.file(url = "https://epsg.io/27700.wkt2?download=1",
@@ -91,34 +100,43 @@ bng <- sf::st_crs(paste0(dataDir, "bng.prj"))$wkt
 
 # Only keep needed columns for memory
 invData <- invData %>%
-  select(REPORTING_AREA,
-         SITE_ID,
-         SAMPLE_ID,
-         TOTAL_ABUNDANCE,
-         YEAR,
-         MONTH_NUM,
-         WEEK,
-         TAXON,
-         eutroph_scaled,
-         residential_scaled,       
-         woodland_scaled,
-         pesticideShannon_scaled,
-         pesticideToxicLoad_scaled,
-         cattle_scaled,            
-         pigs_scaled,
-         sheep_scaled,
-         poultry_scaled,          
-         EDF_MEAN_scaled,
-         HS_HMS_RSB_SubScore_scaled,
-         HS_HQA_scaled,                    
-         PC1_scaled,
-         PC2_scaled,
-         PC3_scaled,                       
-         PC4_scaled,
-         BASIN_F,
-         CATCHMENT_F,                 
-         WATER_BODY_F,
-         GROUP)
+  select(
+    pesticideShannon_scaled,
+    chemicalApp,
+    lessPesticide,
+    residential,
+    woodland,
+    cattle_scaled,
+    pigs_scaled,
+    sheep_scaled,
+    poultry_scaled,
+    EDF_MEAN_scaled,
+    HS_HMS_RSB_SubScore_scaled,
+    HS_HQA_scaled,
+    ALTITUDE_GRP,
+    SLOPE_GRP,
+    DIST_FROM_SOURCE_GRP,
+    DISCHARGE_GRP,
+    ALKALINITY_GRP,
+    PC1,
+    PC2,
+    PC3,
+    # PC4,
+    # PC5,
+    # PC6,
+    # PC7,
+    # PC8,
+    YEAR,
+    MONTH_NUM,
+    REPORTING_AREA,
+    SITE_ID,
+    SAMPLE_ID,
+    TOTAL_ABUNDANCE,
+    TAXON,
+    GROUP,
+    BASIN_F,
+    CATCHMENT_F,
+    WATER_BODY_F)
 
 # Filter to Schedule 2 species
 invData <- filter(invData, GROUP == "Schedule 2")
@@ -185,71 +203,113 @@ mySpace <- inla.spde2.pcmatern(
 # Richness model with wastewater
 compsWastewater_SR <- numSpecies ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
-  eutroph(eutroph_scaled, model = "linear") +
+  #pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+  #eutroph(ChemicalApplication_scaled, model = "linear") +
+  chemApp(chemicalApp, model = "linear") +
+  lessPest(lessPesticide, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
   pigs(pigs_scaled, model = "linear") +
   sheep(sheep_scaled, model = "linear") +
   poultry(poultry_scaled, model = "linear") +
-  residential(residential_scaled, model = "linear") +
-  woodland(woodland_scaled, model = "linear") +
+  residential(residential, model = "linear") +
+  woodland(woodland, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
   wastewater(EDF_MEAN_scaled, model = "linear") +
-  PC1(PC1_scaled, model = "linear") +
-  PC2(PC2_scaled, model = "linear") +
-  PC3(PC3_scaled, model = "linear") +
-  PC4(PC4_scaled, model = "linear") +
+  PC1(PC1, model = "linear") +
+  PC2(PC2, model = "linear") +
+  PC3(PC3, model = "linear") +
+  # PC4(PC4, model = "linear") +
+  # PC5(PC5, model = "linear") +
+  # PC6(PC6, model = "linear") +
+  # PC7(PC7, model = "linear") +
+  # PC8(PC8, model = "linear") +
   month(
-    main = MONTH_NUM,
+    MONTH_NUM,
     model = "rw1",
     scale.model = TRUE,
-    hyper = rwHyper
-  ) +
+    hyper = rwHyper) +
   year(YEAR,
        model = "rw1",
+       scale.model = TRUE,
+       hyper = rwHyper) +
+  altitude(ALTITUDE_GRP,
+       model = "rw2",
+       scale.model = TRUE,
+       hyper = rwHyper) +
+  slope(SLOPE_GRP,
+       model = "rw2",
+       scale.model = TRUE,
+       hyper = rwHyper) +
+  discharge(DISCHARGE_GRP,
+       model = "rw2",
+       scale.model = TRUE,
+       hyper = rwHyper) +
+  ph(ALKALINITY_GRP,
+       model = "rw2",
        scale.model = TRUE,
        hyper = rwHyper) +
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-  spaceTime(main = geometry,
-            model = mySpace) +
+  # spaceTime(main = geometry,
+  #           model = mySpace) +
   Intercept(1)
 
 # Richness model without wastewater
 compsNoWastewater_SR <- numSpecies ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
-  eutroph(eutroph_scaled, model = "linear") +
+  #pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+  #eutroph(ChemicalApplication_scaled, model = "linear") +
+  chemApp(chemicalApp, model = "linear") +
+  lessPest(lessPesticide, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
   pigs(pigs_scaled, model = "linear") +
   sheep(sheep_scaled, model = "linear") +
   poultry(poultry_scaled, model = "linear") +
-  residential(residential_scaled, model = "linear") +
-  woodland(woodland_scaled, model = "linear") +
+  residential(residential, model = "linear") +
+  woodland(woodland, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
   #wastewater(EDF_MEAN_scaled, model = "linear") +
-  PC1(PC1_scaled, model = "linear") +
-  PC2(PC2_scaled, model = "linear") +
-  PC3(PC3_scaled, model = "linear") +
-  PC4(PC4_scaled, model = "linear") +
+  PC1(PC1, model = "linear") +
+  PC2(PC2, model = "linear") +
+  PC3(PC3, model = "linear") +
+  # PC4(PC4, model = "linear") +
+  # PC5(PC5, model = "linear") +
+  # PC6(PC6, model = "linear") +
+  # PC7(PC7, model = "linear") +
+  # PC8(PC8, model = "linear") +
   month(
     main = MONTH_NUM,
     model = "rw1",
     scale.model = TRUE,
-    hyper = rwHyper
-  ) +
+    hyper = rwHyper) +
   year(YEAR,
        model = "rw1",
        scale.model = TRUE,
        hyper = rwHyper) +
+  altitude(ALTITUDE_GRP,
+           model = "rw2",
+           scale.model = TRUE,
+           hyper = rwHyper) +
+  slope(SLOPE_GRP,
+        model = "rw2",
+        scale.model = TRUE,
+        hyper = rwHyper) +
+  discharge(DISCHARGE_GRP,
+            model = "rw2",
+            scale.model = TRUE,
+            hyper = rwHyper) +
+  ph(ALKALINITY_GRP,
+     model = "rw2",
+     scale.model = TRUE,
+     hyper = rwHyper) +
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-  spaceTime(main = geometry,
-            model = mySpace) +
+  # spaceTime(main = geometry,
+  #           model = mySpace) +
   Intercept(1)
 
 # RUN RICHNESS MODEL WITHOUT WASTEWATER
@@ -287,21 +347,27 @@ gc()
 # Abundance model with wastewater
 compsWastewater_Ab <- Abundance ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
-  eutroph(eutroph_scaled, model = "linear") +
+  #pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+  #eutroph(ChemicalApplication_scaled, model = "linear") +
+  chemApp(chemicalApp, model = "linear") +
+  lessPest(lessPesticide, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
   pigs(pigs_scaled, model = "linear") +
   sheep(sheep_scaled, model = "linear") +
   poultry(poultry_scaled, model = "linear") +
-  residential(residential_scaled, model = "linear") +
-  woodland(woodland_scaled, model = "linear") +
+  residential(residential, model = "linear") +
+  woodland(woodland, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
-  wastewater(EDF_MEAN_scaled, model = "linear") +
-  PC1(PC1_scaled, model = "linear") +
-  PC2(PC2_scaled, model = "linear") +
-  PC3(PC3_scaled, model = "linear") +
-  PC4(PC4_scaled, model = "linear") +
+  # wastewater(EDF_MEAN_scaled, model = "linear") +
+  PC1(PC1, model = "linear") +
+  PC2(PC2, model = "linear") +
+  PC3(PC3, model = "linear") +
+  PC4(PC4, model = "linear") +
+  PC5(PC5, model = "linear") +
+  PC6(PC6, model = "linear") +
+  PC7(PC7, model = "linear") +
+  PC8(PC8, model = "linear") +
   month(
     main = MONTH_NUM,
     model = "rw1",
@@ -315,28 +381,35 @@ compsWastewater_Ab <- Abundance ~
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-  spaceTime(main = geometry,
-            model = mySpace) +
+  # spaceTime(main = geometry,
+  #           model = mySpace) +
+  species(species,  model = "iid", hyper = iidHyper) +
   Intercept(1)
 
 # Abundance model without wastewater
 compsNoWastewater_Ab <- Abundance ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
-  eutroph(eutroph_scaled, model = "linear") +
+  #pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
+  #eutroph(ChemicalApplication_scaled, model = "linear") +
+  chemApp(chemicalApp, model = "linear") +
+  lessPest(lessPesticide, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
   pigs(pigs_scaled, model = "linear") +
   sheep(sheep_scaled, model = "linear") +
   poultry(poultry_scaled, model = "linear") +
-  residential(residential_scaled, model = "linear") +
-  woodland(woodland_scaled, model = "linear") +
+  residential(residential, model = "linear") +
+  woodland(woodland, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
-  #wastewater(EDF_MEAN_scaled, model = "linear") +
-  PC1(PC1_scaled, model = "linear") +
-  PC2(PC2_scaled, model = "linear") +
-  PC3(PC3_scaled, model = "linear") +
-  PC4(PC4_scaled, model = "linear") +
+  # wastewater(EDF_MEAN_scaled, model = "linear") +
+  PC1(PC1, model = "linear") +
+  PC2(PC2, model = "linear") +
+  PC3(PC3, model = "linear") +
+  PC4(PC4, model = "linear") +
+  PC5(PC5, model = "linear") +
+  PC6(PC6, model = "linear") +
+  PC7(PC7, model = "linear") +
+  PC8(PC8, model = "linear") +
   month(
     main = MONTH_NUM,
     model = "rw1",
@@ -350,8 +423,9 @@ compsNoWastewater_Ab <- Abundance ~
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-  spaceTime(main = geometry,
-            model = mySpace) +
+  # spaceTime(main = geometry,
+  #           model = mySpace) +
+  species(species,  model = "iid", hyper = iidHyper) +
   Intercept(1)
     
 # RUN ABUNDANCE MODEL WITHOUT WASTEWATER
@@ -388,13 +462,13 @@ gc()
 
 # Loop through both models
 models <- list(modelWastewater_SR = modelWastewater_SR,
-               modelNoWastewater_SR = modelNoWastewater_SR,
+               modelNoWastewater_SR = modelNoWastewater_SR),
                modelWastewater_Ab = modelWastewater_Ab,
                modelNoWastewater_Ab = modelNoWastewater_Ab)
       
 for (modelName in names(models)) {
-  
-  # Get model
+
+    # Get model
   model <- models[[modelName]]
   
   # Get model summary
@@ -484,9 +558,9 @@ for (modelName in names(models)) {
     rename("q0.025" = "0.025quant",
            "q0.5" = "0.5quant",
            "q0.975" = "0.975quant") %>%
-    filter(randomEff %in% c("year", "month")) %>%
+    filter(!(randomEff %in% c("basin", "catchment", "wb"))) %>%
     select(ID, q0.025, q0.5, q0.975, randomEff)
-  
+
   ### Plot
   
   randomEffPlot <- ggplot(randomEff_df) +
@@ -523,20 +597,20 @@ for (modelName in names(models)) {
     # Create directory string for iSpecies
     iSpeciesDir <- paste0(
       dataDir,
-      "Processed/Species/Model_outputs/NoWastewater/Schedule_2/AllSpecies")
+      "Processed/Species/Model_outputs/NoWastewater/Schedule_2/AllSpecies/")
   } else {
     iSpeciesDir <- paste0(
       dataDir,
-      "Processed/Species/Model_outputs/Wastewater/Schedule_2/AllSpecies")
+      "Processed/Species/Model_outputs/Wastewater/Schedule_2/AllSpecies/")
   }
   
   # Create directory
   dir.create(iSpeciesDir, recursive = TRUE, showWarnings = FALSE)
   
   # Save model summaries
-  save(modelSummary, file = paste0(iSpeciesDir, "/AllSpecies.Rds"))
+  save(modelSummary, file = paste0(iSpeciesDir, modelName, ".Rds"))
   ggsave(
-    paste0(iSpeciesDir, "/AllSpecies.png"),
+    paste0(iSpeciesDir, modelName, ".png"),
     evalPlot,
     width = 3000,
     height = 3000,
