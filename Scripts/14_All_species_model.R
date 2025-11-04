@@ -359,25 +359,40 @@ compsWastewater_Ab <- Abundance ~
   woodland(woodland, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
-  # wastewater(EDF_MEAN_scaled, model = "linear") +
+  wastewater(EDF_MEAN_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
-  PC4(PC4, model = "linear") +
-  PC5(PC5, model = "linear") +
-  PC6(PC6, model = "linear") +
-  PC7(PC7, model = "linear") +
-  PC8(PC8, model = "linear") +
+  # PC4(PC4, model = "linear") +
+  # PC5(PC5, model = "linear") +
+  # PC6(PC6, model = "linear") +
+  # PC7(PC7, model = "linear") +
+  # PC8(PC8, model = "linear") +
   month(
     main = MONTH_NUM,
     model = "rw1",
     scale.model = TRUE,
-    hyper = rwHyper
-  ) +
+    hyper = rwHyper) +
   year(YEAR,
        model = "rw1",
        scale.model = TRUE,
        hyper = rwHyper) +
+  altitude(ALTITUDE_GRP,
+           model = "rw2",
+           scale.model = TRUE,
+           hyper = rwHyper) +
+  slope(SLOPE_GRP,
+        model = "rw2",
+        scale.model = TRUE,
+        hyper = rwHyper) +
+  discharge(DISCHARGE_GRP,
+            model = "rw2",
+            scale.model = TRUE,
+            hyper = rwHyper) +
+  ph(ALKALINITY_GRP,
+     model = "rw2",
+     scale.model = TRUE,
+     hyper = rwHyper) +
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
@@ -401,25 +416,40 @@ compsNoWastewater_Ab <- Abundance ~
   woodland(woodland, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
-  # wastewater(EDF_MEAN_scaled, model = "linear") +
+  #wastewater(EDF_MEAN_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
-  PC4(PC4, model = "linear") +
-  PC5(PC5, model = "linear") +
-  PC6(PC6, model = "linear") +
-  PC7(PC7, model = "linear") +
-  PC8(PC8, model = "linear") +
+  # PC4(PC4, model = "linear") +
+  # PC5(PC5, model = "linear") +
+  # PC6(PC6, model = "linear") +
+  # PC7(PC7, model = "linear") +
+  # PC8(PC8, model = "linear") +
   month(
     main = MONTH_NUM,
     model = "rw1",
     scale.model = TRUE,
-    hyper = rwHyper
-  ) +
+    hyper = rwHyper) +
   year(YEAR,
        model = "rw1",
        scale.model = TRUE,
        hyper = rwHyper) +
+  altitude(ALTITUDE_GRP,
+           model = "rw2",
+           scale.model = TRUE,
+           hyper = rwHyper) +
+  slope(SLOPE_GRP,
+        model = "rw2",
+        scale.model = TRUE,
+        hyper = rwHyper) +
+  discharge(DISCHARGE_GRP,
+            model = "rw2",
+            scale.model = TRUE,
+            hyper = rwHyper) +
+  ph(ALKALINITY_GRP,
+     model = "rw2",
+     scale.model = TRUE,
+     hyper = rwHyper) +
   basin(BASIN_F, model = "iid", hyper = iidHyper) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
@@ -462,7 +492,7 @@ gc()
 
 # Loop through both models
 models <- list(modelWastewater_SR = modelWastewater_SR,
-               modelNoWastewater_SR = modelNoWastewater_SR),
+               modelNoWastewater_SR = modelNoWastewater_SR,
                modelWastewater_Ab = modelWastewater_Ab,
                modelNoWastewater_Ab = modelNoWastewater_Ab)
       
