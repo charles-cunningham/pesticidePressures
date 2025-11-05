@@ -74,7 +74,12 @@ linearLabels_W <- c(linearLabels_NoW,
                     'wastewater' = "Wastewater")
 
 randomLabels <- c( 'month' = "Month",
-                   'year' = "Year")
+                   'year' = "Year",
+                   'altitude' = "Altitude",
+                   'slope' = "Slope",
+                   'length' = "Distance from source",
+                   'discharge' = "Discharge",
+                   'ph' = "Alkalinity")
 
 # Set minimum number of records to model - only commonly recorded species
 minRecords <- 1000
@@ -185,25 +190,40 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       woodland(woodland, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
-       wastewater(EDF_MEAN_scaled, model = "linear") +
+      wastewater(EDF_MEAN_scaled, model = "linear") +
       PC1(PC1, model = "linear") +
       PC2(PC2, model = "linear") +
       PC3(PC3, model = "linear") +
-      PC4(PC4, model = "linear") +
-      PC5(PC5, model = "linear") +
-      PC6(PC6, model = "linear") +
-      PC7(PC7, model = "linear") +
-      PC8(PC8, model = "linear") +
+      # PC4(PC4, model = "linear") +
+      # PC5(PC5, model = "linear") +
+      # PC6(PC6, model = "linear") +
+      # PC7(PC7, model = "linear") +
+      # PC8(PC8, model = "linear") +
       month(
-        main = MONTH_NUM,
+        MONTH_NUM,
         model = "rw1",
         scale.model = TRUE,
-        hyper = rwHyper
-      ) +
+        hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
            scale.model = TRUE,
            hyper = rwHyper) +
+      altitude(ALTITUDE_GRP,
+               model = "rw2",
+               scale.model = TRUE,
+               hyper = rwHyper) +
+      slope(SLOPE_GRP,
+            model = "rw2",
+            scale.model = TRUE,
+            hyper = rwHyper) +
+      discharge(DISCHARGE_GRP,
+                model = "rw2",
+                scale.model = TRUE,
+                hyper = rwHyper) +
+      ph(ALKALINITY_GRP,
+         model = "rw2",
+         scale.model = TRUE,
+         hyper = rwHyper) +
       basin(BASIN_F, model = "iid", hyper = iidHyper) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
       wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
@@ -226,25 +246,40 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       woodland(woodland, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
-      # wastewater(EDF_MEAN_scaled, model = "linear") +
+      wastewater(EDF_MEAN_scaled, model = "linear") +
       PC1(PC1, model = "linear") +
       PC2(PC2, model = "linear") +
       PC3(PC3, model = "linear") +
-      PC4(PC4, model = "linear") +
-      PC5(PC5, model = "linear") +
-      PC6(PC6, model = "linear") +
-      PC7(PC7, model = "linear") +
-      PC8(PC8, model = "linear") +
+      # PC4(PC4, model = "linear") +
+      # PC5(PC5, model = "linear") +
+      # PC6(PC6, model = "linear") +
+      # PC7(PC7, model = "linear") +
+      # PC8(PC8, model = "linear") +
       month(
-        main = MONTH_NUM,
+        MONTH_NUM,
         model = "rw1",
         scale.model = TRUE,
-        hyper = rwHyper
-      ) +
+        hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
            scale.model = TRUE,
            hyper = rwHyper) +
+      altitude(ALTITUDE_GRP,
+               model = "rw2",
+               scale.model = TRUE,
+               hyper = rwHyper) +
+      slope(SLOPE_GRP,
+            model = "rw2",
+            scale.model = TRUE,
+            hyper = rwHyper) +
+      discharge(DISCHARGE_GRP,
+                model = "rw2",
+                scale.model = TRUE,
+                hyper = rwHyper) +
+      ph(ALKALINITY_GRP,
+         model = "rw2",
+         scale.model = TRUE,
+         hyper = rwHyper) +
       basin(BASIN_F, model = "iid", hyper = iidHyper) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
       wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
@@ -263,7 +298,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       modelWastewater <- bru(
         components = compsWastewater,
         family = "zeroinflatednbinomial1",
-        data = speciesData %>% filter(., !(is.na(EDF_MEAN))),
+        data = speciesData %>% filter(., !(is.na(EDF_MEAN_scaled))),
         options = list(
           control.fixed = list(prec.intercept = 0.01),
           control.compute = list(waic = TRUE,
@@ -387,7 +422,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
           rename("q0.025" = "0.025quant",
                  "q0.5" = "0.5quant",
                  "q0.975" = "0.975quant") %>%
-          filter(randomEff %in% c("year", "month")) %>%
+          filter(!(randomEff %in% c("basin", "catchment", "wb"))) %>%
           select(ID, q0.025, q0.5, q0.975, randomEff)
         
         ### Plot
