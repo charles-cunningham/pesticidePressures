@@ -67,7 +67,8 @@ linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
                      'residential' = "Residential",
                      'woodland' = "Woodland",
                      'modification' = "Stream modification",
-                     'quality' = "Habitat quality")
+                     'quality' = "Habitat quality",
+                     'upstreamArea' = "Upstream area")
 
 linearLabels_W <- c(linearLabels_NoW,
                     'wastewater' = "Wastewater")
@@ -113,6 +114,7 @@ invData <- invData %>%
     EDF_MEAN_scaled,
     HS_HMS_RSB_SubScore_scaled,
     HS_HQA_scaled,
+    totalArea_scaled,
     ALTITUDE_GRP,
     SLOPE_GRP,
     DIST_FROM_SOURCE_GRP,
@@ -120,7 +122,7 @@ invData <- invData %>%
     ALKALINITY_GRP,
     PC1,
     PC2,
-    PC3,
+    # PC3,
     # PC4,
     # PC5,
     # PC6,
@@ -133,10 +135,11 @@ invData <- invData %>%
     SAMPLE_ID,
     TOTAL_ABUNDANCE,
     TAXON,
-    GROUP,
-    BASIN_F,
-    CATCHMENT_F,
-    WATER_BODY_F)
+    GROUP#,
+    #BASIN_F,
+    #CATCHMENT_F,
+    #WATER_BODY_F
+    )
 
 # Filter to Schedule 2 species
 invData <- filter(invData, GROUP == "Schedule 2")
@@ -216,9 +219,10 @@ compsWastewater_SR <- numSpecies ~
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
   wastewater(EDF_MEAN_scaled, model = "linear") +
+  upstreamArea(totalArea_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
-  PC3(PC3, model = "linear") +
+  # PC3(PC3, model = "linear") +
   # PC4(PC4, model = "linear") +
   # PC5(PC5, model = "linear") +
   # PC6(PC6, model = "linear") +
@@ -249,11 +253,11 @@ compsWastewater_SR <- numSpecies ~
        model = "rw2",
        scale.model = TRUE,
        hyper = rwHyper_SR) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
-  # spaceTime(main = geometry,
-  #           model = mySpace) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
+   spaceTime(main = geometry,
+             model = mySpace) +
   Intercept(1)
 
 # Richness model without wastewater
@@ -271,10 +275,11 @@ compsNoWastewater_SR <- numSpecies ~
   woodland(woodland, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
+  upstreamArea(totalArea_scaled, model = "linear") +
   #wastewater(EDF_MEAN_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
-  PC3(PC3, model = "linear") +
+  # PC3(PC3, model = "linear") +
   # PC4(PC4, model = "linear") +
   # PC5(PC5, model = "linear") +
   # PC6(PC6, model = "linear") +
@@ -305,11 +310,11 @@ compsNoWastewater_SR <- numSpecies ~
      model = "rw2",
      scale.model = TRUE,
      hyper = rwHyper_SR) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
-  # spaceTime(main = geometry,
-  #           model = mySpace) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
+   spaceTime(main = geometry,
+             model = mySpace) +
   Intercept(1)
 
 # RUN RICHNESS MODEL WITHOUT WASTEWATER
@@ -360,9 +365,10 @@ compsWastewater_Ab <- Abundance ~
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
   wastewater(EDF_MEAN_scaled, model = "linear") +
+  upstreamArea(totalArea_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
-  PC3(PC3, model = "linear") +
+  # PC3(PC3, model = "linear") +
   # PC4(PC4, model = "linear") +
   # PC5(PC5, model = "linear") +
   # PC6(PC6, model = "linear") +
@@ -393,11 +399,11 @@ compsWastewater_Ab <- Abundance ~
      model = "rw2",
      scale.model = TRUE,
      hyper = rwHyper_Ab) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
-  # spaceTime(main = geometry,
-  #           model = mySpace) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
+   spaceTime(main = geometry,
+             model = mySpace) +
   species(species,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
 
@@ -416,10 +422,11 @@ compsNoWastewater_Ab <- Abundance ~
   woodland(woodland, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
+  upstreamArea(totalArea_scaled, model = "linear") +
   #wastewater(EDF_MEAN_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
-  PC3(PC3, model = "linear") +
+  # PC3(PC3, model = "linear") +
   # PC4(PC4, model = "linear") +
   # PC5(PC5, model = "linear") +
   # PC6(PC6, model = "linear") +
@@ -450,11 +457,11 @@ compsNoWastewater_Ab <- Abundance ~
      model = "rw2",
      scale.model = TRUE,
      hyper = rwHyper_Ab) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
-  # spaceTime(main = geometry,
-  #           model = mySpace) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
+   spaceTime(main = geometry,
+             model = mySpace) +
   species(species,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
     
