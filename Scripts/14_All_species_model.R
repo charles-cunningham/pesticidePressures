@@ -228,30 +228,30 @@ compsWastewater_SR <- numSpecies ~
     MONTH_NUM,
     model = "rw1",
     scale.model = TRUE,
-    hyper = rwHyper) +
+    hyper = rwHyper_SR) +
   year(YEAR,
        model = "rw1",
        scale.model = TRUE,
-       hyper = rwHyper) +
+       hyper = rwHyper_SR) +
   altitude(ALTITUDE_GRP,
        model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper) +
+       hyper = rwHyper_SR) +
   slope(SLOPE_GRP,
        model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper) +
+       hyper = rwHyper_SR) +
   discharge(DISCHARGE_GRP,
        model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper) +
+       hyper = rwHyper_SR) +
   ph(ALKALINITY_GRP,
        model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+       hyper = rwHyper_SR) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
   # spaceTime(main = geometry,
   #           model = mySpace) +
   Intercept(1)
@@ -284,30 +284,30 @@ compsNoWastewater_SR <- numSpecies ~
     main = MONTH_NUM,
     model = "rw1",
     scale.model = TRUE,
-    hyper = rwHyper) +
+    hyper = rwHyper_SR) +
   year(YEAR,
        model = "rw1",
        scale.model = TRUE,
-       hyper = rwHyper) +
+       hyper = rwHyper_SR) +
   altitude(ALTITUDE_GRP,
            model = "rw2",
            scale.model = TRUE,
-           hyper = rwHyper) +
+           hyper = rwHyper_SR) +
   slope(SLOPE_GRP,
         model = "rw2",
         scale.model = TRUE,
-        hyper = rwHyper) +
+        hyper = rwHyper_SR) +
   discharge(DISCHARGE_GRP,
             model = "rw2",
             scale.model = TRUE,
-            hyper = rwHyper) +
+            hyper = rwHyper_SR) +
   ph(ALKALINITY_GRP,
      model = "rw2",
      scale.model = TRUE,
-     hyper = rwHyper) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+     hyper = rwHyper_SR) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
   # spaceTime(main = geometry,
   #           model = mySpace) +
   Intercept(1)
@@ -372,33 +372,33 @@ compsWastewater_Ab <- Abundance ~
     main = MONTH_NUM,
     model = "rw1",
     scale.model = TRUE,
-    hyper = rwHyper) +
+    hyper = rwHyper_Ab) +
   year(YEAR,
        model = "rw1",
        scale.model = TRUE,
-       hyper = rwHyper) +
+       hyper = rwHyper_Ab) +
   altitude(ALTITUDE_GRP,
            model = "rw2",
            scale.model = TRUE,
-           hyper = rwHyper) +
+           hyper = rwHyper_Ab) +
   slope(SLOPE_GRP,
         model = "rw2",
         scale.model = TRUE,
-        hyper = rwHyper) +
+        hyper = rwHyper_Ab) +
   discharge(DISCHARGE_GRP,
             model = "rw2",
             scale.model = TRUE,
-            hyper = rwHyper) +
+            hyper = rwHyper_Ab) +
   ph(ALKALINITY_GRP,
      model = "rw2",
      scale.model = TRUE,
-     hyper = rwHyper) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+     hyper = rwHyper_Ab) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
   # spaceTime(main = geometry,
   #           model = mySpace) +
-  species(species,  model = "iid", hyper = iidHyper) +
+  species(species,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
 
 # Abundance model without wastewater
@@ -429,33 +429,33 @@ compsNoWastewater_Ab <- Abundance ~
     main = MONTH_NUM,
     model = "rw1",
     scale.model = TRUE,
-    hyper = rwHyper) +
+    hyper = rwHyper_Ab) +
   year(YEAR,
        model = "rw1",
        scale.model = TRUE,
-       hyper = rwHyper) +
+       hyper = rwHyper_Ab) +
   altitude(ALTITUDE_GRP,
            model = "rw2",
            scale.model = TRUE,
-           hyper = rwHyper) +
+           hyper = rwHyper_Ab) +
   slope(SLOPE_GRP,
         model = "rw2",
         scale.model = TRUE,
-        hyper = rwHyper) +
+        hyper = rwHyper_Ab) +
   discharge(DISCHARGE_GRP,
             model = "rw2",
             scale.model = TRUE,
-            hyper = rwHyper) +
+            hyper = rwHyper_Ab) +
   ph(ALKALINITY_GRP,
      model = "rw2",
      scale.model = TRUE,
-     hyper = rwHyper) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+     hyper = rwHyper_Ab) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
   # spaceTime(main = geometry,
   #           model = mySpace) +
-  species(species,  model = "iid", hyper = iidHyper) +
+  species(species,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
     
 # RUN ABUNDANCE MODEL WITHOUT WASTEWATER
