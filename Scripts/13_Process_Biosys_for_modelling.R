@@ -147,7 +147,7 @@ modelVariables <- c(
   "BOULDERS_COBBLES",
   "PEBBLES_GRAVEL",
   "SAND",
-  "SILT_CLAY",
+  "SILT_CLAY" #,
  # "ALKALINITY"
  )
 
@@ -187,7 +187,7 @@ for (i in c("ALTITUDE",
             "DISCHARGE",
             "ALKALINITY")) {
 # Group to 10 evenly sized bins and assign to new column
-  invData[, paste(i, "_GRP")] <- INLA::inla.group(invData[[i]],
+  invData[, paste0(i, "_GRP")] <- INLA::inla.group(invData[[i]],
                                                   n = 10, 
                                                   method = "cut")
   
@@ -200,7 +200,7 @@ sitePCA <- invData %>%
   as_tibble(.) %>%
   select(#ALTITUDE_scaled,
          #SLOPE_scaled,
-        # DIST_FROM_SOURCE_scaled,
+         #DIST_FROM_SOURCE_scaled,
          #DISCHARGE_scaled,
          #WIDTH_scaled,
          #DEPTH_scaled,
@@ -245,7 +245,7 @@ corr_df <- invData %>%
          HS_HQA_scaled,
          PC1,
          PC2,
-         PC3,
+         # PC3,
          # PC4,
          # PC5,
          # PC6,
@@ -329,9 +329,10 @@ corr_df <- invData %>%
          EDF_MEAN_scaled,
          HS_HMS_RSB_SubScore_scaled,,
          HS_HQA_scaled,
+         totalArea_scaled,
          PC1,
          PC2,
-         PC3,
+        #  PC3,
          # PC4,
          # PC5,
          # PC6,
