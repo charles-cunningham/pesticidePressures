@@ -404,7 +404,7 @@ compsWastewater_Ab <- Abundance ~
   #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
    spaceTime(main = geometry,
              model = mySpace) +
-  species(species,  model = "iid", hyper = iidHyper_Ab) +
+  species(TAXON,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
 
 # Abundance model without wastewater
@@ -462,7 +462,7 @@ compsNoWastewater_Ab <- Abundance ~
   #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
    spaceTime(main = geometry,
              model = mySpace) +
-  species(species,  model = "iid", hyper = iidHyper_Ab) +
+  species(TAXON,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
     
 # RUN ABUNDANCE MODEL WITHOUT WASTEWATER
