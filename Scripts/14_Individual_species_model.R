@@ -67,7 +67,8 @@ linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
                       'residential' = "Residential",
                       'woodland' = "Woodland",
                       'modification' = "Stream modification",
-                      'quality' = "Habitat quality")
+                      'quality' = "Habitat quality",
+                      'upstreamArea' = "Upstream area")
 
 
 linearLabels_W <- c(linearLabels_NoW,
@@ -125,7 +126,7 @@ mySpace <- inla.spde2.pcmatern(
 # Loop through taxa then species to preserve ordering
 
 # Loop through groups
-for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
+for (iTaxa in unique(invData$TAXON_GROUP_NAME)[4]) {
   
   # Find species within taxa
   taxaSpecies <- invData %>%
@@ -142,7 +143,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     unique()
   
   # Loop through species here
-  for (iSpecies in taxaSpecies) {
+  for (iSpecies in taxaSpecies[4]) {
     
     # PROCESS TO PRESENCE-ABSENCE FORMAT
     
@@ -191,6 +192,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
       wastewater(EDF_MEAN_scaled, model = "linear") +
+      upstreamArea(totalArea_scaled, model = "linear") +
       PC1(PC1, model = "linear") +
       PC2(PC2, model = "linear") +
       PC3(PC3, model = "linear") +
@@ -224,11 +226,11 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
          model = "rw2",
          scale.model = TRUE,
          hyper = rwHyper) +
-      basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      #basin(BASIN_F, model = "iid", hyper = iidHyper) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-      wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-      # spaceTime(main = geometry,
-      #           model = mySpace) +
+      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+       spaceTime(main = geometry,
+                 model = mySpace) +
       Intercept(1)
     
     # Model without wastewater
@@ -247,6 +249,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
       wastewater(EDF_MEAN_scaled, model = "linear") +
+      upstreamArea(totalArea_scaled, model = "linear") +
       PC1(PC1, model = "linear") +
       PC2(PC2, model = "linear") +
       PC3(PC3, model = "linear") +
@@ -280,11 +283,11 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
          model = "rw2",
          scale.model = TRUE,
          hyper = rwHyper) +
-      basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      #basin(BASIN_F, model = "iid", hyper = iidHyper) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-      wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-      # spaceTime(main = geometry,
-      #           model = mySpace) +
+      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+       spaceTime(main = geometry,
+                 model = mySpace) +
       Intercept(1)
     
     # RUN MODEL WITH WASTEWATER
