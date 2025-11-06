@@ -116,7 +116,7 @@ mesh <- inla.mesh.2d(boundary = englandSmooth,
                      crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
 
 # Define spatial SPDE priors
-mySpace <- inla.spde2.pcmatern(
+space <- inla.spde2.pcmatern(
   mesh,
   prior.range = c(1 * maxEdge, 0.5),
   prior.sigma = c(1, 0.5))
@@ -194,7 +194,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)[4]) {
       upstreamArea(totalArea_scaled, model = "linear") +
       PC1(PC1, model = "linear") +
       PC2(PC2, model = "linear") +
-      PC3(PC3, model = "linear") +
+      # PC3(PC3, model = "linear") +
       # PC4(PC4, model = "linear") +
       # PC5(PC5, model = "linear") +
       # PC6(PC6, model = "linear") +
@@ -225,11 +225,11 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)[4]) {
          model = "rw2",
          scale.model = TRUE,
          hyper = rwHyper) +
-      #basin(BASIN_F, model = "iid", hyper = iidHyper) +
-      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-       spaceTime(main = geometry,
-                 model = mySpace) +
+      # basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      # catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+      # wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+      space(main = geometry,
+                model = space) +
       Intercept(1)
     
     # Model without wastewater
@@ -251,7 +251,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)[4]) {
       upstreamArea(totalArea_scaled, model = "linear") +
       PC1(PC1, model = "linear") +
       PC2(PC2, model = "linear") +
-      PC3(PC3, model = "linear") +
+      # PC3(PC3, model = "linear") +
       # PC4(PC4, model = "linear") +
       # PC5(PC5, model = "linear") +
       # PC6(PC6, model = "linear") +
@@ -282,11 +282,11 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)[4]) {
          model = "rw2",
          scale.model = TRUE,
          hyper = rwHyper) +
-      #basin(BASIN_F, model = "iid", hyper = iidHyper) +
-      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-       spaceTime(main = geometry,
-                 model = mySpace) +
+      # basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      # catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+      # wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+      space(main = geometry,
+                model = space) +
       Intercept(1)
     
     # RUN MODEL WITH WASTEWATER
@@ -424,7 +424,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)[4]) {
           rename("q0.025" = "0.025quant",
                  "q0.5" = "0.5quant",
                  "q0.975" = "0.975quant") %>%
-          filter(!(randomEff %in% c("basin", "catchment", "wb"))) %>%
+          filter(!(randomEff %in% c("basin", "catchment", "wb", "space"))) %>%
           select(ID, q0.025, q0.5, q0.975, randomEff)
         
         ### Plot
