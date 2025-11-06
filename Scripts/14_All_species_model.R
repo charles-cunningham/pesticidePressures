@@ -77,7 +77,6 @@ randomLabels <- c( 'month' = "Month",
                    'year' = "Year",
                    'altitude' = "Altitude",
                    'slope' = "Slope",
-                   'length' = "Distance from source",
                    'discharge' = "Discharge",
                    'ph' = "Alkalinity")
 
