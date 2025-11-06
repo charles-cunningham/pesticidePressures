@@ -125,7 +125,7 @@ space <- inla.spde2.pcmatern(
 # Loop through taxa then species to preserve ordering
 
 # Loop through groups
-for (iTaxa in unique(invData$TAXON_GROUP_NAME)[4]) {
+for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
   
   # Find species within taxa
   taxaSpecies <- invData %>%
@@ -142,7 +142,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)[4]) {
     unique()
   
   # Loop through species here
-  for (iSpecies in taxaSpecies[4]) {
+  for (iSpecies in taxaSpecies) {
     
     # PROCESS TO PRESENCE-ABSENCE FORMAT
     
