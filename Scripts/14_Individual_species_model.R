@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = "32")
+inla.setOption(num.threads = 32)
 inla.setOption(inla.timeout = 300) # 5 minutes
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -225,11 +225,11 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)[4]) {
          model = "rw2",
          scale.model = TRUE,
          hyper = rwHyper) +
-      # basin(BASIN_F, model = "iid", hyper = iidHyper) +
-      # catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-      # wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-      space(main = geometry,
-                model = space) +
+      basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+      wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+      # space(main = geometry,
+      #           model = space) +
       Intercept(1)
     
     # Model without wastewater
@@ -282,11 +282,11 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)[4]) {
          model = "rw2",
          scale.model = TRUE,
          hyper = rwHyper) +
-      # basin(BASIN_F, model = "iid", hyper = iidHyper) +
-      # catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-      # wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-      space(main = geometry,
-                model = space) +
+      basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+      wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+      # space(main = geometry,
+      #           model = space) +
       Intercept(1)
     
     # RUN MODEL WITH WASTEWATER
