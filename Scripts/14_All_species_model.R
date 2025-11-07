@@ -82,9 +82,9 @@ iidHyper_SR <- list(prec = list(prior = "pc.prec",
 rwHyper_SR <- list(prec = list(prior="pc.prec",
                             param=c(100, 0.05)))
 iidHyper_Ab <- list(prec = list(prior = "pc.prec",
-                                param = c(200, 0.05)))
+                                param = c(100, 0.05)))
 rwHyper_Ab <- list(prec = list(prior="pc.prec",
-                               param=c(200, 0.05)))
+                               param=c(100, 0.05)))
 
 ### Download BNG WKT string
 download.file(url = "https://epsg.io/27700.wkt2?download=1",
