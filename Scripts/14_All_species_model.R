@@ -459,6 +459,7 @@ modelNoWastewater_Ab <- bru(
   data = invData_Ab_wZeroes,
   options = list(
     control.fixed = list(prec.intercept = 0.01),
+    control.inla=list(cmin=0),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
   )
@@ -474,6 +475,7 @@ modelWastewater_Ab <- bru(
   data = invData_Ab_wZeroes %>% filter(., !(is.na(EDF_MEAN_scaled))),
   options = list(
     control.fixed = list(prec.intercept = 0.01),
+    control.inla=list(cmin=0),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
   )
