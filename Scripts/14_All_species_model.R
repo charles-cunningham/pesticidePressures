@@ -74,11 +74,7 @@ linearLabels_W <- c(linearLabels_NoW,
                     'wastewater' = "Wastewater")
 
 randomLabels <- c( 'month' = "Month",
-                   'year' = "Year",
-                   'altitude' = "Altitude",
-                   'slope' = "Slope",
-                   'discharge' = "Discharge",
-                   'ph' = "Alkalinity")
+                   'year' = "Year")
 
 # Priors for random effects
 iidHyper_SR <- list(prec = list(prior = "pc.prec",
@@ -114,19 +110,15 @@ invData <- invData %>%
     HS_HMS_RSB_SubScore_scaled,
     HS_HQA_scaled,
     totalArea_scaled,
-    ALTITUDE_GRP,
-    SLOPE_GRP,
-    DIST_FROM_SOURCE_GRP,
-    DISCHARGE_GRP,
-    ALKALINITY_GRP,
+    # ALTITUDE_GRP,
+    # SLOPE_GRP,
+    # DIST_FROM_SOURCE_GRP,
+    # DISCHARGE_GRP,
+    # ALKALINITY_GRP,
     PC1,
     PC2,
-    # PC3,
-    # PC4,
-    # PC5,
-    # PC6,
-    # PC7,
-    # PC8,
+    PC3,
+    PC4,
     YEAR,
     MONTH_NUM,
     REPORTING_AREA,
@@ -134,10 +126,10 @@ invData <- invData %>%
     SAMPLE_ID,
     TOTAL_ABUNDANCE,
     TAXON,
-    GROUP#,
-    #BASIN_F,
-    #CATCHMENT_F,
-    #WATER_BODY_F
+    GROUP,
+    BASIN_F,
+    CATCHMENT_F,
+    WATER_BODY_F
     )
 
 # Filter to Schedule 2 species
@@ -193,7 +185,7 @@ mesh <- inla.mesh.2d(boundary = englandSmooth,
                      crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
 
 # Define spatial SPDE priors
-mySpace <- inla.spde2.pcmatern(
+spaceHyper <- inla.spde2.pcmatern(
   mesh,
   prior.range = c(1 * maxEdge, 0.5),
   prior.sigma = c(1, 0.5))
@@ -221,12 +213,8 @@ compsWastewater_SR <- numSpecies ~
   upstreamArea(totalArea_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
-  # PC3(PC3, model = "linear") +
-  # PC4(PC4, model = "linear") +
-  # PC5(PC5, model = "linear") +
-  # PC6(PC6, model = "linear") +
-  # PC7(PC7, model = "linear") +
-  # PC8(PC8, model = "linear") +
+  PC3(PC3, model = "linear") +
+  PC4(PC4, model = "linear") +
   month(
     MONTH_NUM,
     model = "rw1",
@@ -236,27 +224,27 @@ compsWastewater_SR <- numSpecies ~
        model = "rw1",
        scale.model = TRUE,
        hyper = rwHyper_SR) +
-  altitude(ALTITUDE_GRP,
-       model = "rw2",
-       scale.model = TRUE,
-       hyper = rwHyper_SR) +
-  slope(SLOPE_GRP,
-       model = "rw2",
-       scale.model = TRUE,
-       hyper = rwHyper_SR) +
-  discharge(DISCHARGE_GRP,
-       model = "rw2",
-       scale.model = TRUE,
-       hyper = rwHyper_SR) +
-  ph(ALKALINITY_GRP,
-       model = "rw2",
-       scale.model = TRUE,
-       hyper = rwHyper_SR) +
-  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
-   spaceTime(main = geometry,
-             model = mySpace) +
+  # altitude(ALTITUDE_GRP,
+  #      model = "rw2",
+  #      scale.model = TRUE,
+  #      hyper = rwHyper_SR) +
+  # slope(SLOPE_GRP,
+  #      model = "rw2",
+  #      scale.model = TRUE,
+  #      hyper = rwHyper_SR) +
+  # discharge(DISCHARGE_GRP,
+  #      model = "rw2",
+  #      scale.model = TRUE,
+  #      hyper = rwHyper_SR) +
+  # ph(ALKALINITY_GRP,
+  #      model = "rw2",
+  #      scale.model = TRUE,
+  #      hyper = rwHyper_SR) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
+  # space(main = geometry,
+  #       model = spaceHyper) +
   Intercept(1)
 
 # Richness model without wastewater
@@ -278,10 +266,8 @@ compsNoWastewater_SR <- numSpecies ~
   #wastewater(EDF_MEAN_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
-  # PC3(PC3, model = "linear") +
-  # PC4(PC4, model = "linear") +
-  # PC5(PC5, model = "linear") +
-  # PC6(PC6, model = "linear") +
+  PC3(PC3, model = "linear") +
+  PC4(PC4, model = "linear") +
   # PC7(PC7, model = "linear") +
   # PC8(PC8, model = "linear") +
   month(
@@ -293,27 +279,27 @@ compsNoWastewater_SR <- numSpecies ~
        model = "rw1",
        scale.model = TRUE,
        hyper = rwHyper_SR) +
-  altitude(ALTITUDE_GRP,
-           model = "rw2",
-           scale.model = TRUE,
-           hyper = rwHyper_SR) +
-  slope(SLOPE_GRP,
-        model = "rw2",
-        scale.model = TRUE,
-        hyper = rwHyper_SR) +
-  discharge(DISCHARGE_GRP,
-            model = "rw2",
-            scale.model = TRUE,
-            hyper = rwHyper_SR) +
-  ph(ALKALINITY_GRP,
-     model = "rw2",
-     scale.model = TRUE,
-     hyper = rwHyper_SR) +
-  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
-   spaceTime(main = geometry,
-             model = mySpace) +
+  # altitude(ALTITUDE_GRP,
+  #          model = "rw2",
+  #          scale.model = TRUE,
+  #          hyper = rwHyper_SR) +
+  # slope(SLOPE_GRP,
+  #       model = "rw2",
+  #       scale.model = TRUE,
+  #       hyper = rwHyper_SR) +
+  # discharge(DISCHARGE_GRP,
+  #           model = "rw2",
+  #           scale.model = TRUE,
+  #           hyper = rwHyper_SR) +
+  # ph(ALKALINITY_GRP,
+  #    model = "rw2",
+  #    scale.model = TRUE,
+  #    hyper = rwHyper_SR) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
+  # space(main = geometry,
+  #            model = spaceHyper) +
   Intercept(1)
 
 # RUN RICHNESS MODEL WITHOUT WASTEWATER
@@ -367,8 +353,8 @@ compsWastewater_Ab <- Abundance ~
   upstreamArea(totalArea_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
-  # PC3(PC3, model = "linear") +
-  # PC4(PC4, model = "linear") +
+  PC3(PC3, model = "linear") +
+  PC4(PC4, model = "linear") +
   # PC5(PC5, model = "linear") +
   # PC6(PC6, model = "linear") +
   # PC7(PC7, model = "linear") +
@@ -382,27 +368,27 @@ compsWastewater_Ab <- Abundance ~
        model = "rw1",
        scale.model = TRUE,
        hyper = rwHyper_Ab) +
-  altitude(ALTITUDE_GRP,
-           model = "rw2",
-           scale.model = TRUE,
-           hyper = rwHyper_Ab) +
-  slope(SLOPE_GRP,
-        model = "rw2",
-        scale.model = TRUE,
-        hyper = rwHyper_Ab) +
-  discharge(DISCHARGE_GRP,
-            model = "rw2",
-            scale.model = TRUE,
-            hyper = rwHyper_Ab) +
-  ph(ALKALINITY_GRP,
-     model = "rw2",
-     scale.model = TRUE,
-     hyper = rwHyper_Ab) +
-  #basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
-   spaceTime(main = geometry,
-             model = mySpace) +
+  # altitude(ALTITUDE_GRP,
+  #          model = "rw2",
+  #          scale.model = TRUE,
+  #          hyper = rwHyper_Ab) +
+  # slope(SLOPE_GRP,
+  #       model = "rw2",
+  #       scale.model = TRUE,
+  #       hyper = rwHyper_Ab) +
+  # discharge(DISCHARGE_GRP,
+  #           model = "rw2",
+  #           scale.model = TRUE,
+  #           hyper = rwHyper_Ab) +
+  # ph(ALKALINITY_GRP,
+  #    model = "rw2",
+  #    scale.model = TRUE,
+  #    hyper = rwHyper_Ab) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
+   space(main = geometry,
+         model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
 
@@ -425,8 +411,8 @@ compsNoWastewater_Ab <- Abundance ~
   #wastewater(EDF_MEAN_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
-  # PC3(PC3, model = "linear") +
-  # PC4(PC4, model = "linear") +
+  PC3(PC3, model = "linear") +
+  PC4(PC4, model = "linear") +
   # PC5(PC5, model = "linear") +
   # PC6(PC6, model = "linear") +
   # PC7(PC7, model = "linear") +
@@ -440,27 +426,27 @@ compsNoWastewater_Ab <- Abundance ~
        model = "rw1",
        scale.model = TRUE,
        hyper = rwHyper_Ab) +
-  altitude(ALTITUDE_GRP,
-           model = "rw2",
-           scale.model = TRUE,
-           hyper = rwHyper_Ab) +
-  slope(SLOPE_GRP,
-        model = "rw2",
-        scale.model = TRUE,
-        hyper = rwHyper_Ab) +
-  discharge(DISCHARGE_GRP,
-            model = "rw2",
-            scale.model = TRUE,
-            hyper = rwHyper_Ab) +
-  ph(ALKALINITY_GRP,
-     model = "rw2",
-     scale.model = TRUE,
-     hyper = rwHyper_Ab) +
-  #basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
-   spaceTime(main = geometry,
-             model = mySpace) +
+  # altitude(ALTITUDE_GRP,
+  #          model = "rw2",
+  #          scale.model = TRUE,
+  #          hyper = rwHyper_Ab) +
+  # slope(SLOPE_GRP,
+  #       model = "rw2",
+  #       scale.model = TRUE,
+  #       hyper = rwHyper_Ab) +
+  # discharge(DISCHARGE_GRP,
+  #           model = "rw2",
+  #           scale.model = TRUE,
+  #           hyper = rwHyper_Ab) +
+  # ph(ALKALINITY_GRP,
+  #    model = "rw2",
+  #    scale.model = TRUE,
+  #    hyper = rwHyper_Ab) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
+  space(main = geometry,
+        model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
     
