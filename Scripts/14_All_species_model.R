@@ -387,8 +387,8 @@ compsWastewater_Ab <- Abundance ~
   basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
   catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
-   space(main = geometry,
-         model = spaceHyper) +
+  # space(main = geometry,
+   #       model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
 
@@ -445,8 +445,9 @@ compsNoWastewater_Ab <- Abundance ~
   basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
   catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
-  space(main = geometry,
-        model = spaceHyper) +
+  # space(main = geometry,
+  #       model = spaceHyper) +
+  
   species(TAXON,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
     
