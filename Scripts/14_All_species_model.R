@@ -221,7 +221,7 @@ compsWastewater_SR <- numSpecies ~
        hyper = rwHyper_SR) +
   basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
   # space(main = geometry,
   #       model = spaceHyper) +
   Intercept(1)
@@ -256,7 +256,7 @@ compsNoWastewater_SR <- numSpecies ~
        hyper = rwHyper_SR) +
   basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
   # space(main = geometry,
   #            model = spaceHyper) +
   Intercept(1)
@@ -270,7 +270,6 @@ modelNoWastewater_SR <- bru(
   data = invData_SR,
   options = list(
     control.fixed = list(prec.intercept = 0.01),
-    control.inla = list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
   )
@@ -285,7 +284,6 @@ modelWastewater_SR <- bru(
   data = invData_SR %>% filter(., !(is.na(EDF_MEAN_scaled))),
   options = list(
     control.fixed = list(prec.intercept = 0.01),
-    control.inla = list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
   )
@@ -325,7 +323,7 @@ compsWastewater_Ab <- Abundance ~
        hyper = rwHyper_Ab) +
   basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
   catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
   # space(main = geometry,
    #       model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab) +
@@ -361,7 +359,7 @@ compsNoWastewater_Ab <- Abundance ~
        hyper = rwHyper_Ab) +
   basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
   catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
   # space(main = geometry,
   #       model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab) +
@@ -376,8 +374,7 @@ modelNoWastewater_Ab <- bru(
   data = invData_Ab_wZeroes,
   options = list(
     control.fixed = list(prec.intercept = 0.01),
-    control.inla=list(cmin=0,
-                      int.strategy = "eb"),
+    control.inla=list(cmin=0),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
   )
@@ -394,8 +391,7 @@ modelWastewater_Ab <- bru(
   data = invData_Ab_wZeroes %>% filter(., !(is.na(EDF_MEAN_scaled))),
   options = list(
     control.fixed = list(prec.intercept = 0.01),
-    control.inla=list(cmin=0,
-                      int.strategy = "eb"),
+    control.inla=list(cmin=0),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
   )
