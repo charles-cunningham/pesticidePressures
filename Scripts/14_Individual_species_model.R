@@ -53,7 +53,7 @@ plotDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 invData <- readRDS(paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
 
 # England boundary
-englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
+#englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
 
 # SET PARAMETERS ---------------------------------------------------------------
 
@@ -103,19 +103,19 @@ bng <- sf::st_crs(paste0(dataDir, "bng.prj"))$wkt
 ### CREATE MESH ----------------------------------------------------------------
 
 # Max edge is as a rule of thumb (range/3 to range/10)
-maxEdge <- 50
-
-# Create mesh
-mesh <- inla.mesh.2d(boundary = englandSmooth,
-                     max.edge =  maxEdge,
-                     cutoff = maxEdge/2,
-                     crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
-
-# Define spatial SPDE priors
-spaceHyper <- inla.spde2.pcmatern(
-  mesh,
-  prior.range = c(1 * maxEdge, 0.5),
-  prior.sigma = c(1, 0.5))
+# maxEdge <- 50
+# 
+# # Create mesh
+# mesh <- inla.mesh.2d(boundary = englandSmooth,
+#                      max.edge =  maxEdge,
+#                      cutoff = maxEdge/2,
+#                      crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
+# 
+# # Define spatial SPDE priors
+# spaceHyper <- inla.spde2.pcmatern(
+#   mesh,
+#   prior.range = c(1 * maxEdge, 0.5),
+#   prior.sigma = c(1, 0.5))
 
 ### MODEL SET UP FOR INDIVIDUAL SPECIES ----------------------------------------
 # Loop through taxa then species to preserve ordering
@@ -174,8 +174,6 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     # Model with wastewater
     compsWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      #pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
-      #eutroph(ChemicalApplication_scaled, model = "linear") +
       chemApp(chemicalApp, model = "linear") +
       lessPest(lessPesticide, model = "linear") +
       cattle(cattle_scaled, model = "linear") +
@@ -192,10 +190,6 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       PC2(PC2, model = "linear") +
       PC3(PC3, model = "linear") +
       PC4(PC4, model = "linear") +
-      # PC5(PC5, model = "linear") +
-      # PC6(PC6, model = "linear") +
-      # PC7(PC7, model = "linear") +
-      # PC8(PC8, model = "linear") +
       month(
         MONTH_NUM,
         model = "rw1",
@@ -205,25 +199,9 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            model = "rw1",
            scale.model = TRUE,
            hyper = rwHyper) +
-      # altitude(ALTITUDE_GRP,
-      #          model = "rw2",
-      #          scale.model = TRUE,
-      #          hyper = rwHyper) +
-      # slope(SLOPE_GRP,
-      #       model = "rw2",
-      #       scale.model = TRUE,
-      #       hyper = rwHyper) +
-      # discharge(DISCHARGE_GRP,
-      #           model = "rw2",
-      #           scale.model = TRUE,
-      #           hyper = rwHyper) +
-      # ph(ALKALINITY_GRP,
-      #    model = "rw2",
-      #    scale.model = TRUE,
-      #    hyper = rwHyper) +
       basin(BASIN_F, model = "iid", hyper = iidHyper) +
       catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-      wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
       # space(main = geometry,
       #           model = spaceHyper) +
       Intercept(1)
@@ -231,8 +209,6 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     # Model without wastewater
     compsNoWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      #pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
-      #eutroph(ChemicalApplication_scaled, model = "linear") +
       chemApp(chemicalApp, model = "linear") +
       lessPest(lessPesticide, model = "linear") +
       cattle(cattle_scaled, model = "linear") +
@@ -249,10 +225,6 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       PC2(PC2, model = "linear") +
       PC3(PC3, model = "linear") +
       PC4(PC4, model = "linear") +
-      # PC5(PC5, model = "linear") +
-      # PC6(PC6, model = "linear") +
-      # PC7(PC7, model = "linear") +
-      # PC8(PC8, model = "linear") +
       month(
         MONTH_NUM,
         model = "rw1",
@@ -262,25 +234,9 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            model = "rw1",
            scale.model = TRUE,
            hyper = rwHyper) +
-      # altitude(ALTITUDE_GRP,
-      #          model = "rw2",
-      #          scale.model = TRUE,
-      #          hyper = rwHyper) +
-      # slope(SLOPE_GRP,
-      #       model = "rw2",
-      #       scale.model = TRUE,
-      #       hyper = rwHyper) +
-      # discharge(DISCHARGE_GRP,
-      #           model = "rw2",
-      #           scale.model = TRUE,
-      #           hyper = rwHyper) +
-      # ph(ALKALINITY_GRP,
-      #    model = "rw2",
-      #    scale.model = TRUE,
-      #    hyper = rwHyper) +
       basin(BASIN_F, model = "iid", hyper = iidHyper) +
       catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-      wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
       # space(main = geometry,
       #           model = spaceHyper) +
       Intercept(1)
