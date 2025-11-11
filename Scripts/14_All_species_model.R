@@ -53,22 +53,24 @@ plotDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 invData <- readRDS(paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
 
 # England boundary
-englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
+#englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
 
 # SET PARAMETERS ---------------------------------------------------------------
 
-linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
-                      'chemApp' = "Pesticides and NP",
-                     'lessPest' = "More NP than pesticide",
-                     'cattle' = "Cattle",
-                     'pigs' = "Pigs",
-                     'sheep' = "Sheep",
-                     'poultry' = "Poultry",
-                     'residential' = "Residential",
-                     'woodland' = "Woodland",
-                     'modification' = "Stream modification",
-                     'quality' = "Habitat quality",
-                     'upstreamArea' = "Upstream area")
+linearLabels_NoW <- c(
+  'pesticideDiv' = "Pesticide diversity",
+  'chemApp' = "Pesticides and NP",
+  'lessPest' = "More NP than pesticide",
+  'cattle' = "Cattle",
+  'pigs' = "Pigs",
+  'sheep' = "Sheep",
+  'poultry' = "Poultry",
+  'residential' = "Residential",
+  'woodland' = "Woodland",
+  'modification' = "Stream modification",
+  'quality' = "Habitat quality",
+  'upstreamArea' = "Upstream area"
+)
 
 linearLabels_W <- c(linearLabels_NoW,
                     'wastewater' = "Wastewater")
@@ -110,11 +112,6 @@ invData <- invData %>%
     HS_HMS_RSB_SubScore_scaled,
     HS_HQA_scaled,
     totalArea_scaled,
-    # ALTITUDE_GRP,
-    # SLOPE_GRP,
-    # DIST_FROM_SOURCE_GRP,
-    # DISCHARGE_GRP,
-    # ALKALINITY_GRP,
     PC1,
     PC2,
     PC3,
@@ -175,20 +172,20 @@ gc()
 
 ### CREATE MESH ----------------------------------------------------------------
 
-# Max edge is as a rule of thumb (range/3 to range/10)
-maxEdge <- 50
-
-# Create mesh
-mesh <- inla.mesh.2d(boundary = englandSmooth,
-                     max.edge =  maxEdge,
-                     cutoff = maxEdge/2,
-                     crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
-
-# Define spatial SPDE priors
-spaceHyper <- inla.spde2.pcmatern(
-  mesh,
-  prior.range = c(1 * maxEdge, 0.5),
-  prior.sigma = c(1, 0.5))
+# # Max edge is as a rule of thumb (range/3 to range/10)
+# maxEdge <- 50
+# 
+# # Create mesh
+# mesh <- inla.mesh.2d(boundary = englandSmooth,
+#                      max.edge =  maxEdge,
+#                      cutoff = maxEdge/2,
+#                      crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
+# 
+# # Define spatial SPDE priors
+# spaceHyper <- inla.spde2.pcmatern(
+#   mesh,
+#   prior.range = c(1 * maxEdge, 0.5),
+#   prior.sigma = c(1, 0.5))
 
 ### RUN RICHNESS MODELS --------------------------------------------------------
     
@@ -197,8 +194,6 @@ spaceHyper <- inla.spde2.pcmatern(
 # Richness model with wastewater
 compsWastewater_SR <- numSpecies ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  #pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
-  #eutroph(ChemicalApplication_scaled, model = "linear") +
   chemApp(chemicalApp, model = "linear") +
   lessPest(lessPesticide, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
@@ -224,22 +219,6 @@ compsWastewater_SR <- numSpecies ~
        model = "rw1",
        scale.model = TRUE,
        hyper = rwHyper_SR) +
-  # altitude(ALTITUDE_GRP,
-  #      model = "rw2",
-  #      scale.model = TRUE,
-  #      hyper = rwHyper_SR) +
-  # slope(SLOPE_GRP,
-  #      model = "rw2",
-  #      scale.model = TRUE,
-  #      hyper = rwHyper_SR) +
-  # discharge(DISCHARGE_GRP,
-  #      model = "rw2",
-  #      scale.model = TRUE,
-  #      hyper = rwHyper_SR) +
-  # ph(ALKALINITY_GRP,
-  #      model = "rw2",
-  #      scale.model = TRUE,
-  #      hyper = rwHyper_SR) +
   basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
@@ -250,8 +229,6 @@ compsWastewater_SR <- numSpecies ~
 # Richness model without wastewater
 compsNoWastewater_SR <- numSpecies ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  #pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
-  #eutroph(ChemicalApplication_scaled, model = "linear") +
   chemApp(chemicalApp, model = "linear") +
   lessPest(lessPesticide, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
@@ -268,8 +245,6 @@ compsNoWastewater_SR <- numSpecies ~
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  # PC7(PC7, model = "linear") +
-  # PC8(PC8, model = "linear") +
   month(
     main = MONTH_NUM,
     model = "rw1",
@@ -279,22 +254,6 @@ compsNoWastewater_SR <- numSpecies ~
        model = "rw1",
        scale.model = TRUE,
        hyper = rwHyper_SR) +
-  # altitude(ALTITUDE_GRP,
-  #          model = "rw2",
-  #          scale.model = TRUE,
-  #          hyper = rwHyper_SR) +
-  # slope(SLOPE_GRP,
-  #       model = "rw2",
-  #       scale.model = TRUE,
-  #       hyper = rwHyper_SR) +
-  # discharge(DISCHARGE_GRP,
-  #           model = "rw2",
-  #           scale.model = TRUE,
-  #           hyper = rwHyper_SR) +
-  # ph(ALKALINITY_GRP,
-  #    model = "rw2",
-  #    scale.model = TRUE,
-  #    hyper = rwHyper_SR) +
   basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
@@ -337,8 +296,6 @@ gc()
 # Abundance model with wastewater
 compsWastewater_Ab <- Abundance ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  #pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
-  #eutroph(ChemicalApplication_scaled, model = "linear") +
   chemApp(chemicalApp, model = "linear") +
   lessPest(lessPesticide, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
@@ -355,10 +312,6 @@ compsWastewater_Ab <- Abundance ~
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  # PC5(PC5, model = "linear") +
-  # PC6(PC6, model = "linear") +
-  # PC7(PC7, model = "linear") +
-  # PC8(PC8, model = "linear") +
   month(
     main = MONTH_NUM,
     model = "rw1",
@@ -368,22 +321,6 @@ compsWastewater_Ab <- Abundance ~
        model = "rw1",
        scale.model = TRUE,
        hyper = rwHyper_Ab) +
-  # altitude(ALTITUDE_GRP,
-  #          model = "rw2",
-  #          scale.model = TRUE,
-  #          hyper = rwHyper_Ab) +
-  # slope(SLOPE_GRP,
-  #       model = "rw2",
-  #       scale.model = TRUE,
-  #       hyper = rwHyper_Ab) +
-  # discharge(DISCHARGE_GRP,
-  #           model = "rw2",
-  #           scale.model = TRUE,
-  #           hyper = rwHyper_Ab) +
-  # ph(ALKALINITY_GRP,
-  #    model = "rw2",
-  #    scale.model = TRUE,
-  #    hyper = rwHyper_Ab) +
   basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
   catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
@@ -395,8 +332,6 @@ compsWastewater_Ab <- Abundance ~
 # Abundance model without wastewater
 compsNoWastewater_Ab <- Abundance ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  #pesticideToxicity(pesticideToxicLoad_scaled, model = "linear") +
-  #eutroph(ChemicalApplication_scaled, model = "linear") +
   chemApp(chemicalApp, model = "linear") +
   lessPest(lessPesticide, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
@@ -413,10 +348,6 @@ compsNoWastewater_Ab <- Abundance ~
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  # PC5(PC5, model = "linear") +
-  # PC6(PC6, model = "linear") +
-  # PC7(PC7, model = "linear") +
-  # PC8(PC8, model = "linear") +
   month(
     main = MONTH_NUM,
     model = "rw1",
@@ -426,28 +357,11 @@ compsNoWastewater_Ab <- Abundance ~
        model = "rw1",
        scale.model = TRUE,
        hyper = rwHyper_Ab) +
-  # altitude(ALTITUDE_GRP,
-  #          model = "rw2",
-  #          scale.model = TRUE,
-  #          hyper = rwHyper_Ab) +
-  # slope(SLOPE_GRP,
-  #       model = "rw2",
-  #       scale.model = TRUE,
-  #       hyper = rwHyper_Ab) +
-  # discharge(DISCHARGE_GRP,
-  #           model = "rw2",
-  #           scale.model = TRUE,
-  #           hyper = rwHyper_Ab) +
-  # ph(ALKALINITY_GRP,
-  #    model = "rw2",
-  #    scale.model = TRUE,
-  #    hyper = rwHyper_Ab) +
   basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
   catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
   wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
   # space(main = geometry,
   #       model = spaceHyper) +
-  
   species(TAXON,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
     
