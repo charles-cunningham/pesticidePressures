@@ -270,6 +270,7 @@ modelNoWastewater_SR <- bru(
   data = invData_SR,
   options = list(
     control.fixed = list(prec.intercept = 0.01),
+    control.inla=list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
   )
@@ -284,6 +285,7 @@ modelWastewater_SR <- bru(
   data = invData_SR %>% filter(., !(is.na(EDF_MEAN_scaled))),
   options = list(
     control.fixed = list(prec.intercept = 0.01),
+    control.inla=list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
   )
@@ -374,7 +376,8 @@ modelNoWastewater_Ab <- bru(
   data = invData_Ab_wZeroes,
   options = list(
     control.fixed = list(prec.intercept = 0.01),
-    control.inla=list(cmin=0),
+    control.inla=list(cmin=0,
+                      int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
   )
@@ -391,7 +394,8 @@ modelWastewater_Ab <- bru(
   data = invData_Ab_wZeroes %>% filter(., !(is.na(EDF_MEAN_scaled))),
   options = list(
     control.fixed = list(prec.intercept = 0.01),
-    control.inla=list(cmin=0),
+    control.inla=list(cmin=0,
+                      int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
   )
@@ -498,7 +502,7 @@ for (modelName in names(models)) {
     rename("q0.025" = "0.025quant",
            "q0.5" = "0.5quant",
            "q0.975" = "0.975quant") %>%
-    filter(!(randomEff %in% c("basin", "catchment", "wb"))) %>%
+    filter(!(randomEff %in% c("basin", "catchment", "wb", "species"))) %>%
     select(ID, q0.025, q0.5, q0.975, randomEff)
 
   ### Plot
