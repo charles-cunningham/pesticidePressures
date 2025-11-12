@@ -378,7 +378,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
           rename("q0.025" = "0.025quant",
                  "q0.5" = "0.5quant",
                  "q0.975" = "0.975quant") %>%
-          filter(!(randomEff %in% c("basin", "catchment", "wb", "space"))) %>%
+          filter(!(randomEff %in% c("basin", "catchment", "wb"))) %>%
           select(ID, q0.025, q0.5, q0.975, randomEff)
         
         ### Plot
