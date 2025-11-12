@@ -63,37 +63,37 @@ pesticideDiv_brms <- brm(data = effects_wide,
                            prior(cauchy(0, 1), class = sd)),
                  iter = 10000,
                  warmup = 5000,
-                 control=list(adapt_delta = 0.99,
-                              stepsize = 0.01,
-                             max_treedepth = 15),
+                 # control=list(adapt_delta = 0.99,
+                 #              stepsize = 0.01,
+                 #             max_treedepth = 15),
                  cores = 4,
                  chains = 4)
 
-pesticideToxicity_brms <- brm(data = effects_wide,
+chemApp_brms <- brm(data = effects_wide,
                          family = gaussian,
-                         mean_pesticideToxicity | se(sd_pesticideToxicity) ~
+                         mean_chemApp | se(sd_chemApp) ~
                            1 + (1 | taxa) + (1 | taxa:species),
                          prior = c(prior(normal(0, 1), class = Intercept),
                                    prior(cauchy(0, 1), class = sd)),
                          iter = 10000,
                          warmup = 5000,
-                         control=list(adapt_delta = 0.99,
-                                      stepsize = 0.01,
-                                      max_treedepth = 15),
+                         # control=list(adapt_delta = 0.99,
+                         #              stepsize = 0.01,
+                         #              max_treedepth = 15),
                          cores = 4,
                          chains = 4)
 
-NPK_brms <- brm(data = effects_wide,
+lessPest_brms <- brm(data = effects_wide,
                 family = gaussian,
-                mean_NPK | se(sd_NPK) ~
+                mean_lessPest | se(sd_lessPest) ~
                   1 + (1 | taxa) + (1 | taxa:species),
                 prior = c(prior(normal(0, 1), class = Intercept),
                           prior(cauchy(0, 1), class = sd)),                
                 iter = 10000,
                 warmup = 5000,
-                control=list(adapt_delta = 0.99,
-                             stepsize = 0.01,
-                             max_treedepth = 15),
+                # control=list(adapt_delta = 0.99,
+                #              stepsize = 0.01,
+                #              max_treedepth = 15),
                          cores = 4,
                          chains = 4)
 
@@ -105,9 +105,9 @@ cattle_brms <- brm(data = effects_wide,
                                    prior(cauchy(0, 1), class = sd)),
                    iter = 10000,
                    warmup = 5000,
-                   control=list(adapt_delta = 0.99,
-                                stepsize = 0.01,
-                                max_treedepth = 15),
+                   # control=list(adapt_delta = 0.99,
+                   #              stepsize = 0.01,
+                   #              max_treedepth = 15),
                          cores = 4,
                          chains = 4)
 
@@ -119,9 +119,9 @@ pigs_brms <- brm(data = effects_wide,
                                    prior(cauchy(0, 1), class = sd)),
                  iter = 10000,
                  warmup = 5000,
-                 control=list(adapt_delta = 0.99,
-                              stepsize = 0.01,
-                              max_treedepth = 15),
+                 # control=list(adapt_delta = 0.99,
+                 #              stepsize = 0.01,
+                 #              max_treedepth = 15),
                          cores = 4,
                          chains = 4)
 
@@ -133,9 +133,9 @@ sheep_brms <- brm(data = effects_wide,
                                    prior(cauchy(0, 1), class = sd)),
                   iter = 10000,
                   warmup = 5000,
-                  control=list(adapt_delta = 0.99,
-                               stepsize = 0.01,
-                               max_treedepth = 15),
+                  # control=list(adapt_delta = 0.99,
+                  #              stepsize = 0.01,
+                  #              max_treedepth = 15),
                          cores = 4,
                          chains = 4)
 
@@ -147,9 +147,9 @@ poultry_brms <- brm(data = effects_wide,
                                    prior(cauchy(0, 1), class = sd)),
                     iter = 10000,
                     warmup = 5000,
-                    control=list(adapt_delta = 0.99,
-                                 stepsize = 0.01,
-                                 max_treedepth = 15),
+                    # control=list(adapt_delta = 0.99,
+                    #              stepsize = 0.01,
+                    #              max_treedepth = 15),
                          cores = 4,
                          chains = 4)
 
@@ -161,9 +161,9 @@ modification_brms <- brm(data = effects_wide,
                                    prior(cauchy(0, 1), class = sd)),
                          iter = 10000,
                          warmup = 5000,
-                         control=list(adapt_delta = 0.99,
-                                      stepsize = 0.01,
-                                      max_treedepth = 15),
+                         # control=list(adapt_delta = 0.99,
+                         #              stepsize = 0.01,
+                         #              max_treedepth = 15),
                          cores = 4,
                          chains = 4)
 
@@ -175,23 +175,9 @@ quality_brms <- brm(data = effects_wide,
                                    prior(cauchy(0, 1), class = sd)),
                     iter = 10000,
                     warmup = 5000,
-                    control=list(adapt_delta = 0.99,
-                                 stepsize = 0.01,
-                                 max_treedepth = 15),
-                         cores = 4,
-                         chains = 4)
-
-arable_brms <- brm(data = effects_wide,
-                         family = gaussian,
-                         mean_arable | se(sd_arable) ~
-                           1 + (1 | taxa) + (1 | taxa:species),
-                         prior = c(prior(normal(0, 1), class = Intercept),
-                                   prior(cauchy(0, 1), class = sd)),
-                   iter = 10000,
-                   warmup = 5000,
-                   control=list(adapt_delta = 0.99,
-                                stepsize = 0.01,
-                                max_treedepth = 15),
+                    # control=list(adapt_delta = 0.99,
+                    #              stepsize = 0.01,
+                    #              max_treedepth = 15),
                          cores = 4,
                          chains = 4)
 
@@ -203,25 +189,11 @@ residential_brms <- brm(data = effects_wide,
                                    prior(cauchy(0, 1), class = sd)),
                   iter = 10000,
                   warmup = 5000,
-                  control=list(adapt_delta = 0.99,
-                               stepsize = 0.01,
-                               max_treedepth = 15),
+                  # control=list(adapt_delta = 0.99,
+                  #              stepsize = 0.01,
+                  #              max_treedepth = 15),
                          cores = 4,
                          chains = 4)
-
-grass_brms <- brm(data = effects_wide,
-                  family = gaussian,
-                  mean_grass | se(sd_grass) ~
-                    1 + (1 | taxa) + (1 | taxa:species),
-                  prior = c(prior(normal(0, 1), class = Intercept),
-                            prior(cauchy(0, 1), class = sd)),
-                  iter = 10000,
-                  warmup = 5000,
-                  control=list(adapt_delta = 0.99,
-                               stepsize = 0.01,
-                               max_treedepth = 15),
-                  cores = 4,
-                  chains = 4)
 
 woodland_brms <- brm(data = effects_wide,
                   family = gaussian,
@@ -231,11 +203,25 @@ woodland_brms <- brm(data = effects_wide,
                             prior(cauchy(0, 1), class = sd)),
                   iter = 10000,
                   warmup = 5000,
-                  control=list(adapt_delta = 0.99,
-                               stepsize = 0.01,
-                               max_treedepth = 15),
+                  # control=list(adapt_delta = 0.99,
+                  #              stepsize = 0.01,
+                  #              max_treedepth = 15),
                   cores = 4,
                   chains = 4)
+
+upstreamArea_brms <- brm(data = effects_wide,
+                     family = gaussian,
+                     mean_upstreamArea | se(sd_upstreamArea) ~
+                       1 + (1 | taxa) + (1 | taxa:species),
+                     prior = c(prior(normal(0, 1), class = Intercept),
+                               prior(cauchy(0, 1), class = sd)),
+                     iter = 10000,
+                     warmup = 5000,
+                     # control=list(adapt_delta = 0.99,
+                     #              stepsize = 0.01,
+                     #              max_treedepth = 15),
+                     cores = 4,
+                     chains = 4)
 
 if(type == "Wastewater") {
   
@@ -247,9 +233,9 @@ if(type == "Wastewater") {
                                  prior(cauchy(0, 1), class = sd)),
                        iter = 10000,
                        warmup = 5000,
-                       control=list(adapt_delta = 0.99,
-                                    stepsize = 0.01,
-                                    max_treedepth = 15),
+                       # control=list(adapt_delta = 0.99,
+                       #              stepsize = 0.01,
+                       #              max_treedepth = 15),
                        cores = 4,
                        chains = 4)
 }
@@ -259,10 +245,10 @@ if(type == "Wastewater") {
 ### Save
 
 # List of brms objects
-brmsList <- c("pesticideDiv_brms", "pesticideToxicity_brms", "NPK_brms",
-              "cattle_brms", "sheep_brms","pigs_brms", "poultry_brms",
+brmsList <- c("pesticideDiv_brms", "chemApp_brms", "lessPest_brms",
+              "cattle_brms", "sheep_brms", "pigs_brms", "poultry_brms",
               "wastewater_brms", "modification_brms", "quality_brms",
-              "arable_brms", "residential_brms", "grass_brms", "woodland_brms")
+              "residential_brms", "upstreamArea_brms", "woodland_brms")
 
 # Save brms objects
 save(list = brmsList,
