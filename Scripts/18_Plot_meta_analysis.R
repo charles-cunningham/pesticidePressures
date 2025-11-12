@@ -84,11 +84,11 @@ for (type in c("Wastewater", "NoWastewater")) {
 
 ### RELOAD OBJECTS ---------------------------------------------------
 
-# List of brms objects
-brmsList <- c("pesticideDiv_brms", "pesticideToxicity_brms", "NPK_brms",
-              "cattle_brms", "sheep_brms","pigs_brms", "poultry_brms",
-              "modification_brms", "quality_brms", "arable_brms",
-              "residential_brms","grass_brms", "woodland_brms")
+  # List of brms objects
+brmsList <- c("pesticideDiv_brms", "chemApp_brms", "lessPest_brms",
+              "cattle_brms", "sheep_brms", "pigs_brms", "poultry_brms",
+              "wastewater_brms", "modification_brms", "quality_brms",
+              "residential_brms", "upstreamArea_brms", "woodland_brms")
 
 if (type == "Wastewater" ) {
   
