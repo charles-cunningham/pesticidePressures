@@ -53,7 +53,7 @@ plotDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 invData <- readRDS(paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
 
 # England boundary
-#englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
+englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
 
 # SET PARAMETERS ---------------------------------------------------------------
 
@@ -80,13 +80,17 @@ randomLabels <- c( 'month' = "Month",
 
 # Priors for random effects
 iidHyper_SR <- list(prec = list(prior = "pc.prec",
-                             param = c(100, 0.05)))
+                             param = c(10, 0.05)))
 rwHyper_SR <- list(prec = list(prior="pc.prec",
-                            param=c(100, 0.05)))
+                            param=c(10, 0.05)))
+ar1Hyper_SR <- list(rho = list(prior="pc.prec",
+                            param=c(0.5, 0.01)))
 iidHyper_Ab <- list(prec = list(prior = "pc.prec",
                                 param = c(100, 0.05)))
 rwHyper_Ab <- list(prec = list(prior="pc.prec",
                                param=c(100, 0.05)))
+ar1Hyper_Ab <- list(rho = list(prior="pc.prec",
+                              param=c(0.5, 0.01)))
 
 ### Download BNG WKT string
 download.file(url = "https://epsg.io/27700.wkt2?download=1",
@@ -125,8 +129,8 @@ invData <- invData %>%
     TAXON,
     GROUP,
     BASIN_F,
-    CATCHMENT_F,
-    WATER_BODY_F
+    #CATCHMENT_F,
+    #WATER_BODY_F
     )
 
 # Filter to Schedule 2 species
@@ -172,20 +176,25 @@ gc()
 
 ### CREATE MESH ----------------------------------------------------------------
 
-# # Max edge is as a rule of thumb (range/3 to range/10)
-# maxEdge <- 50
-# 
-# # Create mesh
-# mesh <- inla.mesh.2d(boundary = englandSmooth,
-#                      max.edge =  maxEdge,
-#                      cutoff = maxEdge/2,
-#                      crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
-# 
-# # Define spatial SPDE priors
-# spaceHyper <- inla.spde2.pcmatern(
-#   mesh,
-#   prior.range = c(1 * maxEdge, 0.5),
-#   prior.sigma = c(1, 0.5))
+# Max edge is as a rule of thumb (range/3 to range/10)
+maxEdge <- 20
+
+# Create mesh
+mesh <- inla.mesh.2d(boundary = englandSmooth,
+                     max.edge =  maxEdge,
+                     cutoff = maxEdge/2,
+                     crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
+
+# Create mesh dataframe for examining spatial field
+mesh_df <- fm_pixels(mesh, 
+                     mask = st_transform(englandSmooth,
+                                         crs = gsub( "units=m", "units=km",
+                                                     st_crs(bng)$proj4string)))
+# Define spatial SPDE priors
+spaceHyper <- inla.spde2.pcmatern(
+  mesh,
+  prior.range = c(5 * maxEdge, 0.5),
+  prior.sigma = c(1, 0.5))
 
 ### RUN RICHNESS MODELS --------------------------------------------------------
     
@@ -213,17 +222,16 @@ compsWastewater_SR <- numSpecies ~
   month(
     MONTH_NUM,
     model = "rw1",
-    scale.model = TRUE,
+    cyclic = TRUE,
     hyper = rwHyper_SR) +
   year(YEAR,
        model = "rw1",
-       scale.model = TRUE,
        hyper = rwHyper_SR) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
   #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
-  # space(main = geometry,
-  #       model = spaceHyper) +
+    space(main = geometry,
+          model = spaceHyper) +
   Intercept(1)
 
 # Richness model without wastewater
@@ -246,19 +254,18 @@ compsNoWastewater_SR <- numSpecies ~
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
   month(
-    main = MONTH_NUM,
+    MONTH_NUM,
     model = "rw1",
-    scale.model = TRUE,
+    cyclic = TRUE,
     hyper = rwHyper_SR) +
   year(YEAR,
        model = "rw1",
-       scale.model = TRUE,
        hyper = rwHyper_SR) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
   #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
-  # space(main = geometry,
-  #            model = spaceHyper) +
+    space(main = geometry,
+               model = spaceHyper) +
   Intercept(1)
 
 # RUN RICHNESS MODEL WITHOUT WASTEWATER
@@ -317,17 +324,16 @@ compsWastewater_Ab <- Abundance ~
   month(
     main = MONTH_NUM,
     model = "rw1",
-    scale.model = TRUE,
+    cyclic = TRUE,
     hyper = rwHyper_Ab) +
   year(YEAR,
        model = "rw1",
-       scale.model = TRUE,
        hyper = rwHyper_Ab) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
-  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
   #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
-  # space(main = geometry,
-   #       model = spaceHyper) +
+  space(main = geometry,
+          model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
 
@@ -353,17 +359,16 @@ compsNoWastewater_Ab <- Abundance ~
   month(
     main = MONTH_NUM,
     model = "rw1",
-    scale.model = TRUE,
+    cyclic = TRUE,
     hyper = rwHyper_Ab) +
   year(YEAR,
        model = "rw1",
-       scale.model = TRUE,
        hyper = rwHyper_Ab) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
-  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
   #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
-  # space(main = geometry,
-  #       model = spaceHyper) +
+   space(main = geometry,
+         model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab) +
   Intercept(1)
     
@@ -376,8 +381,7 @@ modelNoWastewater_Ab <- bru(
   data = invData_Ab_wZeroes,
   options = list(
     control.fixed = list(prec.intercept = 0.01),
-    control.inla=list(cmin=0,
-                      int.strategy = "eb"),
+    control.inla=list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
   )
@@ -394,8 +398,7 @@ modelWastewater_Ab <- bru(
   data = invData_Ab_wZeroes %>% filter(., !(is.na(EDF_MEAN_scaled))),
   options = list(
     control.fixed = list(prec.intercept = 0.01),
-    control.inla=list(cmin=0,
-                      int.strategy = "eb"),
+    control.inla=list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
   )
@@ -528,11 +531,25 @@ for (modelName in names(models)) {
     xlab("") +
     ylab("Count")
   
+  # SPATIAL FIELD
+  
+  spatialEffPlot <- ggplot() +
+    gg(pred_df$space, geom = "tile") +
+    gg(st_transform(englandSmooth, 
+                    crs = gsub( "units=m", "units=km", 
+                                st_crs(bng)$proj4string)),
+       alpha = 0,
+       col = "black",
+       size = 1.5) +
+    theme_void() +
+    theme(legend.position = "bottom") +
+    scale_fill_distiller(palette = 'RdYlBu', direction = 1,
+                         limits = c(-1,1)*max(abs(pred_df$space$mean))) +
+    labs(fill = "Spatial Field")
+  
   # COMBINE PLOTS
-  evalPlot <- plot_grid(fixedEffPlot,
-                        randomEffPlot,
-                        nrow = 2,
-                        ncol = 1)
+  evalPlot <- plot_grid(fixedEffPlot, randomEffPlot, spatialEffPlot,
+                        nrow = 1, ncol = 3)
   
   # SAVE OUTPUT ------------------------------------------------------------
   
