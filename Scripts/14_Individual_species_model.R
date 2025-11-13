@@ -78,7 +78,7 @@ randomLabels <- c( 'month' = "Month",
                    'year' = "Year")
 
 # Set minimum number of records to model - only commonly recorded species
-minRecords <- 5000
+minRecords <- 1000
 
 # Schedule 2 species list
 invDataS2 <- invData %>%
@@ -103,13 +103,19 @@ bng <- sf::st_crs(paste0(dataDir, "bng.prj"))$wkt
 ### CREATE MESH ----------------------------------------------------------------
 
 # Max edge is as a rule of thumb (range/3 to range/10)
-maxEdge <- 20
+maxEdge <- 50
 
 # Create mesh
 mesh <- inla.mesh.2d(boundary = englandSmooth,
                      max.edge =  maxEdge,
-                     cutoff = maxEdge/2,
+                     cutoff = maxEdge/5,
                      crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
+
+# Create mesh dataframe for examining spatial field
+mesh_df <- fm_pixels(mesh, 
+                     mask = st_transform(englandSmooth,
+                                         crs = gsub( "units=m", "units=km",
+                                                     st_crs(bng)$proj4string)))
 
 # Define spatial SPDE priors
 spaceHyper <- inla.spde2.pcmatern(
@@ -201,8 +207,8 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       #basin(BASIN_F, model = "iid", hyper = iidHyper) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
       #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-       space(main = geometry,
-                 model = spaceHyper) +
+      space(main = geometry,
+            model = spaceHyper) +
       Intercept(1)
     
     # Model without wastewater
@@ -235,8 +241,8 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
      #basin(BASIN_F, model = "iid", hyper = iidHyper) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
       #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-     space(main = geometry,
-               model = spaceHyper) +
+      space(main = geometry,
+            model = spaceHyper) +
       Intercept(1)
     
     # RUN MODEL WITH WASTEWATER
@@ -402,9 +408,25 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
           xlab("") +
           ylab("Count")
         
-        # COBINE PLOTS
-        evalPlot <- plot_grid(fixedEffPlot, randomEffPlot,
-                              nrow = 2, ncol = 1)
+        # SPATIAL FIELD
+        
+        spatialEffPlot <- ggplot() +
+          gg(pred_df$space, geom = "tile") +
+          gg(st_transform(englandSmooth, 
+                          crs = gsub( "units=m", "units=km", 
+                                      st_crs(bng)$proj4string)),
+             alpha = 0,
+             col = "black",
+             size = 1.5) +
+          theme_void() +
+          theme(legend.position = "bottom") +
+          scale_fill_distiller(palette = 'RdYlBu', direction = 1,
+                               limits = c(-1,1)*max(abs(pred_df$space$mean))) +
+          labs(fill = "Spatial Field")
+        
+        # COMBINE PLOTS
+        evalPlot <- plot_grid(fixedEffPlot, randomEffPlot, spatialEffPlot,
+                              nrow = 1, ncol = 3)
         
         # SAVE OUTPUT ------------------------------------------------------------
         
@@ -444,7 +466,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         ggsave(paste0(iSpeciesDir,
                       "/ModelPlots/", iSpecies, ".png"),
                evalPlot,
-               width = 3000, height = 3000, 
+               width = 6000, height = 3000, 
                units = "px", dpi = 400,
                limitsize = FALSE)
       }
