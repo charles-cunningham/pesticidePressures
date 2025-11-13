@@ -410,6 +410,10 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         
         # SPATIAL FIELD
         
+        # Predict spatial field over domain
+        pred_df <- predict(modelNoWastewater, mesh_df, ~list(space = space))
+        
+        # Plot spatial field
         spatialEffPlot <- ggplot() +
           gg(pred_df$space, geom = "tile") +
           gg(st_transform(englandSmooth, 
