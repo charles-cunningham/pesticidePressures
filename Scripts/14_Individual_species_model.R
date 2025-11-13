@@ -411,11 +411,11 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         # SPATIAL FIELD
         
         # Predict spatial field over domain
-        pred_df <- predict(modelNoWastewater, mesh_df, ~list(space = space))
+        pred_df <- predict(model, mesh_df, ~list(space = space))
         
         # Plot spatial field
         spatialEffPlot <- ggplot() +
-          gg(pred_df$space, geom = "tile") +
+          gg(pred_df$space["mean"], geom = "tile") +
           gg(st_transform(englandSmooth, 
                           crs = gsub( "units=m", "units=km", 
                                       st_crs(bng)$proj4string)),
@@ -426,7 +426,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
           theme(legend.position = "bottom") +
           scale_fill_distiller(palette = 'RdYlBu', direction = 1,
                                limits = c(-1,1)*max(abs(pred_df$space$mean))) +
-          labs(fill = "Spatial Field")
+          labs(fill = "Spatial Field   ")
         
         # COMBINE PLOTS
         evalPlot <- plot_grid(fixedEffPlot, randomEffPlot, spatialEffPlot,
@@ -470,7 +470,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         ggsave(paste0(iSpeciesDir,
                       "/ModelPlots/", iSpecies, ".png"),
                evalPlot,
-               width = 6000, height = 3000, 
+               width = 9000, height = 3000, 
                units = "px", dpi = 400,
                limitsize = FALSE)
       }
