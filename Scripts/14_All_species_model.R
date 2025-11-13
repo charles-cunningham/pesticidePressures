@@ -138,7 +138,15 @@ invData <- filter(invData, GROUP == "Schedule 2")
 
 ### PROCESS TO RICHNESS FORMAT -------------------------------------------------
 
-invData_SR <- add_count(invData, SAMPLE_ID, name = "numSpecies")
+invData_SR <-invData %>%
+  # Add count of species
+  add_count(, SAMPLE_ID, name = "numSpecies") %>%
+  # For each SAMPLE_ID ...
+  group_by(SAMPLE_ID) %>%
+  # Extract max (all numSpecies are the same for each SAMPLE_ID)
+  slice(which.max(numSpecies)) %>%
+  # Ungroup
+  ungroup()
 
 ### PROCESS TO PSUEDO-ABSENCE FORMAT -------------------------------------------
 
@@ -177,12 +185,12 @@ gc()
 ### CREATE MESH ----------------------------------------------------------------
 
 # Max edge is as a rule of thumb (range/3 to range/10)
-maxEdge <- 20
+maxEdge <- 50
 
 # Create mesh
 mesh <- inla.mesh.2d(boundary = englandSmooth,
                      max.edge =  maxEdge,
-                     cutoff = maxEdge/2,
+                     cutoff = maxEdge/5,
                      crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
 
 # Create mesh dataframe for examining spatial field
@@ -190,6 +198,7 @@ mesh_df <- fm_pixels(mesh,
                      mask = st_transform(englandSmooth,
                                          crs = gsub( "units=m", "units=km",
                                                      st_crs(bng)$proj4string)))
+
 # Define spatial SPDE priors
 spaceHyper <- inla.spde2.pcmatern(
   mesh,
@@ -505,7 +514,7 @@ for (modelName in names(models)) {
     rename("q0.025" = "0.025quant",
            "q0.5" = "0.5quant",
            "q0.975" = "0.975quant") %>%
-    filter(!(randomEff %in% c("basin", "catchment", "wb", "species"))) %>%
+    filter(!(randomEff %in% c("basin", "catchment", "wb", "species", "space"))) %>%
     select(ID, q0.025, q0.5, q0.975, randomEff)
 
   ### Plot
@@ -534,11 +543,11 @@ for (modelName in names(models)) {
   # SPATIAL FIELD
   
   # Predict spatial field over domain
-  pred_df <- predict(modelNoWastewater, mesh_df, ~list(space = space))
+  pred_df <- predict(model, mesh_df, ~list(space = space))
   
   # Plot spatial field
   spatialEffPlot <- ggplot() +
-    gg(pred_df$space, geom = "tile") +
+    gg(pred_df$space["mean"], geom = "tile") +
     gg(st_transform(englandSmooth, 
                     crs = gsub( "units=m", "units=km", 
                                 st_crs(bng)$proj4string)),
@@ -549,7 +558,7 @@ for (modelName in names(models)) {
     theme(legend.position = "bottom") +
     scale_fill_distiller(palette = 'RdYlBu', direction = 1,
                          limits = c(-1,1)*max(abs(pred_df$space$mean))) +
-    labs(fill = "Spatial Field")
+    labs(fill = "Spatial Field   ")
   
   # COMBINE PLOTS
   evalPlot <- plot_grid(fixedEffPlot, randomEffPlot, spatialEffPlot,
@@ -577,7 +586,7 @@ for (modelName in names(models)) {
   ggsave(
     paste0(iSpeciesDir, modelName, ".png"),
     evalPlot,
-    width = 3000,
+    width = 9000,
     height = 3000,
     units = "px",
     dpi = 400,
