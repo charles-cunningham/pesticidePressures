@@ -78,7 +78,7 @@ randomLabels <- c( 'month' = "Month",
                    'year' = "Year")
 
 # Set minimum number of records to model - only commonly recorded species
-minRecords <- 1000
+minRecords <- 5000
 
 # Schedule 2 species list
 invDataS2 <- invData %>%
@@ -103,19 +103,19 @@ bng <- sf::st_crs(paste0(dataDir, "bng.prj"))$wkt
 ### CREATE MESH ----------------------------------------------------------------
 
 # Max edge is as a rule of thumb (range/3 to range/10)
-# maxEdge <- 50
-# 
-# # Create mesh
-# mesh <- inla.mesh.2d(boundary = englandSmooth,
-#                      max.edge =  maxEdge,
-#                      cutoff = maxEdge/2,
-#                      crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
-# 
-# # Define spatial SPDE priors
-# spaceHyper <- inla.spde2.pcmatern(
-#   mesh,
-#   prior.range = c(1 * maxEdge, 0.5),
-#   prior.sigma = c(1, 0.5))
+maxEdge <- 20
+
+# Create mesh
+mesh <- inla.mesh.2d(boundary = englandSmooth,
+                     max.edge =  maxEdge,
+                     cutoff = maxEdge/2,
+                     crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
+
+# Define spatial SPDE priors
+spaceHyper <- inla.spde2.pcmatern(
+  mesh,
+  prior.range = c(5 * maxEdge, 0.5),
+  prior.sigma = c(1, 0.5))
 
 ### MODEL SET UP FOR INDIVIDUAL SPECIES ----------------------------------------
 # Loop through taxa then species to preserve ordering
@@ -193,17 +193,16 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       month(
         MONTH_NUM,
         model = "rw1",
-        scale.model = TRUE,
+        cyclic = TRUE,
         hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
-           scale.model = TRUE,
            hyper = rwHyper) +
-      basin(BASIN_F, model = "iid", hyper = iidHyper) +
-      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+      #basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
       #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-      # space(main = geometry,
-      #           model = spaceHyper) +
+       space(main = geometry,
+                 model = spaceHyper) +
       Intercept(1)
     
     # Model without wastewater
@@ -228,17 +227,16 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       month(
         MONTH_NUM,
         model = "rw1",
-        scale.model = TRUE,
+        cyclic = TRUE,
         hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
-           scale.model = TRUE,
            hyper = rwHyper) +
-      basin(BASIN_F, model = "iid", hyper = iidHyper) +
-      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+     #basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
       #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-      # space(main = geometry,
-      #           model = spaceHyper) +
+     space(main = geometry,
+               model = spaceHyper) +
       Intercept(1)
     
     # RUN MODEL WITH WASTEWATER
@@ -378,7 +376,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
           rename("q0.025" = "0.025quant",
                  "q0.5" = "0.5quant",
                  "q0.975" = "0.975quant") %>%
-          filter(!(randomEff %in% c("basin", "catchment", "wb"))) %>%
+          filter(!(randomEff %in% c("basin", "catchment", "wb", "space"))) %>%
           select(ID, q0.025, q0.5, q0.975, randomEff)
         
         ### Plot
