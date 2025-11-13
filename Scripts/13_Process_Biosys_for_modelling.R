@@ -36,12 +36,6 @@ invData <- readRDS(paste0(dataDir, "Processed/Biosys/invDataSpatial.Rds"))
 # England boundary
 england <- readRDS(paste0(dataDir, "Raw/Country_data/England.Rds"))
 
-# Read land cover data as 1km spatRast file for raster template
-lcm2015 <- paste0(dataDir, "Raw/Land_cover_data/lcm2015gb25m.tif") %>%
-  rast() %>%
-  .[[1]] %>%
-  terra::aggregate(., fact = 200)
-
 # PROCESS DATA STRUCTURE -------------------------------------------------------
 
 # Remove spaces from names for inlabru
@@ -177,21 +171,6 @@ invData$WATER_BODY_F <-paste( invData$REPORTING_AREA,
   as.factor() %>%
   as.numeric() %>%
   as.factor()
-
-### CONVERT RW EFFECTS TO DISCRETE DATA
-
-# # Loop through site variables used for random effects
-# for (i in c("ALTITUDE",
-#             "SLOPE",
-#             "DIST_FROM_SOURCE",
-#             "DISCHARGE",
-#             "ALKALINITY")) {
-# # Group to 10 evenly sized bins and assign to new column
-#   invData[, paste0(i, "_GRP")] <- INLA::inla.group(invData[[i]],
-#                                                   n = 10, 
-#                                                   method = "cut")
-#   
-# }
 
 ### CONVERT SAMPLING SITE ABIOTIC VARIABLES TO PCA ----------------------------------------------
 
@@ -404,23 +383,8 @@ england <- aggregate(england)
 
 ### Smooth
 
-# Convert to raster
-england_R <- rasterize(england, lcm2015,
-                       touches = TRUE,
-                       cover = TRUE)
-
-# Restrict to cells with more than a small fraction (10% of land cover)
-england_R <- ifel(england_R > 0.1,
-             yes = 1,
-             no = NA)
-
-# Convert to sf object
-england_sf <- as.polygons(england_R) %>% # Convert to polygon 
-  st_as_sf(.) # Convert to sf object for smoothing
-
-# Smooth
 # N.B. This is used to created mesh and functions as modelling boundary (domain)
-englandSmooth <- england_sf %>% 
+englandSmooth <- st_as_sf(england) %>% 
   smoothr::smooth(., method = "chaikin") %>%
   smoothr::fill_holes(., threshold = Inf)
 
