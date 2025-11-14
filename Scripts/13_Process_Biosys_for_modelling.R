@@ -78,6 +78,10 @@ invData$YEAR <- invData$YEAR - (min(invData$YEAR) - 1)
 
 # Filter available  data
 invData <- invData %>%
+  # Remove sites with upstream area greater than 500km^2 (5000000m^2) 
+  # to avoid increasing uncertainty with largest areas
+  # area is in 25x25m cells
+  filter((totalArea * 25*25) < 5000000) %>%
   # Remove rows with no upstream data
   filter(!(is.na(pesticideLoad))) %>%
   # Remove rows with no site data
@@ -327,7 +331,7 @@ corr_df <- invData %>%
          sheep_scaled,
          poultry_scaled,
          EDF_MEAN_scaled,
-         HS_HMS_RSB_SubScore_scaled,,
+         HS_HMS_RSB_SubScore_scaled,
          HS_HQA_scaled,
          totalArea_scaled,
          PC1,
