@@ -171,9 +171,9 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
 
     # Priors for random effects
     iidHyper <- list(prec = list(prior = "pc.prec",
-                                 param = c(100, 0.05)))
+                                 param = c(1, 0.5)))
     rwHyper <- list(prec = list(prior="pc.prec",
-                                param=c(100, 0.05)))
+                                param=c(1, 0.5)))
     
     # SET MODEL COMPONENTS
     
@@ -200,6 +200,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         MONTH_NUM,
         model = "rw1",
         cyclic = TRUE,
+        scale.model = TRUE,
         hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
@@ -233,6 +234,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         MONTH_NUM,
         model = "rw1",
         cyclic = TRUE,
+        scale.model = TRUE,
         hyper = rwHyper) +
       year(YEAR,
            model = "rw1",
@@ -256,7 +258,6 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         family = "zeroinflatednbinomial1",
         data = speciesData %>% filter(., !(is.na(EDF_MEAN_scaled))),
         options = list(
-          control.fixed = list(prec.intercept = 0.01),
           control.inla=list(int.strategy = "eb"),
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
@@ -278,7 +279,6 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         family = "zeroinflatednbinomial1",
         data = speciesData,
         options = list(
-          control.fixed = list(prec.intercept = 0.01),
           control.inla=list(int.strategy = "eb"),
           control.compute = list(waic = TRUE,
                                  dic = TRUE,
