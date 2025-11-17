@@ -2,7 +2,7 @@
 #
 # Author: Charles Cunningham
 # 
-# Script Name: Model abundance of common species  using inlabru
+# Script Name: Model abundance of common species using inlabru
 #
 # Script Description: 
 
@@ -94,34 +94,34 @@ invDataINNS <- invData %>%
   distinct(TAXON) %>%
   .$TAXON
 
-### Download BNG WKT string
-download.file(url = "https://epsg.io/27700.wkt2?download=1",
-              destfile = paste0(dataDir, "bng.prj"))
-
-bng <- sf::st_crs(paste0(dataDir, "bng.prj"))$wkt
+# ### Download BNG WKT string
+# download.file(url = "https://epsg.io/27700.wkt2?download=1",
+#               destfile = paste0(dataDir, "bng.prj"))
+# 
+# bng <- sf::st_crs(paste0(dataDir, "bng.prj"))$wkt
 
 ### CREATE MESH ----------------------------------------------------------------
 
-# Max edge is as a rule of thumb (range/3 to range/10)
-maxEdge <- 50
-
-# Create mesh
-mesh <- inla.mesh.2d(boundary = englandSmooth,
-                     max.edge =  maxEdge,
-                     cutoff = maxEdge/5,
-                     crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
-
-# Create mesh dataframe for examining spatial field
-mesh_df <- fm_pixels(mesh, 
-                     mask = st_transform(englandSmooth,
-                                         crs = gsub( "units=m", "units=km",
-                                                     st_crs(bng)$proj4string)))
-
-# Define spatial SPDE priors
-spaceHyper <- inla.spde2.pcmatern(
-  mesh,
-  prior.range = c(5 * maxEdge, 0.5),
-  prior.sigma = c(1, 0.5))
+# # Max edge is as a rule of thumb (range/3 to range/10)
+# maxEdge <- 50
+# 
+# # Create mesh
+# mesh <- inla.mesh.2d(boundary = englandSmooth,
+#                      max.edge =  maxEdge,
+#                      cutoff = maxEdge/5,
+#                      crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
+# 
+# # Create mesh dataframe for examining spatial field
+# mesh_df <- fm_pixels(mesh, 
+#                      mask = st_transform(englandSmooth,
+#                                          crs = gsub( "units=m", "units=km",
+#                                                      st_crs(bng)$proj4string)))
+# 
+# # Define spatial SPDE priors
+# spaceHyper <- inla.spde2.pcmatern(
+#   mesh,
+#   prior.range = c(5 * maxEdge, 0.5),
+#   prior.sigma = c(1, 0.5))
 
 ### MODEL SET UP FOR INDIVIDUAL SPECIES ----------------------------------------
 # Loop through taxa then species to preserve ordering
@@ -204,13 +204,12 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       year(YEAR,
            model = "rw1",
            hyper = rwHyper) +
-      #basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      basin(BASIN_F, model = "iid", hyper = iidHyper) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-      space(main = geometry,
-            model = spaceHyper) +
-      Intercept(1)
-    
+     wb(WATER_BODY_F, model = "iid", hyper = iidHyper) #+
+      # space(main = geometry,
+      #       model = spaceHyper)
+      
     # Model without wastewater
     compsNoWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
@@ -224,7 +223,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       woodland(woodland, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
-      wastewater(EDF_MEAN_scaled, model = "linear") +
+      #wastewater(EDF_MEAN_scaled, model = "linear") +
       upstreamArea(totalArea_scaled, model = "linear") +
       PC1(PC1, model = "linear") +
       PC2(PC2, model = "linear") +
@@ -238,12 +237,11 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       year(YEAR,
            model = "rw1",
            hyper = rwHyper) +
-     #basin(BASIN_F, model = "iid", hyper = iidHyper) +
+     basin(BASIN_F, model = "iid", hyper = iidHyper) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-      space(main = geometry,
-            model = spaceHyper) +
-      Intercept(1)
+      wb(WATER_BODY_F, model = "iid", hyper = iidHyper) #+
+      # space(main = geometry,
+      #       model = spaceHyper)
     
     # RUN MODEL WITH WASTEWATER
     
@@ -410,27 +408,27 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         
         # SPATIAL FIELD
         
-        # Predict spatial field over domain
-        pred_df <- predict(model, mesh_df, ~list(space = space))
-        
-        # Plot spatial field
-        spatialEffPlot <- ggplot() +
-          gg(pred_df$space["mean"], geom = "tile") +
-          gg(st_transform(englandSmooth, 
-                          crs = gsub( "units=m", "units=km", 
-                                      st_crs(bng)$proj4string)),
-             alpha = 0,
-             col = "black",
-             size = 1.5) +
-          theme_void() +
-          theme(legend.position = "bottom") +
-          scale_fill_distiller(palette = 'RdYlBu', direction = 1,
-                               limits = c(-1,1)*max(abs(pred_df$space$mean))) +
-          labs(fill = "Spatial Field   ")
+        # # Predict spatial field over domain
+        # pred_df <- predict(model, mesh_df, ~list(space = space))
+        #
+        # # Plot spatial field
+        # spatialEffPlot <- ggplot() +
+        #   gg(pred_df$space["mean"], geom = "tile") +
+        #   gg(st_transform(englandSmooth, 
+        #                   crs = gsub( "units=m", "units=km", 
+        #                               st_crs(bng)$proj4string)),
+        #      alpha = 0,
+        #      col = "black",
+        #      size = 1.5) +
+        #   theme_void() +
+        #   theme(legend.position = "bottom") +
+        #   scale_fill_distiller(palette = 'RdYlBu', direction = 1,
+        #                        limits = c(-1,1)*max(abs(pred_df$space$mean))) +
+        #   labs(fill = "Spatial Field   ")
         
         # COMBINE PLOTS
-        evalPlot <- plot_grid(fixedEffPlot, randomEffPlot, spatialEffPlot,
-                              nrow = 1, ncol = 3)
+        evalPlot <- plot_grid(fixedEffPlot, randomEffPlot,
+                              nrow = 2, ncol = 1)
         
         # SAVE OUTPUT ------------------------------------------------------------
         
@@ -470,7 +468,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         ggsave(paste0(iSpeciesDir,
                       "/ModelPlots/", iSpecies, ".png"),
                evalPlot,
-               width = 9000, height = 3000, 
+               width = 3000, height = 3000, 
                units = "px", dpi = 400,
                limitsize = FALSE)
       }
