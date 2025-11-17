@@ -66,8 +66,8 @@ lcmsData <- screenData[screenData$method == "LCMS",]
 
 # Plot relationship between concentration and application per area
 ggplot(data = gcmsData,
-       aes(x = Concentration, 
-           y = APP_PER_AREA_MOD *leachability)) +
+       aes(x = log(Concentration), 
+           y = log(APP_PER_AREA_MOD *leachability))) +
   geom_point()
 
 # Check correlation# Check correlationExposure
@@ -77,8 +77,8 @@ cor(gcmsData$Concentration, gcmsData$APP_PER_AREA_MOD * gcmsData$leachability)
 
 # Plot relationship between concentration and application per area
 ggplot(data = lcmsData,
-       aes(x = Concentration, 
-           y = APP_PER_AREA_MOD * leachability)) +
+       aes(x = log(Concentration), 
+           y = log(APP_PER_AREA_MOD * leachability))) +
   geom_point()
 
 # Check correlation
@@ -91,13 +91,13 @@ cor(lcmsData$Concentration, lcmsData$APP_PER_AREA_MOD * lcmsData$leachability)
 # Fit mixed model with concentration as response
 gcmsModMixed <- glmer(Concentration ~ 1 +
                               # Fixed log-transformed estimated application
-                              log(APP_PER_AREA_MOD * leachability) + 
+                              log(APPLICATION_MOD * leachability) + 
                               # Pesticide name random effect
                               (1| PESTICIDE_MOD) +
                               # # Site random effect
                                (1 | Sample_Site_ID) ,
                             family = Gamma(link = "log"),
-                      data = gcmsData %>% 
+                             data = gcmsData %>% 
                         filter(APP_PER_AREA_MOD>0) %>%
                         filter(leachability >0)) 
 
@@ -112,11 +112,11 @@ summary(gcmsModMixed)
 # Fit mixed model with concentration as response
 lcmsModMixed <- glmer(Concentration ~ 1 +
                               # Fixed log-transformed estimated application
-                              log(APP_PER_AREA_MOD*leachability) + 
+                              log(APPLICATION_MOD*leachability) + 
                               # Pesticide name random effect
                               (1| PESTICIDE_MOD) +
                               # Site random effect
-                              (1 | Sample_Site_ID) ,
+                             (1 | Sample_Site_ID),
                             family = Gamma(link = "log"),
                             data =  lcmsData %>% 
                         filter(APP_PER_AREA_MOD>0) %>%
