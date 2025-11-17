@@ -228,10 +228,12 @@ compsWastewater_SR <- numSpecies ~
   month(
     MONTH_NUM,
     model = "rw1",
+    scale.model = TRUE,
     cyclic = TRUE,
     hyper = rwHyper_SR) +
   year(YEAR,
        model = "rw1",
+       scale.model = TRUE,
        hyper = rwHyper_SR) +
   basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
@@ -329,9 +331,11 @@ compsWastewater_Ab <- Abundance ~
     main = MONTH_NUM,
     model = "rw1",
     cyclic = TRUE,
+    scale.model = TRUE,
     hyper = rwHyper_Ab) +
   year(YEAR,
        model = "rw1",
+       scale.model = TRUE,
        hyper = rwHyper_Ab) +
   basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
