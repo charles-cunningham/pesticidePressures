@@ -78,10 +78,10 @@ invData$YEAR <- invData$YEAR - (min(invData$YEAR) - 1)
 
 # Filter available  data
 invData <- invData %>%
-  # Remove sites with upstream area greater than 500km^2 (5000000m^2) 
+  # Remove sites with upstream area greater than 500km^2 (500,000,000m^2) 
   # to avoid increasing uncertainty with largest areas
   # area is in 25x25m cells
-  filter((totalArea * 25*25) < 5000000) %>%
+  filter((totalArea * 25*25) < 500000000) %>%
   # Remove rows with no upstream data
   filter(!(is.na(pesticideLoad))) %>%
   # Remove rows with no site data
@@ -373,27 +373,27 @@ dev.off()
 
 ### Remove small islands
 
-# Disaggregate
-england <- disagg(england)
-
-# Calculate area
-england$area_sqkm <- expanse(england, unit = "km")
-
-# Remove polygons with < 50km ^2 area
-england <- england[england$area_sqkm > 50]
-
-# Aggregate back
-england <- aggregate(england)
-
-### Smooth
-
-# N.B. This is used to created mesh and functions as modelling boundary (domain)
-englandSmooth <- st_as_sf(england) %>% 
-  smoothr::smooth(., method = "chaikin") %>%
-  smoothr::fill_holes(., threshold = Inf)
+# # Disaggregate
+# england <- disagg(england)
+# 
+# # Calculate area
+# england$area_sqkm <- expanse(england, unit = "km")
+# 
+# # Remove polygons with < 50km ^2 area
+# england <- england[england$area_sqkm > 50]
+# 
+# # Aggregate back
+# england <- aggregate(england)
+# 
+# ### Smooth
+# 
+# # N.B. This is used to created mesh and functions as modelling boundary (domain)
+# englandSmooth <- st_as_sf(england) %>% 
+#   smoothr::smooth(., method = "chaikin") %>%
+#   smoothr::fill_holes(., threshold = Inf)
 
 ### SAVE DATASETS ---------------------------------------------------------------
 
 # Save file
 saveRDS(invData, file = paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
-saveRDS(englandSmooth, file = paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
+#saveRDS(englandSmooth, file = paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
