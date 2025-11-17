@@ -80,13 +80,13 @@ randomLabels <- c( 'month' = "Month",
 
 # Priors for random effects
 iidHyper_SR <- list(prec = list(prior = "pc.prec",
-                             param = c(100, 0.05)))
+                             param = c(1, 0.5)))
 rwHyper_SR <- list(prec = list(prior="pc.prec",
-                            param=c(100, 0.05)))
+                            param=c(1, 0.5)))
 iidHyper_Ab <- list(prec = list(prior = "pc.prec",
-                                param = c(100, 0.05)))
+                                param = c(1, 0.5)))
 rwHyper_Ab <- list(prec = list(prior="pc.prec",
-                               param=c(100, 0.05)))
+                               param=c(1, 0.5)))
 
 
 ### Download BNG WKT string
@@ -262,9 +262,11 @@ compsNoWastewater_SR <- numSpecies ~
     MONTH_NUM,
     model = "rw1",
     cyclic = TRUE,
+    scale.model = TRUE,
     hyper = rwHyper_SR) +
   year(YEAR,
        model = "rw1",
+       scale.model = TRUE,
        hyper = rwHyper_SR) +
   basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
@@ -280,7 +282,6 @@ modelNoWastewater_SR <- bru(
   family = "poisson",
   data = invData_SR,
   options = list(
-    control.fixed = list(prec.intercept = 0.01),
     control.inla=list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
@@ -295,7 +296,6 @@ modelWastewater_SR <- bru(
   family = "poisson",
   data = invData_SR %>% filter(., !(is.na(EDF_MEAN_scaled))),
   options = list(
-    control.fixed = list(prec.intercept = 0.01),
     control.inla=list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
@@ -363,9 +363,11 @@ compsNoWastewater_Ab <- Abundance ~
     main = MONTH_NUM,
     model = "rw1",
     cyclic = TRUE,
+    scale.model = TRUE,
     hyper = rwHyper_Ab) +
   year(YEAR,
        model = "rw1",
+       scale.model = TRUE,
        hyper = rwHyper_Ab) +
   basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
@@ -382,7 +384,6 @@ modelNoWastewater_Ab <- bru(
   family = "zeroinflatednbinomial1",
   data = invData_Ab_wZeroes,
   options = list(
-    control.fixed = list(prec.intercept = 0.01),
     control.inla=list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
@@ -399,7 +400,6 @@ modelWastewater_Ab <- bru(
   family = "zeroinflatednbinomial1",
   data = invData_Ab_wZeroes %>% filter(., !(is.na(EDF_MEAN_scaled))),
   options = list(
-    control.fixed = list(prec.intercept = 0.01),
     control.inla=list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
     verbose = TRUE
