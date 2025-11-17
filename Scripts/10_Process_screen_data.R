@@ -31,7 +31,10 @@ lapply(paste0(dataDir, "Processed/Screen"), function(x) {
 
 # Load flow data
 flowChemData <- readRDS(paste0(dataDir,
-                               "Processed/Flow/Flow_data_all.Rds"))
+                               "Processed/Flow/Flow_data_all.Rds")) %>%
+  # Remove sites with upstream area greater than 500km^2 (500,000,000m^2) 
+  # to avoid increasing uncertainty with largest areas
+  filter((totalArea * 25*25) < 500000000)
 
 # Load LC-MS (liquid chromatography-mass spectrometry) screen data
 lcms <- paste0(dataDir,
