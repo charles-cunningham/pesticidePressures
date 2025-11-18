@@ -107,14 +107,36 @@ load(paste0(dataDir, "Species_effects/", type, "/Schedule_2.Rdata"))
 # Summarise effect sizes by  woodland association and taxa
 summary_taxa_df <- effects_wide %>%
   # Group by taxa group and effect category...
-  group_by(taxa) %>%
+  group_by(taxa, chemAppSig, lessPestSig, pesticideDivSig) %>%
   # ... and count total number
   summarise(nuSpecies = length(species)) %>%
   # Ungroup for ...
   ungroup %>%
   # ... proportion
   mutate(freq = prop.table(nuSpecies),
-         taxa)
+         .by = taxa, chemAppSig, lessPestSig, pesticideDivSig) %>%
+  # # ...and total species per taxa
+  mutate(nuTaxa = sum(nuSpecies), .by = taxa)
+
+# Summarise effect sizes by woodland association
+summary_pooled_df <- effects_wide %>%
+  # Group by taxa group and effect category...
+  group_by(chemAppSig, lessPestSig, pesticideDivSig ) %>%
+  # ... and count total number
+  summarise(nuSpecies = length(species)) %>%
+  # Ungroup for ...
+  ungroup %>%
+  # ... proportion
+  mutate(freq = prop.table(nuSpecies),
+         .by = chemAppSig, lessPestSig, pesticideDivSig) %>%
+  # Add taxa column
+  add_column(taxa = "Pooled species") %>%
+  # Add total number of species column
+  mutate(nuTaxa = sum(nuSpecies))
+
+# Join summary data frames together
+summary_all_df <- rbind(summary_taxa_df,
+                        summary_pooled_df)
 
 ### TAXA SUMMARIES
 
@@ -243,7 +265,7 @@ for (i in brmsList) {
 
     # Add labels
     labs(x = "Effect size", # summary measure
-         y = element_blank()) +
+         y = NULL) +
     ggtitle(gsub("_brms", "", i)) +
     theme_classic() +
     theme(legend.position = "none",
@@ -261,4 +283,125 @@ for (i in brmsList) {
          width = 5000,
          height = 5000)
 }
+  
+  
+  # PLOT POOLED ESTIMATES AND INDIVIDUAL SPECIES EFFECTS  ----------------------
+  
+  for(brms in c("pesticideDiv_brms", "chemApp_brms", "lessPest_brms")) {
+  
+    # Assign brms object
+    iBrms <- get(brms)
+    iBrmsDraws <- get(paste0(brms, "_draws"))
+    iBrmsSummary <- get(paste0(brms, "_drawsSummary"))
+    
+    # POINT ESTIMATE PLOT
+
+    taxaSummaries <- ggplot(data = iBrmsDraws,
+                            aes(taxa_mean,
+                                taxa,
+                                fill = taxa )) +
+      
+      # Add densities
+      geom_density_ridges(scale = 0.95,
+                          rel_min_height = 0.01) +
+      geom_pointinterval(data = iBrmsSummary,
+                         linewidth = 2,
+                         aes(xmin = .lower, xmax = .upper)) +
+      
+      # Change colours and labels
+      scale_y_discrete(labels = taxaGroupLabels) +
+      
+      # Add vertical lines for pooled effect mean and CI, and 0
+      geom_vline(xintercept = fixef(iBrms)[1, 1],
+                 color = "grey",
+                 linewidth = 1) +
+      geom_vline( xintercept = fixef(iBrms)[1, 3:4],
+                  color = "grey",
+                  linetype = 2) +
+      geom_vline(xintercept = 0,
+                 color = "black",
+                 linewidth = 1) +
+      
+      # Add labels
+      labs(x = "Effect estimate", # summary measure
+           y = NULL) +
+      
+      # Add theme elements
+      theme_classic() +
+      theme(legend.position = "none",
+            axis.text.y = element_text(size = 18),
+            axis.text.x = element_text(size = 18),
+            axis.title.x = element_text(size = 18),
+            plot.title = element_text(size = 22, hjust = -0.4, vjust =-0.2))
+    
+    # BAR PLOT -----------------------------------------------------------------
+    
+    sigBarPlot <- ggplot(data = summary_all_df,
+                       aes(x = factor(taxa,
+                                      levels = levels(iBrmsDraws$taxa)), 
+                           y = nuSpecies,
+                           fill = paste0(sub("_brms", "", brms), "Sig") %>%
+                             get() %>%
+                             factor(.,
+                                    levels = c("Pos", "NS", "Neg")))) +
+
+    # Add bar plot
+    geom_bar(position = "stack",
+             stat = "identity") +
+    coord_flip() +
+    
+    # Change scales, fills and labels
+    scale_x_discrete(labels = NULL) +
+    scale_fill_manual(
+      "Effect",
+      values = wesanderson::wes_palette("Zissou1")[c(1,3,5)],
+      labels = c("Positive", "None", "Negative"),
+      guide_coloursteps(title.position = "top")) +
+    labs(y = "Number of species") +
+    
+    # Add phylopic images
+    geom_phylopic(data = data.frame(taxa = levels(iBrmsDraws$taxa)) %>%
+                    left_join(., phylopicImages,
+                              by = "taxa"),
+                  inherit.aes = FALSE,
+                  aes(x = taxa,
+                      y = 40,
+                      img = svg),
+                  position = position_nudge(y = 0.5),
+                  width = 10,
+                  na.rm = TRUE) +
+    
+    # Change theme parameters
+    theme_classic() +
+    theme(axis.text.x = element_text(size = 16),
+          axis.title.x = element_text(size = 18),
+          axis.title.y = element_blank(),
+          panel.grid.major.x= element_line( linewidth = 0.1, color = "black" ),
+          legend.position = c(0.8, 0.8),
+          legend.background = element_blank(),
+          legend.text = element_text(size = 18),
+          legend.title = element_text(size = 18),
+          plot.title = element_text(size=22, hjust = -0.4, vjust =-0.2))
+  
+
+    # COMBINED PLOT ------------------------------------------------------------
+    
+    combinedPlot <- cowplot::ggdraw(clip = "on") +
+      cowplot::draw_plot(taxaSummaries, 0, 0, 0.575, 1) +
+      cowplot::draw_plot(sigBarPlot, 0.575, 0, 0.425, 1,) +
+      cowplot::draw_label("(a)", 0.015, 0.98, size = 24) +
+      cowplot::draw_label("(b)", 0.56, 0.98, size = 24) +
+      theme(plot.background = element_rect( fill = "white", colour = "white"))
+    
+    # SAVE ---------------------------------------------------------------------
+    
+    # Save
+    ggsave(filename = paste0(plotDir, "Meta_analysis/", type, "/Effects/Meta_",
+                             brms, "_taxaMultiPlot.png"),
+           combinedPlot,
+           dpi = 600,
+           units = "px",
+           width = 10000,
+           height = 5000)
+  }
 }
