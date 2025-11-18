@@ -120,8 +120,26 @@ for (type in c("Wastewater", "NoWastewater")) {
   # Remove any species with 0s for all values (modelling error)
   effects_wide <- effects_wide %>%
     filter(if_any(where(is.numeric), ~ .x != 0))
+  
+  # CHEMICAL AND ABUNDANCE RELATIONSHIPS --------------------------------------- 
+  
+  # Create discrete association categories
+  effects_wide <- mutate( effects_wide,
+    chemAppSig = case_when(
+      X0.025quant_chemApp > 0 & X0.975quant_chemApp > 0 ~ "Pos",
+      X0.025quant_chemApp < 0 &  X0.975quant_chemApp < 0 ~ "Neg",
+      TRUE ~ "NS"),
+    lessPestSig = case_when(
+      X0.025quant_lessPest > 0 & X0.975quant_lessPest > 0 ~ "Pos",
+      X0.025quant_lessPest < 0 & X0.975quant_lessPest < 0 ~ "Neg",
+      TRUE ~ "NS"),
+    pesticideDivSig = case_when(
+      X0.025quant_pesticideDiv > 0 & X0.975quant_pesticideDiv > 0 ~ "Pos",
+      X0.025quant_pesticideDiv < 0 & X0.975quant_pesticideDiv < 0 ~ "Neg",
+      TRUE ~ "NS")
+  )
 
-  # SAVE DATA FRAME --------------------------------------------------------------
+  # SAVE DATA FRAME ------------------------------------------------------------
   
   # Save
   save(
@@ -132,3 +150,4 @@ for (type in c("Wastewater", "NoWastewater")) {
   
   }
 }
+
