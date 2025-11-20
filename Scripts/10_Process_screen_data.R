@@ -64,7 +64,7 @@ rm(lcms, gcms)
 screenData <- screenData %>%
   filter(SMC_DESC == "RIVER / RUNNING SURFACE WATER") %>%
   filter(grepl("FRESHWATER",.$SPT_DESC)) %>%
-  filter(year >= 2010 & year < 2020)
+  filter(year > 2010 )
 
 # Remove columns not needed
 screenData <- screenData %>%
