@@ -60,7 +60,7 @@ rm(lcms, gcms)
 # Filter data:
 # - sampling material to rivers and running freshwater
 # - sampling type to freshwater only
-# - year to only 2010-2019 to be in similar time frame to flow data
+# - year to only after 2010 to be same time frame to flow data
 screenData <- screenData %>%
   filter(SMC_DESC == "RIVER / RUNNING SURFACE WATER") %>%
   filter(grepl("FRESHWATER",.$SPT_DESC)) %>%
