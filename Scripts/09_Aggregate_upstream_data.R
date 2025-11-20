@@ -191,18 +191,21 @@ flowDataAll <- flowDataAll %>%
 
 ### CREATE PESTICIDE DIVERSITY METRICS -----------------------------------------
 
-# Create diversity indices
-flowDataAll <- flowDataAll %>%
+# Create Shannon diversity index
+flowDataAll$pesticideShannon <- flowDataAll %>%
+  names(.) %>%
+  grep("pesticide_",., value = TRUE) %>%
+  as_tibble(flowDataAll)[,.] %>% 
+  '*' (leachability) %>%
+  diversity(., index = "shannon") 
   
-  # Create pesticideDiv column as Shannon diversity index
-  mutate(pesticideShannon =
-           diversity(across(starts_with('pesticide_')),
-                            index = "shannon")) %>%
-  
-  # Create pesticideDiv column as Simpson diversity index
-  mutate(pesticideSimpson =
-           diversity(across(starts_with('pesticide_')),
-                            index = "simpson"))
+# Create Simpson diversity index
+flowDataAll$pesticideSimpson <- flowDataAll %>%
+  names(.) %>%
+  grep("pesticide_",., value = TRUE) %>%
+  as_tibble(flowDataAll)[,.] %>% 
+  '*' (leachability) %>%
+  diversity(., index = "simpson") 
 
 # REMOVE REDUNDANT PESTICIDE COLUMNS -------------------------------------------
 
