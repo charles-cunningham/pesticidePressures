@@ -46,7 +46,6 @@ taxaGroupLabels <- c( "annelid" = "Leeches",
                       "true_fly_(Diptera)" = "True flies",
                       "mollusc" = "Molluscs")
 
-
 # Set phylopic images (choose uuid manually)
 phylopicImages <- data.frame(taxa = taxaGroups,
                              uuid = c(
@@ -231,7 +230,7 @@ for (i in brmsList) {
     
     # Add densities
     geom_density_ridges(scale = 0.9,
-                        rel_min_height = 0.1) +
+                        rel_min_height = 0.01) +
     geom_pointinterval(data = iBrmsSummary,
                        linewidth = 2,
                        aes(xmin = .lower, xmax = .upper)) +
