@@ -57,19 +57,20 @@ invData <- readRDS(paste0(dataDir, "Processed/Biosys/invData_forModel.Rds"))
 
 # SET PARAMETERS ---------------------------------------------------------------
 
-linearLabels_NoW <- c('pesticideDiv' = "Pesticide diversity",
-                      'chemApp' = "Pesticides and NP",
-                      'lessPest' = "More NP than pesticide",
-                      'cattle' = "Cattle",
-                      'pigs' = "Pigs",
-                      'sheep' = "Sheep",
-                      'poultry' = "Poultry",
-                      'residential' = "Residential",
-                      'woodland' = "Woodland",
-                      'modification' = "Stream modification",
-                      'quality' = "Habitat quality",
-                      'upstreamArea' = "Upstream area")
-
+linearLabels_NoW <- c(
+  'pesticideDiv' = "Pesticide diversity",
+  'pestTox' = "Pesticide toxicity",
+  'eutroph' = "Mean N and P application",
+  'cattle' = "Cattle",
+  'pigs' = "Pigs",
+  'sheep' = "Sheep",
+  'poultry' = "Poultry",
+  'residential' = "Residential",
+  'woodland' = "Woodland",
+  'modification' = "Stream modification",
+  'quality' = "Habitat quality",
+  'upstreamArea' = "Upstream area"
+)
 
 linearLabels_W <- c(linearLabels_NoW,
                     'wastewater' = "Wastewater")
@@ -102,26 +103,26 @@ invDataINNS <- invData %>%
 
 ### CREATE MESH ----------------------------------------------------------------
 
-# # Max edge is as a rule of thumb (range/3 to range/10)
-# maxEdge <- 50
-# 
-# # Create mesh
-# mesh <- inla.mesh.2d(boundary = englandSmooth,
-#                      max.edge =  maxEdge,
-#                      cutoff = maxEdge/5,
-#                      crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
-# 
-# # Create mesh dataframe for examining spatial field
-# mesh_df <- fm_pixels(mesh, 
-#                      mask = st_transform(englandSmooth,
-#                                          crs = gsub( "units=m", "units=km",
-#                                                      st_crs(bng)$proj4string)))
-# 
-# # Define spatial SPDE priors
-# spaceHyper <- inla.spde2.pcmatern(
-#   mesh,
-#   prior.range = c(5 * maxEdge, 0.5),
-#   prior.sigma = c(1, 0.5))
+# Max edge is as a rule of thumb (range/3 to range/10)
+maxEdge <- 10
+
+# Create mesh
+mesh <- inla.mesh.2d(boundary = englandSmooth,
+                     max.edge =  maxEdge,
+                     cutoff = maxEdge/2,
+                     crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
+
+# Create mesh dataframe for examining spatial field
+mesh_df <- fm_pixels(mesh,
+                     mask = st_transform(englandSmooth,
+                                         crs = gsub( "units=m", "units=km",
+                                                     st_crs(bng)$proj4string)))
+
+# Define spatial SPDE priors
+spaceHyper <- inla.spde2.pcmatern(
+  mesh,
+  prior.range = c(1 * maxEdge, 0.5),
+  prior.sigma = c(1, 0.5))
 
 ### MODEL SET UP FOR INDIVIDUAL SPECIES ----------------------------------------
 # Loop through taxa then species to preserve ordering
@@ -180,8 +181,10 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     # Model with wastewater
     compsWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      chemApp(chemicalApp, model = "linear") +
-      lessPest(lessPesticide, model = "linear") +
+      #chemApp(chemicalApp, model = "linear") +
+      #lessPest(lessPesticide, model = "linear") +
+      pestTox(pesticideToxicLoad_scaled, model = "linear") +
+      eutroph(eutroph, model = "linear") +
       cattle(cattle_scaled, model = "linear") +
       pigs(pigs_scaled, model = "linear") +
       sheep(sheep_scaled, model = "linear") +
@@ -198,24 +201,26 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       PC4(PC4, model = "linear") +
       month(
         MONTH_NUM,
-        model = "rw1",
+        model = "rw2",
         cyclic = TRUE,
         scale.model = TRUE,
         hyper = rwHyper) +
       year(YEAR,
-           model = "rw1",
+           model = "rw2",
            hyper = rwHyper) +
-      basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      #basin(BASIN_F, model = "iid", hyper = iidHyper) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-     wb(WATER_BODY_F, model = "iid", hyper = iidHyper) #+
-      # space(main = geometry,
-      #       model = spaceHyper)
+     #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) #+
+      space(main = geometry,
+            model = spaceHyper)
       
     # Model without wastewater
     compsNoWastewater <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      chemApp(chemicalApp, model = "linear") +
-      lessPest(lessPesticide, model = "linear") +
+      #chemApp(chemicalApp, model = "linear") +
+      #lessPest(lessPesticide, model = "linear") +
+      pestTox(pesticideToxicLoad_scaled, model = "linear") +
+      eutroph(eutroph, model = "linear") +
       cattle(cattle_scaled, model = "linear") +
       pigs(pigs_scaled, model = "linear") +
       sheep(sheep_scaled, model = "linear") +
@@ -232,18 +237,18 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       PC4(PC4, model = "linear") +
       month(
         MONTH_NUM,
-        model = "rw1",
+        model = "rw2",
         cyclic = TRUE,
         scale.model = TRUE,
         hyper = rwHyper) +
       year(YEAR,
-           model = "rw1",
+           model = "rw2",
            hyper = rwHyper) +
-     basin(BASIN_F, model = "iid", hyper = iidHyper) +
+     #basin(BASIN_F, model = "iid", hyper = iidHyper) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
-      wb(WATER_BODY_F, model = "iid", hyper = iidHyper) #+
-      # space(main = geometry,
-      #       model = spaceHyper)
+      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) #+
+      space(main = geometry,
+            model = spaceHyper)
     
     # RUN MODEL WITH WASTEWATER
     
