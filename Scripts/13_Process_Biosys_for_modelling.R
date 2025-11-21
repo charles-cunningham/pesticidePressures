@@ -322,8 +322,10 @@ invData <- cbind(invData, chemPCA$x)
 corr_df <- invData %>%
   as_tibble(.) %>%
   select(pesticideShannon_scaled,
-         chemicalApp,
-         lessPesticide,
+         #hemicalApp,
+         #lessPesticide,
+         pesticideToxicLoad_scaled,
+         eutroph,
          residential,
          woodland,
          cattle_scaled,
