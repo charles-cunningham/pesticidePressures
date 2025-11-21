@@ -59,8 +59,8 @@ englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
 
 linearLabels_NoW <- c(
   'pesticideDiv' = "Pesticide diversity",
-  'chemApp' = "Pesticides and NP",
-  'lessPest' = "More NP than pesticide",
+  'pestTox' = "Pesticide toxicity",
+  'eutroph' = "Mean N and P application",
   'cattle' = "Cattle",
   'pigs' = "Pigs",
   'sheep' = "Sheep",
@@ -101,8 +101,10 @@ bng <- sf::st_crs(paste0(dataDir, "bng.prj"))$wkt
 invData <- invData %>%
   select(
     pesticideShannon_scaled,
-    chemicalApp,
-    lessPesticide,
+    #chemicalApp,
+    #lessPesticide,
+    eutroph,
+    pesticideToxicLoad_scaled,
     residential,
     woodland,
     cattle_scaled,
@@ -181,26 +183,26 @@ gc()
 
 ### CREATE MESH ----------------------------------------------------------------
 
-# # Max edge is as a rule of thumb (range/3 to range/10)
-# maxEdge <- 50
-# 
-# # Create mesh
-# mesh <- inla.mesh.2d(boundary = englandSmooth,
-#                      max.edge =  maxEdge,
-#                      cutoff = maxEdge/5,
-#                      crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
-# 
-# # Create mesh dataframe for examining spatial field
-# mesh_df <- fm_pixels(mesh, 
-#                      mask = st_transform(englandSmooth,
-#                                          crs = gsub( "units=m", "units=km",
-#                                                      st_crs(bng)$proj4string)))
-# 
-# # Define spatial SPDE priors
-# spaceHyper <- inla.spde2.pcmatern(
-#   mesh,
-#   prior.range = c(1 * maxEdge, 0.5),
-#   prior.sigma = c(1, 0.5))
+# Max edge is as a rule of thumb (range/3 to range/10)
+maxEdge <- 10
+
+# Create mesh
+mesh <- inla.mesh.2d(boundary = englandSmooth,
+                     max.edge =  maxEdge,
+                     cutoff = maxEdge/2,
+                     crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
+
+# Create mesh dataframe for examining spatial field
+mesh_df <- fm_pixels(mesh,
+                     mask = st_transform(englandSmooth,
+                                         crs = gsub( "units=m", "units=km",
+                                                     st_crs(bng)$proj4string)))
+
+# Define spatial SPDE priors
+spaceHyper <- inla.spde2.pcmatern(
+  mesh,
+  prior.range = c(1 * maxEdge, 0.5),
+  prior.sigma = c(1, 0.5))
 
 ### RUN RICHNESS MODELS --------------------------------------------------------
     
@@ -209,8 +211,10 @@ gc()
 # Richness model with wastewater
 compsWastewater_SR <- numSpecies ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  chemApp(chemicalApp, model = "linear") +
-  lessPest(lessPesticide, model = "linear") +
+  #chemApp(chemicalApp, model = "linear") +
+  #lessPest(lessPesticide, model = "linear") +
+  pestTox(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
   pigs(pigs_scaled, model = "linear") +
   sheep(sheep_scaled, model = "linear") +
@@ -227,25 +231,27 @@ compsWastewater_SR <- numSpecies ~
   PC4(PC4, model = "linear") +
   month(
     MONTH_NUM,
-    model = "rw1",
+    model = "rw2",
     scale.model = TRUE,
     cyclic = TRUE,
     hyper = rwHyper_SR) +
   year(YEAR,
-       model = "rw1",
+       model = "rw2",
        scale.model = TRUE,
        hyper = rwHyper_SR) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+ #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR)# +
-    # space(main = geometry,
-    #       model = spaceHyper)
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR)# +
+    space(main = geometry,
+          model = spaceHyper)
 
 # Richness model without wastewater
 compsNoWastewater_SR <- numSpecies ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  chemApp(chemicalApp, model = "linear") +
-  lessPest(lessPesticide, model = "linear") +
+  #chemApp(chemicalApp, model = "linear") +
+  #lessPest(lessPesticide, model = "linear") +
+  pestTox(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
   pigs(pigs_scaled, model = "linear") +
   sheep(sheep_scaled, model = "linear") +
@@ -262,19 +268,19 @@ compsNoWastewater_SR <- numSpecies ~
   PC4(PC4, model = "linear") +
   month(
     MONTH_NUM,
-    model = "rw1",
+    model = "rw2",
     cyclic = TRUE,
     scale.model = TRUE,
     hyper = rwHyper_SR) +
   year(YEAR,
-       model = "rw1",
+       model = "rw2",
        scale.model = TRUE,
        hyper = rwHyper_SR) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
-    # space(main = geometry,
-    #            model = spaceHyper)
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
+    space(main = geometry,
+               model = spaceHyper)
 
 # RUN RICHNESS MODEL WITHOUT WASTEWATER
 
@@ -415,9 +421,9 @@ gc()
 
 # Loop through both models
 models <- list(modelWastewater_SR = modelWastewater_SR,
-               modelNoWastewater_SR = modelNoWastewater_SR,
-               modelWastewater_Ab = modelWastewater_Ab,
-               modelNoWastewater_Ab = modelNoWastewater_Ab)
+               modelNoWastewater_SR = modelNoWastewater_SR) #,
+              # modelWastewater_Ab = modelWastewater_Ab,
+               #modelNoWastewater_Ab = modelNoWastewater_Ab)
       
 for (modelName in names(models)) {
 
@@ -537,29 +543,29 @@ for (modelName in names(models)) {
     xlab("") +
     ylab("Count")
   
-  # # SPATIAL FIELD
-  # 
-  # # Predict spatial field over domain
-  # pred_df <- predict(model, mesh_df, ~list(space = space))
-  # 
-  # # Plot spatial field
-  # spatialEffPlot <- ggplot() +
-  #   gg(pred_df$space["mean"], geom = "tile") +
-  #   gg(st_transform(englandSmooth, 
-  #                   crs = gsub( "units=m", "units=km", 
-  #                               st_crs(bng)$proj4string)),
-  #      alpha = 0,
-  #      col = "black",
-  #      size = 1.5) +
-  #   theme_void() +
-  #   theme(legend.position = "bottom") +
-  #   scale_fill_distiller(palette = 'RdYlBu', direction = 1,
-  #                        limits = c(-1,1)*max(abs(pred_df$space$mean))) +
-  #   labs(fill = "Spatial Field   ")
+  # SPATIAL FIELD
+
+  # Predict spatial field over domain
+  pred_df <- predict(model, mesh_df, ~list(space = space))
+
+  # Plot spatial field
+  spatialEffPlot <- ggplot() +
+    gg(pred_df$space["mean"], geom = "tile") +
+    gg(st_transform(englandSmooth,
+                    crs = gsub( "units=m", "units=km",
+                                st_crs(bng)$proj4string)),
+       alpha = 0,
+       col = "black",
+       size = 1.5) +
+    theme_void() +
+    theme(legend.position = "bottom") +
+    scale_fill_distiller(palette = 'RdYlBu', direction = 1,
+                         limits = c(-1,1)*max(abs(pred_df$space$mean))) +
+    labs(fill = "Spatial Field   ")
   
   # COMBINE PLOTS
-  evalPlot <- plot_grid(fixedEffPlot, randomEffPlot,
-                        nrow = 2, ncol = 1)
+  evalPlot <- plot_grid(fixedEffPlot, randomEffPlot,spatialEffPlot,
+                        nrow = 1, ncol = 3)
   
   # SAVE OUTPUT ------------------------------------------------------------
   
@@ -583,7 +589,7 @@ for (modelName in names(models)) {
   ggsave(
     paste0(iSpeciesDir, modelName, ".png"),
     evalPlot,
-    width = 3000,
+    width = 9000,
     height = 3000,
     units = "px",
     dpi = 400,
