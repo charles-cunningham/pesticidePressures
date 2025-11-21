@@ -40,14 +40,14 @@ taxaGroupLabels <- c( "annelid" = "Leeches",
 # Loop through models that include and exclude wastewater
 for (type in c("Wastewater", "NoWastewater")) {
   # Loop through the two species groups
-  for (group in c("Schedule_2", "INNS")) {
+  for (group in c("Schedule_2")) {
     
     # Load SDM fixed effect summaries
     load(paste0(dataDir, "Species_effects/", type, "/", group, ".Rdata"))
     
-     assign(paste0(type, "_", group, "_effects_df" ), effects_df)
-     assign(paste0(type, "_", group, "_effects_wide" ), effects_wide)
-  }}   
+    # assign(paste0(type, "_", group, "_effects_df" ), effects_df)
+    # assign(paste0(type, "_", group, "_effects_wide" ), effects_wide)
+   
 
 # NoWastewater_INNS_effects_df
 # Wastewater_INNS_effects_df
@@ -59,17 +59,15 @@ for (type in c("Wastewater", "NoWastewater")) {
 # NoWastewater_Schedule_2_effects_wide
 # Wastewater_Schedule_2_effects_wide
 
-effects_df <- Wastewater_Schedule_2_effects_df  
-effects_wide <- Wastewater_Schedule_2_effects_wide
+#effects_df <- Wastewater_Schedule_2_effects_df  
+#effects_wide <- Wastewater_Schedule_2_effects_wide
 
 # BOX PLOT  --------------------------------------------------------------------
 
 # Box plot of connectivity model effect sizes
 
 # Plot
-rawEffects <- effects_df[, ] %>%
-
-  ggplot() +
+rawEffects <- ggplot(data= effects_df) +
   geom_boxplot(aes(x = effect, y = mean   )) +
   # facet_wrap(~taxa) +
   geom_hline(yintercept = 0, linetype = "dashed") +
@@ -89,44 +87,52 @@ ggsave(filename = paste0(plotDir,
 
 # EFFECTS CORRELATION MATRIX ---------------------------------------------------
 
+if(group == "Schedule_2") {
+
 # Change taxa names to standardised names
 # (as tricky to use labeller within ggpairs() as you normally would with ggplot())
 effects_wide$labels <- str_replace_all(string = effects_wide$taxa,
                                        pattern = taxaGroupLabels)
 
+
+effect_pairs <- effects_wide %>%
+  select(c(labels, mean_pesticideDiv, mean_pestTox, mean_eutroph, 
+           mean_cattle, mean_pigs, mean_sheep, mean_poultry,
+           mean_residential, mean_woodland,
+           mean_modification, mean_quality))
+
+effect_labels <- c(
+  "Group",
+  "Div",
+  "Tox",
+  "eutroph",
+  "cattle",
+  "pigs",
+  "sheep",
+  "poultry",
+  "residential",
+  "woodland",
+  "modification",
+  "quality"
+)
+
+if(type == "Wastewater") {
+  effect_pairs <- cbind(effect_pairs,
+                       mean_wastewater = effects_wide$mean_wastewater)
+  effect_labels <- c(effect_labels, "wastewater")
+}
+
 # Plot
-effectPairs <- effects_wide %>%
-  # Select columns we want for pairs plot
-  select(c(labels, mean_pesticideDiv, mean_pesticideToxicity,
-            mean_NPK, mean_cattle, mean_pigs, mean_sheep, mean_poultry,
-            mean_arable, mean_grass, mean_residential, mean_woodland,
-            mean_modification, mean_quality, mean_wastewater)) %>%
+effect_plot <- effect_pairs %>%
   # Call ggpairs
   ggpairs(
     aes(colour = labels, alpha = 0.5),
     #lower = list(continuous = wrap("cor", size = 3)),
-    diag = list(continuous = wrap("densityDiag")),
+    diag = list(continuous = "densityDiag"),
     upper = list(
-      combo = wrap("box_no_facet"),
-      continuous = wrap("points")
-    ),
-    columnLabels = c(
-      "Group",
-      "Div",
-      "Tox",
-      "NPK",
-      "cattle",
-      "pigs",
-      "sheep",
-      "poultry",
-      "Arable",
-      "grass",
-      "residential",
-      "woodland",
-      "modification",
-      "quality",
-      "wastewater"
-    ))
+      combo = "box_no_facet",
+      continuous = "points"),
+    columnLabels = effect_labels )
 
 # Remove 'Taxa' histograms as redundant information and confusing
 
@@ -134,28 +140,32 @@ effectPairs <- effects_wide %>%
 plots = list()
 
 # Iteratively collect the sub-plots we want
-for (i in 1:15) {
-  plots <- c(plots, lapply(2:effectPairs$ncol, function(j)
+for (i in 1:length(effect_labels)) {
+  plots <- c(plots, lapply(2:effect_plot$ncol, function(j)
     getPlot(
-      effectPairs, i = i, j = j
+      effect_plot, i = i, j = j
     )))
 }
 
 # Use ggmatrix to plot the subsetted sub-plots
-effectPairsTrim <- ggmatrix(
+effect_plotTrim <- ggmatrix(
   plots,
-  nrow = 15,
-  ncol = effectPairs$ncol - 1,
-  xAxisLabels = effectPairs$xAxisLabels[2:effectPairs$ncol],
-  yAxisLabels = effectPairs$yAxisLabels
+  nrow = length(effect_labels),
+  ncol = effect_plot$ncol - 1,
+  xAxisLabels = effect_plot$xAxisLabels[2:effect_plot$ncol],
+  yAxisLabels = effect_plot$yAxisLabels
 )
 
 # Save
 ggsave(
-  filename = paste0(plotDir, "rawPairsPlot.png"),
-  effectPairsTrim,
+  filename = paste0(plotDir, "Descriptive_analysis/", 
+                    type, "_rawPairsPlot.png"),
+  effect_plotTrim,
   dpi = 600,
   units = "px",
   width = 6000,
   height = 6000
 )
+
+}
+}}
