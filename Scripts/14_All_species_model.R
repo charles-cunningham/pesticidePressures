@@ -88,7 +88,6 @@ iidHyper_Ab <- list(prec = list(prior = "pc.prec",
 rwHyper_Ab <- list(prec = list(prior="pc.prec",
                                param=c(1, 0.5)))
 
-
 ### Download BNG WKT string
 download.file(url = "https://epsg.io/27700.wkt2?download=1",
               destfile = paste0(dataDir, "bng.prj"))
@@ -184,25 +183,25 @@ gc()
 ### CREATE MESH ----------------------------------------------------------------
 
 # Max edge is as a rule of thumb (range/3 to range/10)
-maxEdge <- 10
+maxEdge <- 10000
 
 # Create mesh
-mesh <- inla.mesh.2d(boundary = englandSmooth,
-                     max.edge =  maxEdge,
-                     cutoff = maxEdge/2,
-                     crs = gsub( "units=m", "units=km", st_crs(bng)$proj4string ))
-
-# Create mesh dataframe for examining spatial field
-mesh_df <- fm_pixels(mesh,
-                     mask = st_transform(englandSmooth,
-                                         crs = gsub( "units=m", "units=km",
-                                                     st_crs(bng)$proj4string)))
+mesh <- fm_mesh_2d_inla(boundary = englandSmooth,
+                        max.edge =  maxEdge,
+                        cutoff = maxEdge/2,
+                        min.angle = 26,
+                        crs =  st_crs(bng)$proj4string )
 
 # Define spatial SPDE priors
 spaceHyper <- inla.spde2.pcmatern(
   mesh,
   prior.range = c(1 * maxEdge, 0.5),
   prior.sigma = c(1, 0.5))
+
+# Create mesh dataframe for examining spatial field
+mesh_df <- fm_pixels(mesh,
+                     mask = st_transform(englandSmooth,
+                                         crs = st_crs(bng)$proj4string))
 
 ### RUN RICHNESS MODELS --------------------------------------------------------
     
@@ -211,8 +210,6 @@ spaceHyper <- inla.spde2.pcmatern(
 # Richness model with wastewater
 compsWastewater_SR <- numSpecies ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  #chemApp(chemicalApp, model = "linear") +
-  #lessPest(lessPesticide, model = "linear") +
   pestTox(pesticideToxicLoad_scaled, model = "linear") +
   eutroph(eutroph, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
@@ -238,7 +235,7 @@ compsWastewater_SR <- numSpecies ~
   year(YEAR,
        model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper_SR) +
+        hyper = rwHyper_SR) +
  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
   #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR)# +
@@ -248,8 +245,6 @@ compsWastewater_SR <- numSpecies ~
 # Richness model without wastewater
 compsNoWastewater_SR <- numSpecies ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  #chemApp(chemicalApp, model = "linear") +
-  #lessPest(lessPesticide, model = "linear") +
   pestTox(pesticideToxicLoad_scaled, model = "linear") +
   eutroph(eutroph, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
@@ -317,8 +312,8 @@ gc()
 # Abundance model with wastewater
 compsWastewater_Ab <- Abundance ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  chemApp(chemicalApp, model = "linear") +
-  lessPest(lessPesticide, model = "linear") +
+  pestTox(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
   pigs(pigs_scaled, model = "linear") +
   sheep(sheep_scaled, model = "linear") +
@@ -327,34 +322,31 @@ compsWastewater_Ab <- Abundance ~
   woodland(woodland, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
-  wastewater(EDF_MEAN_scaled, model = "linear") +
   upstreamArea(totalArea_scaled, model = "linear") +
+  wastewater(EDF_MEAN_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
   month(
-    main = MONTH_NUM,
-    model = "rw1",
+    MONTH_NUM,
+    model = "rw2",
     cyclic = TRUE,
     scale.model = TRUE,
-    hyper = rwHyper_Ab) +
+    hyper = rwHyper_SR) +
   year(YEAR,
-       model = "rw1",
+       model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper_Ab) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
-  # space(main = geometry,
-  #         model = spaceHyper) +
+       hyper = rwHyper_SR) +
+  space(main = geometry,
+        model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab) 
 
 # Abundance model without wastewater
 compsNoWastewater_Ab <- Abundance ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  chemApp(chemicalApp, model = "linear") +
-  lessPest(lessPesticide, model = "linear") +
+  pestTox(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
   pigs(pigs_scaled, model = "linear") +
   sheep(sheep_scaled, model = "linear") +
@@ -370,20 +362,17 @@ compsNoWastewater_Ab <- Abundance ~
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
   month(
-    main = MONTH_NUM,
-    model = "rw1",
+    MONTH_NUM,
+    model = "rw2",
     cyclic = TRUE,
     scale.model = TRUE,
-    hyper = rwHyper_Ab) +
+    hyper = rwHyper_SR) +
   year(YEAR,
-       model = "rw1",
+       model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper_Ab) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_Ab) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_Ab) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_Ab) +
-   # space(main = geometry,
-   #       model = spaceHyper) +
+       hyper = rwHyper_SR) +
+  space(main = geometry,
+        model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab)
     
 # RUN ABUNDANCE MODEL WITHOUT WASTEWATER
@@ -421,9 +410,9 @@ gc()
 
 # Loop through both models
 models <- list(modelWastewater_SR = modelWastewater_SR,
-               modelNoWastewater_SR = modelNoWastewater_SR) #,
-              # modelWastewater_Ab = modelWastewater_Ab,
-               #modelNoWastewater_Ab = modelNoWastewater_Ab)
+               modelNoWastewater_SR = modelNoWastewater_SR,
+               modelWastewater_Ab = modelWastewater_Ab,
+               modelNoWastewater_Ab = modelNoWastewater_Ab)
       
 for (modelName in names(models)) {
 
@@ -589,8 +578,8 @@ for (modelName in names(models)) {
   ggsave(
     paste0(iSpeciesDir, modelName, ".png"),
     evalPlot,
-    width = 9000,
-    height = 3000,
+    width = 8000,
+    height = 2000,
     units = "px",
     dpi = 400,
     limitsize = FALSE
