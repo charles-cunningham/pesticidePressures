@@ -375,24 +375,24 @@ dev.off()
 
 ### Remove small islands
 
-# # Disaggregate
-# england <- disagg(england)
-# 
-# # Calculate area
-# england$area_sqkm <- expanse(england, unit = "km")
-# 
-# # Remove polygons with < 50km ^2 area
-# england <- england[england$area_sqkm > 50]
-# 
-# # Aggregate back
-# england <- aggregate(england)
-# 
-# ### Smooth
-# 
-# # N.B. This is used to created mesh and functions as modelling boundary (domain)
-# englandSmooth <- st_as_sf(england) %>% 
-#   smoothr::smooth(., method = "chaikin") %>%
-#   smoothr::fill_holes(., threshold = Inf)
+# Disaggregate
+england <- disagg(england)
+
+# Calculate area
+england$area_sqkm <- expanse(england, unit = "km")
+
+# Remove polygons with < 50km ^2 area
+england <- england[england$area_sqkm > 50]
+
+# Aggregate back
+england <- aggregate(england)
+
+### Smooth
+
+# N.B. This is used to created mesh and functions as modelling boundary (domain)
+englandSmooth <- st_as_sf(england) %>%
+  smoothr::smooth(., method = "chaikin") %>%
+  smoothr::fill_holes(., threshold = Inf)
 
 ### SAVE DATASETS ---------------------------------------------------------------
 
