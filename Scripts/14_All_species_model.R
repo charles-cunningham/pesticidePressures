@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = 2)
+inla.setOption(num.threads = 1)
 inla.setOption(inla.timeout = 0)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -100,12 +100,10 @@ bng <- sf::st_crs(paste0(dataDir, "bng.prj"))$wkt
 invData <- invData %>%
   select(
     pesticideShannon_scaled,
-    #chemicalApp,
-    #lessPesticide,
-    eutroph,
+    eutroph_scaled,
     pesticideToxicLoad_scaled,
-    residential,
-    woodland,
+    residential_scaled,
+    woodland_scaled,
     cattle_scaled,
     pigs_scaled,
     sheep_scaled,
@@ -120,15 +118,14 @@ invData <- invData %>%
     PC4,
     YEAR,
     MONTH_NUM,
-    REPORTING_AREA,
     SITE_ID,
     SAMPLE_ID,
     TOTAL_ABUNDANCE,
     TAXON,
     GROUP,
-    BASIN_F,
-    CATCHMENT_F,
-    WATER_BODY_F
+    #BASIN_F,
+    #CATCHMENT_F,
+    #WATER_BODY_F
     )
 
 # Filter to Schedule 2 species
@@ -176,6 +173,9 @@ invData_Ab_wZeroes <- NULL
     
   }
 
+# Set TAXON to factor
+invData_Ab_wZeroes$TAXON <- as.factor(invData_Ab_wZeroes$TAXON )
+
 # Clear memory
 rm(invData, speciesData)
 gc()
@@ -183,14 +183,15 @@ gc()
 ### CREATE MESH ----------------------------------------------------------------
 
 # Max edge is as a rule of thumb (range/3 to range/10)
-maxEdge <- 10000
+maxEdge <- 20
 
 # Create mesh
 mesh <- fm_mesh_2d_inla(boundary = englandSmooth,
                         max.edge =  maxEdge,
-                        cutoff = maxEdge/2,
+                        cutoff = maxEdge/5,
                         min.angle = 26,
-                        crs =  st_crs(bng)$proj4string )
+                        crs =  gsub( "units=m",
+                                     "units=km", st_crs(bng)$proj4string ))
 
 # Define spatial SPDE priors
 spaceHyper <- inla.spde2.pcmatern(
@@ -201,7 +202,8 @@ spaceHyper <- inla.spde2.pcmatern(
 # Create mesh dataframe for examining spatial field
 mesh_df <- fm_pixels(mesh,
                      mask = st_transform(englandSmooth,
-                                         crs = st_crs(bng)$proj4string))
+                                         crs = gsub( "units=m", "units=km",
+                                                     st_crs(bng)$proj4string )))
 
 ### RUN RICHNESS MODELS --------------------------------------------------------
     
@@ -211,13 +213,13 @@ mesh_df <- fm_pixels(mesh,
 compsWastewater_SR <- numSpecies ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
   pestTox(pesticideToxicLoad_scaled, model = "linear") +
-  eutroph(eutroph, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
   pigs(pigs_scaled, model = "linear") +
   sheep(sheep_scaled, model = "linear") +
   poultry(poultry_scaled, model = "linear") +
-  residential(residential, model = "linear") +
-  woodland(woodland, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
   wastewater(EDF_MEAN_scaled, model = "linear") +
@@ -246,13 +248,13 @@ compsWastewater_SR <- numSpecies ~
 compsNoWastewater_SR <- numSpecies ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
   pestTox(pesticideToxicLoad_scaled, model = "linear") +
-  eutroph(eutroph, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
   pigs(pigs_scaled, model = "linear") +
   sheep(sheep_scaled, model = "linear") +
   poultry(poultry_scaled, model = "linear") +
-  residential(residential, model = "linear") +
-  woodland(woodland, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
   upstreamArea(totalArea_scaled, model = "linear") +
@@ -313,17 +315,17 @@ gc()
 compsWastewater_Ab <- Abundance ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
   pestTox(pesticideToxicLoad_scaled, model = "linear") +
-  eutroph(eutroph, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
   pigs(pigs_scaled, model = "linear") +
   sheep(sheep_scaled, model = "linear") +
   poultry(poultry_scaled, model = "linear") +
-  residential(residential, model = "linear") +
-  woodland(woodland, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
-  upstreamArea(totalArea_scaled, model = "linear") +
   wastewater(EDF_MEAN_scaled, model = "linear") +
+  upstreamArea(totalArea_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
@@ -333,11 +335,11 @@ compsWastewater_Ab <- Abundance ~
     model = "rw2",
     cyclic = TRUE,
     scale.model = TRUE,
-    hyper = rwHyper_SR) +
+    hyper = rwHyper_Ab) +
   year(YEAR,
        model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper_SR) +
+       hyper = rwHyper_Ab) +
   space(main = geometry,
         model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab) 
@@ -346,17 +348,17 @@ compsWastewater_Ab <- Abundance ~
 compsNoWastewater_Ab <- Abundance ~
   pesticideDiv(pesticideShannon_scaled, model = "linear") +
   pestTox(pesticideToxicLoad_scaled, model = "linear") +
-  eutroph(eutroph, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
   pigs(pigs_scaled, model = "linear") +
   sheep(sheep_scaled, model = "linear") +
   poultry(poultry_scaled, model = "linear") +
-  residential(residential, model = "linear") +
-  woodland(woodland, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
-  upstreamArea(totalArea_scaled, model = "linear") +
   #wastewater(EDF_MEAN_scaled, model = "linear") +
+  upstreamArea(totalArea_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
@@ -366,11 +368,11 @@ compsNoWastewater_Ab <- Abundance ~
     model = "rw2",
     cyclic = TRUE,
     scale.model = TRUE,
-    hyper = rwHyper_SR) +
+    hyper = rwHyper_Ab) +
   year(YEAR,
        model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper_SR) +
+       hyper = rwHyper_Ab) +
   space(main = geometry,
         model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab)
