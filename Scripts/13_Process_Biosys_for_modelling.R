@@ -108,58 +108,7 @@ invData$TAXON <- invData$TAXON %>%
   # Remove slashes
   gsub("/", "-", .)
 
-# PROCESS VARIABLES --------------------------------------------------------------
-
-### SCALE VARIABLES
-
-# List variables to be scaled
-modelVariables <- c(
-  # Upstream variables
-  "pesticideShannon",
-  "pesticideToxicLoad",
-  "insecticideToxicLoad",
-  "herbicideToxicLoad",
-  "fungicideToxicLoad",
-  "fertiliser_k",
-  "fertiliser_n",
-  "fertiliser_p",
-  "Urban",
-  "Suburban",
-  "Deciduous_woodland",
-  "Coniferous_woodland",
-  "cattle",
-  "pigs",
-  "sheep",
-  "poultry",
-  "totalArea",
-  # Site variables
-  "EDF_MEAN",
-  "HS_HMS_RSB_SubScore",
-  "HS_HQA",
-  "ALTITUDE",
-  "SLOPE",
-  "DIST_FROM_SOURCE",
-  "DISCHARGE",
-  "WIDTH",
-  "DEPTH",
-  "BOULDERS_COBBLES",
-  "PEBBLES_GRAVEL",
-  "SAND",
-  "SILT_CLAY",
-  "ALKALINITY"
- )
-
-# Create additional scaled column for each modelVariables
-for(variable in modelVariables) {
-  
-  # Create new scaled column name
-  colName <- paste0(variable, "_scaled")
-  
-  # Assign scaled variable to new column
-  invData[[colName]] <- scale(invData[[variable]])[,1]
-}
-
-### CONVERT IID EFFECTS TO FACTORS
+# PROCESS FACTOR VARIABLES -----------------------------------------------------
 
 # Convert categorical variables for nested random effects to factors
 # (Convert catchment and water body to numeric to save memory)
@@ -176,7 +125,31 @@ invData$WATER_BODY_F <-paste( invData$REPORTING_AREA,
   as.numeric() %>%
   as.factor()
 
-### CONVERT SAMPLING SITE ABIOTIC VARIABLES TO PCA ----------------------------------------------
+### CONVERT SAMPLING SITE ABIOTIC VARIABLES TO PCA -----------------------------
+
+abioticVariables <- c(
+  "ALTITUDE",
+  "SLOPE",
+  "DIST_FROM_SOURCE",
+  "DISCHARGE",
+  "WIDTH",
+  "DEPTH",
+  "BOULDERS_COBBLES",
+  "PEBBLES_GRAVEL",
+  "SAND",
+  "SILT_CLAY",
+  "ALKALINITY"
+)
+
+# Create additional scaled column for each modelVariables
+for(variable in abioticVariables) {
+  
+  # Create new scaled column name
+  colName <- paste0(variable, "_scaled")
+  
+  # Assign scaled variable to new column
+  invData[[colName]] <- scale(invData[[variable]])[,1]
+}
 
 # Carry out PCA
 sitePCA <- invData %>%
@@ -230,26 +203,26 @@ evplot(ev)
 # Create correlation data frame
 corr_df <- invData %>%
   as_tibble(.) %>%
-  select(pesticideShannon_scaled,
-         pesticideToxicLoad_scaled,
-         insecticideToxicLoad_scaled,
-         herbicideToxicLoad_scaled,
-         fungicideToxicLoad_scaled,
-         fertiliser_k_scaled,
-         fertiliser_n_scaled,
-         fertiliser_p_scaled,
-         Urban_scaled,
-         Suburban_scaled,
-         Deciduous_woodland_scaled,
-         Coniferous_woodland_scaled,
-         cattle_scaled,
-         pigs_scaled,
-         sheep_scaled,
-         poultry_scaled,
-         totalArea_scaled,
-         EDF_MEAN_scaled,
-         HS_HMS_RSB_SubScore_scaled,
-         HS_HQA_scaled,
+  select(pesticideShannon,
+         pesticideToxicLoad,
+         insecticideToxicLoad,
+         herbicideToxicLoad,
+         fungicideToxicLoad,
+         fertiliser_k,
+         fertiliser_n,
+         fertiliser_p,
+         Urban,
+         Suburban,
+         Deciduous_woodland,
+         Coniferous_woodland,
+         cattle,
+         pigs,
+         sheep,
+         poultry,
+         totalArea,
+         EDF_MEAN,
+         HS_HMS_RSB_SubScore,
+         HS_HQA,
          PC1,
          PC2,
          PC3,
@@ -260,7 +233,7 @@ corr_df <- invData %>%
 # WITH WASTEWATER
 
 # Filter out missing wastewater values and create correlation object
-corPredictors <- filter(corr_df, !(is.na(EDF_MEAN_scaled))) %>%
+corPredictors <- filter(corr_df, !(is.na(EDF_MEAN))) %>%
   cor(.) 
 
 png(filename = paste0(plotDir, 'corr_wastewater.png'),
@@ -274,7 +247,7 @@ dev.off()
 # WITHOUT WASTEWATER
 
 # Unselect wasterwater column and create correlation object
-corPredictors <- select(corr_df, !(EDF_MEAN_scaled)) %>%
+corPredictors <- select(corr_df, !(EDF_MEAN)) %>%
   cor(.) 
 
 png(filename = paste0(plotDir, 'corr_noWastewater.png'),
@@ -290,31 +263,62 @@ dev.off()
 invData <- invData %>%
   rowwise() %>%
   # Woodland
-  mutate(woodland = Deciduous_woodland_scaled + Coniferous_woodland_scaled) %>%
+  mutate(woodland = Deciduous_woodland + Coniferous_woodland) %>%
   # Residential
-  mutate(residential = Urban_scaled + Suburban_scaled) %>%
+  mutate(residential = Urban + Suburban) %>%
   # Eutrophication risk
-  mutate(eutroph = mean(fertiliser_n_scaled, fertiliser_p_scaled))
+  mutate(eutroph = mean(fertiliser_n, fertiliser_p))
 
 # PCA CHEMICAL INPUT ----------------------------------------------------------
 
-# PCA eutrophication chemicals and pesticide load as very correlated
-chemPCA <- invData %>%
-  as_tibble(.) %>%
-  select(
-    pesticideToxicLoad_scaled,
-    eutroph
-  ) %>%
-  prcomp(.)
+# # PCA eutrophication chemicals and pesticide load as very correlated
+# chemPCA <- invData %>%
+#   as_tibble(.) %>%
+#   select(
+#     pesticideToxicLoad_scaled,
+#     eutroph
+#   ) %>%
+#   prcomp(.)
+# 
+# # Change names to aid interpretation
+# dimnames(chemPCA$x)[[2]] <- c("chemicalApp", "lessPesticide")
+# 
+# # Print summary
+# chemPCA; summary(chemPCA)
+# 
+# # Join to invData
+# invData <- cbind(invData, chemPCA$x)
 
-# Change names to aid interpretation
-dimnames(chemPCA$x)[[2]] <- c("chemicalApp", "lessPesticide")
+# SCALE VARIABLES --------------------------------------------------------------
 
-# Print summary
-chemPCA; summary(chemPCA)
+# List variables to be scaled
+modelVariables <- c(
+  # Upstream variables
+  "pesticideShannon",
+  "pesticideToxicLoad",
+  "eutroph",
+  "woodland",
+  "residential",
+  "cattle",
+  "pigs",
+  "sheep",
+  "poultry",
+  "totalArea",
+  # Site variables
+  "EDF_MEAN",
+  "HS_HMS_RSB_SubScore",
+  "HS_HQA"
+)
 
-# Join to invData
-invData <- cbind(invData, chemPCA$x)
+# Create additional scaled column for each modelVariables
+for(variable in modelVariables) {
+  
+  # Create new scaled column name
+  colName <- paste0(variable, "_scaled")
+  
+  # Assign scaled variable to new column
+  invData[[colName]] <- scale(invData[[variable]])[,1]
+}
 
 ### CORRELATION PLOTS WITH AGGREAGTED VARIABLES -------------------------------------------------------
 
@@ -322,12 +326,10 @@ invData <- cbind(invData, chemPCA$x)
 corr_df <- invData %>%
   as_tibble(.) %>%
   select(pesticideShannon_scaled,
-         #hemicalApp,
-         #lessPesticide,
          pesticideToxicLoad_scaled,
-         eutroph,
-         residential,
-         woodland,
+         eutroph_scaled,
+         residential_scaled,
+         woodland_scaled,
          cattle_scaled,
          pigs_scaled,
          sheep_scaled,
