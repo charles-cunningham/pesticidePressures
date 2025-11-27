@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = 1)
+inla.setOption(num.threads = 4)
 inla.setOption(inla.timeout = 0)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -133,13 +133,23 @@ invData <- filter(invData, GROUP == "Schedule 2")
 
 ### PROCESS TO RICHNESS FORMAT -------------------------------------------------
 
-invData_SR <-invData %>%
+invData_SR <- invData %>%
   # Add count of species
   add_count(, SAMPLE_ID, name = "numSpecies") %>%
   # For each SAMPLE_ID ...
   group_by(SAMPLE_ID) %>%
   # Extract max (all numSpecies are the same for each SAMPLE_ID)
   slice(which.max(numSpecies)) %>%
+  # Ungroup
+  ungroup()
+
+
+invData_trendSR <- invData_SR %>%
+  group_by(SITE_ID) %>%
+  filter(n()>=10) %>%
+  mutate(numSpeciesTrend = lm(numSpecies~YEAR)$coefficients[["YEAR"]]) %>%
+  # Extract max (all numSpecies are the same for each SAMPLE_ID)
+  slice(which.max(numSpeciesTrend)) %>%
   # Ungroup
   ungroup()
 
@@ -228,12 +238,12 @@ compsWastewater_SR <- numSpecies ~
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  month(
-    MONTH_NUM,
-    model = "rw2",
-    scale.model = TRUE,
-    cyclic = TRUE,
-    hyper = rwHyper_SR) +
+  # month(
+  #   MONTH_NUM,
+  #   model = "rw2",
+  #   scale.model = TRUE,
+  #   cyclic = TRUE,
+  #   hyper = rwHyper_SR) +
   year(YEAR,
        model = "rw2",
        scale.model = TRUE,
@@ -241,8 +251,8 @@ compsWastewater_SR <- numSpecies ~
  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
   #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR)# +
-    space(main = geometry,
-          model = spaceHyper)
+     space(main = geometry,
+           model = spaceHyper)
 
 # Richness model without wastewater
 compsNoWastewater_SR <- numSpecies ~
@@ -263,12 +273,12 @@ compsNoWastewater_SR <- numSpecies ~
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  month(
-    MONTH_NUM,
-    model = "rw2",
-    cyclic = TRUE,
-    scale.model = TRUE,
-    hyper = rwHyper_SR) +
+  # month(
+  #   MONTH_NUM,
+  #   model = "rw2",
+  #   cyclic = TRUE,
+  #   scale.model = TRUE,
+  #   hyper = rwHyper_SR) +
   year(YEAR,
        model = "rw2",
        scale.model = TRUE,
@@ -276,8 +286,8 @@ compsNoWastewater_SR <- numSpecies ~
   #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
   #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
-    space(main = geometry,
-               model = spaceHyper)
+     space(main = geometry,
+                model = spaceHyper)
 
 # RUN RICHNESS MODEL WITHOUT WASTEWATER
 
@@ -309,6 +319,89 @@ modelWastewater_SR <- bru(
 
 gc()
 
+### RUN TREND MODELS -----------------------------------------------------------
+
+# SET MODEL COMPONENTS
+
+# Richness model with wastewater
+compsWastewater_SR <- numSpeciesTrend ~
+  pesticideDiv(pesticideShannon_scaled, model = "linear") +
+  pestTox(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
+  cattle(cattle_scaled, model = "linear") +
+  pigs(pigs_scaled, model = "linear") +
+  sheep(sheep_scaled, model = "linear") +
+  poultry(poultry_scaled, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
+  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+  quality(HS_HQA_scaled, model = "linear") +
+  wastewater(EDF_MEAN_scaled, model = "linear") +
+  upstreamArea(totalArea_scaled, model = "linear") +
+  PC1(PC1, model = "linear") +
+  PC2(PC2, model = "linear") +
+  PC3(PC3, model = "linear") +
+  PC4(PC4, model = "linear") +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR)# +
+  space(main = geometry,
+        model = spaceHyper)
+
+# Richness model without wastewater
+compsNoWastewater_SR <- numSpeciesTrend ~
+  pesticideDiv(pesticideShannon_scaled, model = "linear") +
+  pestTox(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
+  cattle(cattle_scaled, model = "linear") +
+  pigs(pigs_scaled, model = "linear") +
+  sheep(sheep_scaled, model = "linear") +
+  poultry(poultry_scaled, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
+  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+  quality(HS_HQA_scaled, model = "linear") +
+  upstreamArea(totalArea_scaled, model = "linear") +
+  #wastewater(EDF_MEAN_scaled, model = "linear") +
+  PC1(PC1, model = "linear") +
+  PC2(PC2, model = "linear") +
+  PC3(PC3, model = "linear") +
+  PC4(PC4, model = "linear") +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
+  space(main = geometry,
+        model = spaceHyper)
+
+# RUN RICHNESS MODEL WITHOUT WASTEWATER
+
+# Run model
+modelNoWastewater_SR <- bru(
+  components = compsNoWastewater_SR,
+  data = invData_trendSR,
+  options = list(
+    control.inla=list(int.strategy = "eb"),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+
+# RUN RICHNESS MODEL WITH WASTEWATER
+
+# Run model
+modelWastewater_SR <- bru(
+  components = compsWastewater_SR,
+  data = invData_trendSR %>% filter(., !(is.na(EDF_MEAN_scaled))),
+  options = list(
+    control.inla=list(int.strategy = "eb"),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+
+gc()
+
+
 ### RUN ABUNDANCE MODELS -------------------------------------------------------
 
 # Abundance model with wastewater
@@ -330,16 +423,19 @@ compsWastewater_Ab <- Abundance ~
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  month(
-    MONTH_NUM,
-    model = "rw2",
-    cyclic = TRUE,
-    scale.model = TRUE,
-    hyper = rwHyper_Ab) +
+  # month(
+  #   MONTH_NUM,
+  #   model = "rw2",
+  #   cyclic = TRUE,
+  #   scale.model = TRUE,
+  #   hyper = rwHyper_Ab) +
   year(YEAR,
        model = "rw2",
        scale.model = TRUE,
        hyper = rwHyper_Ab) +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
   space(main = geometry,
         model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab) 
@@ -363,18 +459,21 @@ compsNoWastewater_Ab <- Abundance ~
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  month(
-    MONTH_NUM,
-    model = "rw2",
-    cyclic = TRUE,
-    scale.model = TRUE,
-    hyper = rwHyper_Ab) +
-  year(YEAR,
-       model = "rw2",
-       scale.model = TRUE,
-       hyper = rwHyper_Ab) +
-  space(main = geometry,
-        model = spaceHyper) +
+  # month(
+  #   MONTH_NUM,
+  #   model = "rw2",
+  #   cyclic = TRUE,
+  #   scale.model = TRUE,
+  #   hyper = rwHyper_Ab) +
+  # year(YEAR,
+  #      model = "rw2",
+  #      scale.model = TRUE,
+  # hyper = rwHyper_Ab) +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
+  # space(main = geometry,
+  #       model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab)
     
 # RUN ABUNDANCE MODEL WITHOUT WASTEWATER
@@ -536,27 +635,27 @@ for (modelName in names(models)) {
   
   # SPATIAL FIELD
 
-  # Predict spatial field over domain
-  pred_df <- predict(model, mesh_df, ~list(space = space))
-
-  # Plot spatial field
-  spatialEffPlot <- ggplot() +
-    gg(pred_df$space["mean"], geom = "tile") +
-    gg(st_transform(englandSmooth,
-                    crs = gsub( "units=m", "units=km",
-                                st_crs(bng)$proj4string)),
-       alpha = 0,
-       col = "black",
-       size = 1.5) +
-    theme_void() +
-    theme(legend.position = "bottom") +
-    scale_fill_distiller(palette = 'RdYlBu', direction = 1,
-                         limits = c(-1,1)*max(abs(pred_df$space$mean))) +
-    labs(fill = "Spatial Field   ")
+  # # Predict spatial field over domain
+  # pred_df <- predict(model, mesh_df, ~list(space = space))
+  # 
+  # # Plot spatial field
+  # spatialEffPlot <- ggplot() +
+  #   gg(pred_df$space["mean"], geom = "tile") +
+  #   gg(st_transform(englandSmooth,
+  #                   crs = gsub( "units=m", "units=km",
+  #                               st_crs(bng)$proj4string)),
+  #      alpha = 0,
+  #      col = "black",
+  #      size = 1.5) +
+  #   theme_void() +
+  #   theme(legend.position = "bottom") +
+  #   scale_fill_distiller(palette = 'RdYlBu', direction = 1,
+  #                        limits = c(-1,1)*max(abs(pred_df$space$mean))) +
+  #   labs(fill = "Spatial Field   ")
   
   # COMBINE PLOTS
-  evalPlot <- plot_grid(fixedEffPlot, randomEffPlot,spatialEffPlot,
-                        nrow = 1, ncol = 3)
+  evalPlot <- plot_grid(fixedEffPlot, randomEffPlot,
+                        nrow = 2, ncol = 1)
   
   # SAVE OUTPUT ------------------------------------------------------------
   
@@ -580,8 +679,8 @@ for (modelName in names(models)) {
   ggsave(
     paste0(iSpeciesDir, modelName, ".png"),
     evalPlot,
-    width = 8000,
-    height = 2000,
+    width = 3000,
+    height = 3000,
     units = "px",
     dpi = 400,
     limitsize = FALSE
