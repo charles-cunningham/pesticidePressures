@@ -79,7 +79,7 @@ invData$YEAR <- invData$YEAR - (min(invData$YEAR) - 1)
 # Filter available  data
 invData <- invData %>%
   # Remove sites with upstream area greater than 500km^2 (500,000,000m^2) 
-  # to avoid increasing uncertainty with largest areas
+  # to avoid increasing uncertainty with larger areas
   # area is in 25x25m cells
   filter((totalArea * 25*25) < 500000000) %>%
   # Remove rows with no upstream data
