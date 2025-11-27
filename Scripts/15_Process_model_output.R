@@ -22,12 +22,13 @@ dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 # SET PARAMETERS ---------------------------------------------------------------
 
 # Set taxa groups to analyse
-taxaGroups <- list.files(paste0(dataDir, "Model_outputs/Wastewater/Schedule_2"))
+taxaGroups <- list.files(paste0(dataDir, "Model_outputs/abWastewater/Schedule_2"))
 
 # LOOP THROUGH TYPE AND GROUP --------------------------------------------------
 
 # Loop through models that include and exclude wastewater
-for (type in c("Wastewater", "NoWastewater")) {
+for (type in c("abWastewater", "abNoWastewater",
+               "trendWastewater", "trendNoWastewater")) {
   
   # Loop through the two species groups
   for (group in c("Schedule_2")) {
