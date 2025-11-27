@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = 32)
+inla.setOption(num.threads = 16)
 inla.setOption(inla.timeout = 300) # 5 minutes
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -78,7 +78,7 @@ linearLabels_W <- c(linearLabels_NoW,
 randomLabels <- c( 'month' = "Month",
                    'year' = "Year")
 
-# Set minimum number of records to model - only commonly recorded species
+# Set minimum number of records to model - remove rare species
 minRecords <- 1000
 
 # Schedule 2 species list
@@ -104,14 +104,15 @@ bng <- sf::st_crs(paste0(dataDir, "bng.prj"))$wkt
 ### CREATE MESH ----------------------------------------------------------------
 
 # Max edge is as a rule of thumb (range/3 to range/10)
-maxEdge <- 10000
+maxEdge <- 20
 
 # Create mesh
 mesh <- fm_mesh_2d_inla(boundary = englandSmooth,
                         max.edge =  maxEdge,
-                        cutoff = maxEdge/2,
+                        cutoff = maxEdge/5,
                         min.angle = 26,
-                        crs =  st_crs(bng)$proj4string )
+                        crs =  gsub( "units=m", "units=km",
+                                     st_crs(bng)$proj4string ))
 
 # Define spatial SPDE priors
 spaceHyper <- inla.spde2.pcmatern(
@@ -122,14 +123,15 @@ spaceHyper <- inla.spde2.pcmatern(
 # Create mesh dataframe for examining spatial field
 mesh_df <- fm_pixels(mesh,
                      mask = st_transform(englandSmooth,
-                                         crs = st_crs(bng)$proj4string))
+                                         crs = gsub( "units=m", "units=km",
+                                                     st_crs(bng)$proj4string )))
 
 ### MODEL SET UP FOR INDIVIDUAL SPECIES ----------------------------------------
 # Loop through taxa then species to preserve ordering
 
 # Loop through groups
 for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
-  
+
   # Find species within taxa
   taxaSpecies <- invData %>%
     
@@ -146,7 +148,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
   
   # Loop through species here
   for (iSpecies in taxaSpecies) {
-    
+
     # PROCESS TO PRESENCE-ABSENCE FORMAT
     
     # Create iSpecies abundance column with 0s
@@ -166,7 +168,16 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       # Ungroup
       ungroup()
     
-    # RUN MODEL ----------------------------------------------------------------
+    speciesTrendData <- speciesData %>%
+      group_by(SITE_ID) %>%
+      filter(n()>=10) %>%
+      filter(any(speciesAbundance > 0)) %>%
+      mutate(AbTrend = lm(speciesAbundance~YEAR)$coefficients[["YEAR"]]) %>%
+      slice(which.max(AbTrend)) %>%
+      # Ungroup
+      ungroup()
+
+    # RUN ABUNDANCE MODEL ------------------------------------------------------
     
     # SET MODEL PARAMETERS
 
@@ -179,16 +190,16 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     # SET MODEL COMPONENTS
     
     # Model with wastewater
-    compsWastewater <- speciesAbundance ~
+    abWastewaterComps <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pestTox(pesticideToxicLoad_scaled, model = "linear") +
-      eutroph(eutroph, model = "linear") +
+      eutroph(eutroph_scaled, model = "linear") +
       cattle(cattle_scaled, model = "linear") +
       pigs(pigs_scaled, model = "linear") +
       sheep(sheep_scaled, model = "linear") +
       poultry(poultry_scaled, model = "linear") +
-      residential(residential, model = "linear") +
-      woodland(woodland, model = "linear") +
+      residential(residential_scaled, model = "linear") +
+      woodland(woodland_scaled, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
       wastewater(EDF_MEAN_scaled, model = "linear") +
@@ -202,28 +213,28 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         model = "rw2",
         scale.model = TRUE,
         cyclic = TRUE,
-        hyper = rwHyper_SR) +
+        hyper = rwHyper) +
       year(YEAR,
            model = "rw2",
            scale.model = TRUE,
-           hyper = rwHyper_SR) +
+           hyper = rwHyper) +
       #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
       #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR)# +
-      space(main = geometry,
-            model = spaceHyper)
+       space(main = geometry,
+             model = spaceHyper)
       
     # Model without wastewater
-    compsNoWastewater <- speciesAbundance ~
+    abNoWastewaterComps <- speciesAbundance ~
       pesticideDiv(pesticideShannon_scaled, model = "linear") +
       pestTox(pesticideToxicLoad_scaled, model = "linear") +
-      eutroph(eutroph, model = "linear") +
+      eutroph(eutroph_scaled, model = "linear") +
       cattle(cattle_scaled, model = "linear") +
       pigs(pigs_scaled, model = "linear") +
       sheep(sheep_scaled, model = "linear") +
       poultry(poultry_scaled, model = "linear") +
-      residential(residential, model = "linear") +
-      woodland(woodland, model = "linear") +
+      residential(residential_scaled, model = "linear") +
+      woodland(woodland_scaled, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
       upstreamArea(totalArea_scaled, model = "linear") +
@@ -237,27 +248,27 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         model = "rw2",
         cyclic = TRUE,
         scale.model = TRUE,
-        hyper = rwHyper_SR) +
+        hyper = rwHyper) +
       year(YEAR,
            model = "rw2",
            scale.model = TRUE,
-           hyper = rwHyper_SR) +
+           hyper = rwHyper) +
       #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
       #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
-      space(main = geometry,
-            model = spaceHyper)
+       space(main = geometry,
+             model = spaceHyper)
     
     # RUN MODEL WITH WASTEWATER
     
     # Remove previous model
-    if (exists("modelWastewater")) {rm(modelWastewater)}
+    if (exists("abWastewater")) {rm(abWastewater)}
     
     # Add escape if model does not converge(
     try(
 
-      modelWastewater <- bru(
-        components = compsWastewater,
+      abWastewater <- bru(
+        components = abWastewaterComps,
         family = "zeroinflatednbinomial1",
         data = speciesData %>% filter(., !(is.na(EDF_MEAN_scaled))),
         options = list(
@@ -272,13 +283,13 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     # RUN MODEL WITHOUT WASTEWATER
     
     # Remove previous model
-    if (exists("modelNoWastewater")) {rm("modelNoWastewater")}
+    if (exists("abNoWastewater")) {rm("abNoWastewater")}
     
     # Add escape if model does not converge(
     try(
       
-      modelNoWastewater <- bru(
-        components = compsNoWastewater,
+      abNoWastewater <- bru(
+        components = abNoWastewaterComps,
         family = "zeroinflatednbinomial1",
         data = speciesData,
         options = list(
@@ -290,16 +301,117 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       )
     )
     
+    # RUN TREND MODEL ----------------------------------------------------------
+    
+    # SET MODEL COMPONENTS
+    
+    # Model with wastewater
+    trendWastewaterComps <- AbTrend ~
+      pesticideDiv(pesticideShannon_scaled, model = "linear") +
+      pestTox(pesticideToxicLoad_scaled, model = "linear") +
+      eutroph(eutroph_scaled, model = "linear") +
+      cattle(cattle_scaled, model = "linear") +
+      pigs(pigs_scaled, model = "linear") +
+      sheep(sheep_scaled, model = "linear") +
+      poultry(poultry_scaled, model = "linear") +
+      residential(residential_scaled, model = "linear") +
+      woodland(woodland_scaled, model = "linear") +
+      modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+      quality(HS_HQA_scaled, model = "linear") +
+      wastewater(EDF_MEAN_scaled, model = "linear") +
+      upstreamArea(totalArea_scaled, model = "linear") +
+      PC1(PC1, model = "linear") +
+      PC2(PC2, model = "linear") +
+      PC3(PC3, model = "linear") +
+      PC4(PC4, model = "linear") +
+      #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR)# +
+      space(main = geometry,
+            model = spaceHyper)
+    
+    # Model without wastewater
+    trendNoWastewaterComps <- AbTrend ~
+      pesticideDiv(pesticideShannon_scaled, model = "linear") +
+      pestTox(pesticideToxicLoad_scaled, model = "linear") +
+      eutroph(eutroph_scaled, model = "linear") +
+      cattle(cattle_scaled, model = "linear") +
+      pigs(pigs_scaled, model = "linear") +
+      sheep(sheep_scaled, model = "linear") +
+      poultry(poultry_scaled, model = "linear") +
+      residential(residential_scaled, model = "linear") +
+      woodland(woodland_scaled, model = "linear") +
+      modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+      quality(HS_HQA_scaled, model = "linear") +
+      upstreamArea(totalArea_scaled, model = "linear") +
+      #wastewater(EDF_MEAN_scaled, model = "linear") +
+      PC1(PC1, model = "linear") +
+      PC2(PC2, model = "linear") +
+      PC3(PC3, model = "linear") +
+      PC4(PC4, model = "linear") +
+      #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
+      space(main = geometry,
+            model = spaceHyper)
+    
+    # RUN MODEL WITH WASTEWATER
+    
+    # Remove previous model
+    if (exists("trendWastewater")) {rm(trendWastewater)}
+    
+    # Add escape if model does not converge(
+    try(
+      
+      trendWastewater <- bru(
+        components = trendWastewaterComps,
+        data = speciesTrendData %>% filter(., !(is.na(EDF_MEAN_scaled))),
+        options = list(
+          control.inla=list(int.strategy = "eb"),
+          control.compute = list(waic = TRUE,
+                                 dic = TRUE,
+                                 cpo = TRUE),
+          verbose = TRUE)
+      )
+    )
+    
+    # RUN MODEL WITHOUT WASTEWATER
+    
+    # Remove previous model
+    if (exists("trendNoWastewater")) {rm("trendNoWastewater")}
+    
+    # Add escape if model does not converge(
+    try(
+      
+      trendNoWastewater <- bru(
+        components = trendNoWastewaterComps,
+        data = speciesTrendData,
+        options = list(
+          control.inla=list(int.strategy = "eb"),
+          control.compute = list(waic = TRUE,
+                                 dic = TRUE,
+                                 cpo = TRUE),
+          verbose = TRUE)
+      )
+    )
+    
+    
     # Only plot and save if both models converge
-    if (!is.null(summary(modelWastewater)$inla) & 
-        !is.null(summary(modelNoWastewater)$inla)) {
+    if (!is.null(summary(abWastewater)$inla) & 
+        !is.null(summary(abNoWastewater)$inla) &
+        !is.null(summary(trendWastewater)$inla) &
+        !is.null(summary(trendNoWastewater)$inla)) {
+
+      # Loop through both models
+      models <- list(abWastewater = abWastewater,
+                     abNoWastewater = abNoWastewater,
+                     trendWastewater = trendWastewater,
+                     trendNoWastewater = trendNoWastewater) 
+      
       
       # Loop through both models
-      for (modelName in c("modelWastewater", "modelNoWastewater")) {
-        
-        # Loop through both models
-        models <- list(modelWastewater = modelWastewater,
-                       modelNoWastewater = modelNoWastewater)
+      for (modelName in c("abWastewater", "abNoWastewater",
+                          "trendWastewater", "trendNoWastewater")) {
         
         # Get model
         model <- models[[modelName]]
@@ -308,8 +420,10 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         modelSummary <- summary(model)
         
         # Get linear effect labels
-        if (modelName == "modelNoWastewater") { linearLabels <- linearLabels_NoW}
-        if (modelName == "modelWastewater") { linearLabels <- linearLabels_W}
+        if (modelName %in% c("abNoWastewater", 
+                             "trendNoWastewater" )) { linearLabels <- linearLabels_NoW}
+        if (modelName %in% c("abWastewater", 
+                             "trendWastewater" )) { linearLabels <- linearLabels_W}
         
         # PLOTS ------------------------------------------------------------------
         
@@ -372,6 +486,8 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         
         # RANDOM EFFECTS
         
+        if (modelName %in% c("abWastewater", "abNoWastewater")) {
+          
         # Extract random effects from model, and exclude spatial
         randomEff_df <- model$summary.random
         
@@ -385,6 +501,8 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
                  "q0.975" = "0.975quant") %>%
           filter(!(randomEff %in% c("basin", "catchment", "wb", "space"))) %>%
           select(ID, q0.025, q0.5, q0.975, randomEff)
+        
+         }
         
         ### Plot
         
@@ -413,7 +531,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         
         # Predict spatial field over domain
         pred_df <- predict(model, mesh_df, ~list(space = space))
-        
+
         # Plot spatial field
         spatialEffPlot <- ggplot() +
           gg(pred_df$space["mean"], geom = "tile") +
@@ -430,8 +548,16 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
           labs(fill = "Spatial Field   ")
         
         # COMBINE PLOTS
-        evalPlot <- plot_grid(fixedEffPlot, randomEffPlot,spatialEffPlot,
-                              nrow = 1, ncol = 3)nrow = 1, ncol = 3)
+        if (modelName %in% c("abWastewater", "abNoWastewater")) {
+        
+        evalPlot <- plot_grid(fixedEffPlot, randomEffPlot, spatialEffPlot,
+                              nrow = 1, ncol = 3)
+        
+        } else {
+          
+          evalPlot <- plot_grid(fixedEffPlot, spatialEffPlot,
+                                nrow = 1, ncol = 2)
+        }
         
         # SAVE OUTPUT ------------------------------------------------------------
         
