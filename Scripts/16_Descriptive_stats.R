@@ -38,7 +38,9 @@ taxaGroupLabels <- c( "annelid" = "Leeches",
 # DATA FILES -------------------------------------------------------------------
 
 # Loop through models that include and exclude wastewater
-for (type in c("Wastewater", "NoWastewater")) {
+for (type in c("abWastewater", "abNoWastewater",
+               "trendWastewater", "trendNoWastewater")) {
+  
   # Loop through the two species groups
   for (group in c("Schedule_2")) {
     
