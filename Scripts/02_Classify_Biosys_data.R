@@ -70,7 +70,9 @@ invData <- invData %>%
   # ...to standard 3-minute kick samples only
   filter(SAMPLE_METHOD == "S3PO") %>%
   # ...to only include main abundance estimate methods
-  filter(ANALYSIS_METHOD %in% c("ANAA", "ANLA", "ANLE"))
+  filter(ANALYSIS_METHOD %in% c("ANAA", "ANLA", "ANLE")) %>%
+  # ...to remove NA abundance values
+  drop_na(TOTAL_ABUNDANCE)
 
 # Remove problematic species
 invData <- invData %>%
