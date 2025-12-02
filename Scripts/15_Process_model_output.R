@@ -28,7 +28,7 @@ taxaGroups <- list.files(paste0(dataDir, "Model_outputs/abWastewater/Schedule_2"
 
 # Loop through models that include and exclude wastewater
 for (type in c("abWastewater", "abNoWastewater",
-               "trendWastewater", "trendNoWastewater")) {
+               "occWastewater", "occNoWastewater")) {
   
   # Loop through the two species groups
   for (group in c("Schedule_2")) {
@@ -134,9 +134,9 @@ for (type in c("abWastewater", "abNoWastewater",
       X0.025quant_eutroph > 0 & X0.975quant_eutroph > 0 ~ "Pos",
       X0.025quant_eutroph < 0 & X0.975quant_eutroph < 0 ~ "Neg",
       TRUE ~ "NS"),
-    pesticideDivSig = case_when(
-      X0.025quant_pesticideDiv > 0 & X0.975quant_pesticideDiv > 0 ~ "Pos",
-      X0.025quant_pesticideDiv < 0 & X0.975quant_pesticideDiv < 0 ~ "Neg",
+    pestDivSig = case_when(
+      X0.025quant_pestDiv > 0 & X0.975quant_pestDiv > 0 ~ "Pos",
+      X0.025quant_pestDiv < 0 & X0.975quant_pestDiv < 0 ~ "Neg",
       TRUE ~ "NS")
   )
 
