@@ -39,7 +39,7 @@ taxaGroupLabels <- c( "annelid" = "Leeches",
 
 # Loop through models that include and exclude wastewater
 for (type in c("abWastewater", "abNoWastewater",
-               "trendWastewater", "trendNoWastewater")) {
+               "occWastewater", "occNoWastewater")) {
   
   # Loop through the two species groups
   for (group in c("Schedule_2")) {
@@ -98,7 +98,7 @@ effects_wide$labels <- str_replace_all(string = effects_wide$taxa,
 
 
 effect_pairs <- effects_wide %>%
-  select(c(labels, mean_pesticideDiv, mean_pestTox, mean_eutroph, 
+  select(c(labels, mean_pestDiv, mean_pestTox, mean_eutroph, 
            mean_cattle, mean_pigs, mean_sheep, mean_poultry,
            mean_residential, mean_woodland,
            mean_modification, mean_quality))
