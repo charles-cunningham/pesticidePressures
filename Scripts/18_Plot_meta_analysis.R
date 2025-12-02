@@ -79,17 +79,18 @@ phylopicImages$svg[[12]] <- rotate_phylopic(img = phylopicImages$svg[[12]], angl
 
 ### LOOP THROUGH WASTEWATER AND NO WASTEWATER ----------------------------------
 
-for (type in c("Wastewater", "NoWastewater")) {
+for (type in c("abWastewater", "abNoWastewater",
+               "trendWastewater", "trendNoWastewater")) {
 
 ### RELOAD OBJECTS ---------------------------------------------------
 
   # List of brms objects
-brmsList <- c("pesticideDiv_brms", "chemApp_brms", "lessPest_brms",
-              "cattle_brms", "sheep_brms", "pigs_brms", "poultry_brms",
-              "wastewater_brms", "modification_brms", "quality_brms",
-              "residential_brms", "upstreamArea_brms", "woodland_brms")
+  brmsList <- c("pestDiv_brms", "pestTox_brms", "eutroph_brms",
+                "cattle_brms", "sheep_brms", "pigs_brms", "poultry_brms",
+                "wastewater_brms", "modification_brms", "quality_brms",
+                "residential_brms", "upstreamArea_brms", "woodland_brms")
 
-if (type == "Wastewater" ) {
+if (type %in% c("abWastewater", "trendWastewater")) {
   
   brmsList <- c(brmsList, "wastewater_brms")
   
@@ -106,28 +107,28 @@ load(paste0(dataDir, "Species_effects/", type, "/Schedule_2.Rdata"))
 # Summarise effect sizes by  woodland association and taxa
 summary_taxa_df <- effects_wide %>%
   # Group by taxa group and effect category...
-  group_by(taxa, chemAppSig, lessPestSig, pesticideDivSig) %>%
+  group_by(taxa, eutrophSig, pestToxSig, pestDivSig) %>%
   # ... and count total number
   summarise(nuSpecies = length(species)) %>%
   # Ungroup for ...
   ungroup %>%
   # ... proportion
   mutate(freq = prop.table(nuSpecies),
-         .by = taxa, chemAppSig, lessPestSig, pesticideDivSig) %>%
+         .by = taxa, eutrophSig, pestToxSig, pestDivSig) %>%
   # # ...and total species per taxa
   mutate(nuTaxa = sum(nuSpecies), .by = taxa)
 
 # Summarise effect sizes by woodland association
 summary_pooled_df <- effects_wide %>%
   # Group by taxa group and effect category...
-  group_by(chemAppSig, lessPestSig, pesticideDivSig ) %>%
+  group_by(eutrophSig, pestToxSig, pestDivSig ) %>%
   # ... and count total number
   summarise(nuSpecies = length(species)) %>%
   # Ungroup for ...
   ungroup %>%
   # ... proportion
   mutate(freq = prop.table(nuSpecies),
-         .by = chemAppSig, lessPestSig, pesticideDivSig) %>%
+         .by = eutrophSig, pestToxSig, pestDivSig) %>%
   # Add taxa column
   add_column(taxa = "Pooled species") %>%
   # Add total number of species column
@@ -286,7 +287,7 @@ for (i in brmsList) {
   
   # PLOT POOLED ESTIMATES AND INDIVIDUAL SPECIES EFFECTS  ----------------------
   
-  for(brms in c("pesticideDiv_brms", "chemApp_brms", "lessPest_brms")) {
+  for(brms in c("pestDiv_brms", "pestTox_brms", "eutroph_brms")) {
   
     # Assign brms object
     iBrms <- get(brms)
