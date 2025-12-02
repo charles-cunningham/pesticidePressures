@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = 4)
+inla.setOption(num.threads = 2)
 inla.setOption(inla.timeout = 0)
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -58,7 +58,7 @@ englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
 # SET PARAMETERS ---------------------------------------------------------------
 
 linearLabels_NoW <- c(
-  'pesticideDiv' = "Pesticide diversity",
+  'pestDiv' = "Pesticide diversity",
   'pestTox' = "Pesticide toxicity",
   'eutroph' = "Mean N and P application",
   'cattle' = "Cattle",
@@ -123,72 +123,112 @@ invData <- invData %>%
     TOTAL_ABUNDANCE,
     TAXON,
     GROUP,
-    #BASIN_F,
-    #CATCHMENT_F,
-    #WATER_BODY_F
+    BASIN_F,
+    CATCHMENT_F,
+    WATER_BODY_F
     )
 
 # Filter to Schedule 2 species
 invData <- filter(invData, GROUP == "Schedule 2")
 
-### PROCESS TO RICHNESS FORMAT -------------------------------------------------
-
-invData_SR <- invData %>%
-  # Add count of species
-  add_count(, SAMPLE_ID, name = "numSpecies") %>%
-  # For each SAMPLE_ID ...
-  group_by(SAMPLE_ID) %>%
-  # Extract max (all numSpecies are the same for each SAMPLE_ID)
-  slice(which.max(numSpecies)) %>%
-  # Ungroup
-  ungroup()
-
-
-invData_trendSR <- invData_SR %>%
-  group_by(SITE_ID) %>%
-  filter(n()>=10) %>%
-  mutate(numSpeciesTrend = lm(numSpecies~YEAR)$coefficients[["YEAR"]]) %>%
-  # Extract max (all numSpecies are the same for each SAMPLE_ID)
-  slice(which.max(numSpeciesTrend)) %>%
-  # Ungroup
-  ungroup()
+# Set TAXON to factor
+invData$TAXON <- as.factor(invData$TAXON )
 
 ### PROCESS TO PSUEDO-ABSENCE FORMAT -------------------------------------------
 
 # Create empty pseudo-absence table
-invData_Ab_wZeroes <- NULL
+invData_wZeroes <- NULL
 
 # Loop through species here
-  for (iSpecies in unique(invData$TAXON)) {
-    
-    # Create species abundance column with 0s
-    speciesData <- invData %>%
-      mutate(Abundance = ifelse(TAXON == iSpecies,
-                                TOTAL_ABUNDANCE,
-                                0)) %>%
-      # Remove TOTAL_ABUNDANCE column as deprecated
-      select(-TOTAL_ABUNDANCE)
-    
-    # Covert to unique column for each SAMPLE_ID
-    speciesData <- speciesData %>%
-      # For each SAMPLE_ID ...
-      group_by(SAMPLE_ID) %>%
-      # Extract max abundance value of iSpecies from speciesAbundance
-      slice(which.max(Abundance)) %>%
-      # Ungroup
-      ungroup()
-    
-    # Add to dataframe with all species
-    invData_Ab_wZeroes <- rbind(invData_Ab_wZeroes, speciesData)
-    
-  }
+for (iSpecies in unique(invData$TAXON)) {
+  
+  # Create species abundance column with 0s
+  speciesData <- invData %>%
+    mutate(Abundance = ifelse(TAXON == iSpecies,
+                              TOTAL_ABUNDANCE,
+                              0)) %>%
+    # Remove TOTAL_ABUNDANCE column as deprecated
+    select(-TOTAL_ABUNDANCE)
+  
+  # Covert to unique column for each SAMPLE_ID
+  speciesData <- speciesData %>%
+    # For each SAMPLE_ID ...
+    group_by(SAMPLE_ID) %>%
+    # Extract max abundance value of iSpecies from speciesAbundance
+    slice(which.max(Abundance)) %>%
+    # Ungroup
+    ungroup()
+  
+  # Add to dataframe with all species
+  invData_wZeroes <- rbind(invData_wZeroes, speciesData)
+  
+}
 
-# Set TAXON to factor
-invData_Ab_wZeroes$TAXON <- as.factor(invData_Ab_wZeroes$TAXON )
+### PROCESS TO RICHNESS FORMAT -------------------------------------------------
+
+# Species richness per sample
+invData_SR <- invData %>%
+  # Add count of species
+  add_count(, SAMPLE_ID, name = "richness") %>%
+  # Extract one richness value for every sample ID
+  slice_head(n =1, by = "SAMPLE_ID")
+
+### PROCESS TO GEOMETRIC MEAN ABUNDANCE FORMAT ---------------------------------
+
+# Species richness per sample
+invData_GM <- invData %>%
+  # For each SAMPLE_ID ...
+  group_by(SAMPLE_ID) %>%
+  #filter(n()>=10) %>%
+  #filter(TOTAL_ABUNDANCE < 1000) %>%
+  # Extract max (all numSpecies are the same for each SAMPLE_ID)
+  mutate(geoMean = exp(mean(log(TOTAL_ABUNDANCE)))) %>%
+  ungroup() %>%
+  slice_head(n =1, by = "SAMPLE_ID")
 
 # Clear memory
 rm(invData, speciesData)
 gc()
+
+### PROCESS TO OCCURRENCE FORMAT ------------------------------------------------
+
+invData_wZeroes <- invData_wZeroes %>%
+  mutate(Occurrence = ifelse(Abundance > 0,
+                            1,
+                            0))
+
+### PROCESS TRENDS FORMAT ------------------------------------------------------
+
+# Create RICHNESS trend
+invData_trendSR <- invData_SR %>%
+  group_by(SITE_ID) %>%
+  #filter(n()>=10) %>%
+  #mutate(richnessTrend = lm(richness~YEAR)$coefficients[["YEAR"]]) %>%
+  
+  # Extract max (all numSpecies are the same for each SAMPLE_ID)
+  slice_head(n = 1) %>%
+  # Ungroup
+  ungroup()
+
+# Create ABUNDANCE trend
+invData_AbTrend <- invData_wZeroes %>%
+  group_by(SITE_ID, TAXON) %>%
+  filter(n()>=10) %>%
+  filter(any(Abundance > 0)) %>%
+  mutate(AbTrend = lm(Abundance~YEAR)$coefficients[["YEAR"]]) %>%
+  slice_head(n = 1) %>%
+  # Ungroup
+  ungroup()
+
+# Create OCCUPANCY trend
+invData_OccTrend <- invData_wZeroes %>%
+  group_by(SITE_ID, TAXON) %>%
+  filter(n()>=10) %>%
+  filter(any(Occurrence > 0)) %>%
+  mutate(OccTrend = lm(Occurrence~YEAR)$coefficients[["YEAR"]]) %>%
+  slice_head(n = 1) %>%
+  # Ungroup
+  ungroup()
 
 ### CREATE MESH ----------------------------------------------------------------
 
@@ -219,44 +259,9 @@ mesh_df <- fm_pixels(mesh,
     
 # SET MODEL COMPONENTS
 
-# Richness model with wastewater
-compsWastewater_SR <- numSpecies ~
-  pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pestTox(pesticideToxicLoad_scaled, model = "linear") +
-  eutroph(eutroph_scaled, model = "linear") +
-  cattle(cattle_scaled, model = "linear") +
-  pigs(pigs_scaled, model = "linear") +
-  sheep(sheep_scaled, model = "linear") +
-  poultry(poultry_scaled, model = "linear") +
-  residential(residential_scaled, model = "linear") +
-  woodland(woodland_scaled, model = "linear") +
-  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
-  quality(HS_HQA_scaled, model = "linear") +
-  wastewater(EDF_MEAN_scaled, model = "linear") +
-  upstreamArea(totalArea_scaled, model = "linear") +
-  PC1(PC1, model = "linear") +
-  PC2(PC2, model = "linear") +
-  PC3(PC3, model = "linear") +
-  PC4(PC4, model = "linear") +
-  # month(
-  #   MONTH_NUM,
-  #   model = "rw2",
-  #   scale.model = TRUE,
-  #   cyclic = TRUE,
-  #   hyper = rwHyper_SR) +
-  year(YEAR,
-       model = "rw2",
-       scale.model = TRUE,
-        hyper = rwHyper_SR) +
- #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR)# +
-     space(main = geometry,
-           model = spaceHyper)
-
 # Richness model without wastewater
-compsNoWastewater_SR <- numSpecies ~
-  pesticideDiv(pesticideShannon_scaled, model = "linear") +
+compsNoWastewater_SR <- richness ~
+  pestDiv(pesticideShannon_scaled, model = "linear") +
   pestTox(pesticideToxicLoad_scaled, model = "linear") +
   eutroph(eutroph_scaled, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
@@ -268,40 +273,33 @@ compsNoWastewater_SR <- numSpecies ~
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
   upstreamArea(totalArea_scaled, model = "linear") +
-  #wastewater(EDF_MEAN_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  # month(
-  #   MONTH_NUM,
-  #   model = "rw2",
-  #   cyclic = TRUE,
-  #   scale.model = TRUE,
-  #   hyper = rwHyper_SR) +
-  year(YEAR,
+  month(
+    MONTH_NUM,
+    model = "rw2",
+    cyclic = TRUE,
+    scale.model = TRUE,
+    hyper = rwHyper_SR
+  ) +
+  year(
+    YEAR,
        model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper_SR) +
-  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+       hyper = rwHyper_SR
+    ) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
   #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
-     space(main = geometry,
-                model = spaceHyper)
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
+  # space(main = geometry, 
+  #       model = spaceHyper)
 
-# RUN RICHNESS MODEL WITHOUT WASTEWATER
-
-# Run model
-modelNoWastewater_SR <- bru(
-  components = compsNoWastewater_SR,
-  family = "poisson",
-  data = invData_SR,
-  options = list(
-    control.inla=list(int.strategy = "eb"),
-    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
-    verbose = TRUE
-  )
-)
+# Richness model with wastewater
+compsWastewater_SR <- update(compsNoWastewater_SR,
+                             ~ . + wastewater(EDF_MEAN_scaled,
+                                              model = "linear"))
 
 # RUN RICHNESS MODEL WITH WASTEWATER
 
@@ -317,68 +315,13 @@ modelWastewater_SR <- bru(
   )
 )
 
-gc()
-
-### RUN TREND MODELS -----------------------------------------------------------
-
-# SET MODEL COMPONENTS
-
-# Richness model with wastewater
-compsWastewater_SR <- numSpeciesTrend ~
-  pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pestTox(pesticideToxicLoad_scaled, model = "linear") +
-  eutroph(eutroph_scaled, model = "linear") +
-  cattle(cattle_scaled, model = "linear") +
-  pigs(pigs_scaled, model = "linear") +
-  sheep(sheep_scaled, model = "linear") +
-  poultry(poultry_scaled, model = "linear") +
-  residential(residential_scaled, model = "linear") +
-  woodland(woodland_scaled, model = "linear") +
-  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
-  quality(HS_HQA_scaled, model = "linear") +
-  wastewater(EDF_MEAN_scaled, model = "linear") +
-  upstreamArea(totalArea_scaled, model = "linear") +
-  PC1(PC1, model = "linear") +
-  PC2(PC2, model = "linear") +
-  PC3(PC3, model = "linear") +
-  PC4(PC4, model = "linear") +
-  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR)# +
-  space(main = geometry,
-        model = spaceHyper)
-
-# Richness model without wastewater
-compsNoWastewater_SR <- numSpeciesTrend ~
-  pesticideDiv(pesticideShannon_scaled, model = "linear") +
-  pestTox(pesticideToxicLoad_scaled, model = "linear") +
-  eutroph(eutroph_scaled, model = "linear") +
-  cattle(cattle_scaled, model = "linear") +
-  pigs(pigs_scaled, model = "linear") +
-  sheep(sheep_scaled, model = "linear") +
-  poultry(poultry_scaled, model = "linear") +
-  residential(residential_scaled, model = "linear") +
-  woodland(woodland_scaled, model = "linear") +
-  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
-  quality(HS_HQA_scaled, model = "linear") +
-  upstreamArea(totalArea_scaled, model = "linear") +
-  #wastewater(EDF_MEAN_scaled, model = "linear") +
-  PC1(PC1, model = "linear") +
-  PC2(PC2, model = "linear") +
-  PC3(PC3, model = "linear") +
-  PC4(PC4, model = "linear") +
-  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
-  space(main = geometry,
-        model = spaceHyper)
-
 # RUN RICHNESS MODEL WITHOUT WASTEWATER
 
 # Run model
 modelNoWastewater_SR <- bru(
   components = compsNoWastewater_SR,
-  data = invData_trendSR,
+  family = "poisson",
+  data = invData_SR,
   options = list(
     control.inla=list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
@@ -386,11 +329,46 @@ modelNoWastewater_SR <- bru(
   )
 )
 
+gc()
+
+### RUN TREND MODELS -----------------------------------------------------------
+
+# SET MODEL COMPONENTS
+
+# Richness model without wastewater
+compsNoWastewater_SRtrend <- richnessTrend ~
+  pestDiv(pesticideShannon_scaled, model = "linear") +
+  pestTox(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
+  cattle(cattle_scaled, model = "linear") +
+  pigs(pigs_scaled, model = "linear") +
+  sheep(sheep_scaled, model = "linear") +
+  poultry(poultry_scaled, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
+  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+  quality(HS_HQA_scaled, model = "linear") +
+  upstreamArea(totalArea_scaled, model = "linear") +
+  PC1(PC1, model = "linear") +
+  PC2(PC2, model = "linear") +
+  PC3(PC3, model = "linear") +
+  PC4(PC4, model = "linear") +
+  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
+  # space(main = geometry,
+  #       model = spaceHyper)
+
+# Richness model with wastewater
+compsWastewater_SRtrend <- update(compsNoWastewater_SRtrend,
+                                  ~ . + wastewater(EDF_MEAN_scaled,
+                                                   model = "linear"))
+
 # RUN RICHNESS MODEL WITH WASTEWATER
 
 # Run model
-modelWastewater_SR <- bru(
-  components = compsWastewater_SR,
+modelWastewater_SRtrend <- bru(
+  components = compsWastewater_SRtrend,
   data = invData_trendSR %>% filter(., !(is.na(EDF_MEAN_scaled))),
   options = list(
     control.inla=list(int.strategy = "eb"),
@@ -399,14 +377,28 @@ modelWastewater_SR <- bru(
   )
 )
 
+# RUN RICHNESS MODEL WITHOUT WASTEWATER
+
+# Run model
+modelNoWastewater_SRtrend <- bru(
+  components = compsNoWastewater_SRtrend,
+  data = invData_trendSR,
+  options = list(
+    control.inla=list(int.strategy = "eb"),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+
 gc()
 
+### RUN OCCURANCE MODELS -------------------------------------------------------
 
-### RUN ABUNDANCE MODELS -------------------------------------------------------
+# SET MODEL COMPONENTS
 
-# Abundance model with wastewater
-compsWastewater_Ab <- Abundance ~
-  pesticideDiv(pesticideShannon_scaled, model = "linear") +
+# Occurrence model without wastewater
+compsNoWastewater_Occ <- Occurrence ~
+  pestDiv(pesticideShannon_scaled, model = "linear") +
   pestTox(pesticideToxicLoad_scaled, model = "linear") +
   eutroph(eutroph_scaled, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
@@ -417,18 +409,17 @@ compsWastewater_Ab <- Abundance ~
   woodland(woodland_scaled, model = "linear") +
   modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
   quality(HS_HQA_scaled, model = "linear") +
-  wastewater(EDF_MEAN_scaled, model = "linear") +
   upstreamArea(totalArea_scaled, model = "linear") +
   PC1(PC1, model = "linear") +
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  # month(
-  #   MONTH_NUM,
-  #   model = "rw2",
-  #   cyclic = TRUE,
-  #   scale.model = TRUE,
-  #   hyper = rwHyper_Ab) +
+  month(
+    MONTH_NUM,
+    model = "rw2",
+    cyclic = TRUE,
+    scale.model = TRUE,
+    hyper = rwHyper_Ab) +
   year(YEAR,
        model = "rw2",
        scale.model = TRUE,
@@ -438,11 +429,189 @@ compsWastewater_Ab <- Abundance ~
   #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
   space(main = geometry,
         model = spaceHyper) +
-  species(TAXON,  model = "iid", hyper = iidHyper_Ab) 
+  species(TAXON,  model = "iid", hyper = iidHyper_Ab)
+
+
+# Occupancy model with wastewater
+compsWastewater_Occ <- update(compsNoWastewater_Occ,
+                              ~ . + wastewater(EDF_MEAN_scaled,
+                                               model = "linear"))
+
+# RUN OCCURRENCE MODEL WITH WASTEWATER
+
+# Run model
+modelWastewater_Occ <- bru(
+  components = compsWastewater_Occ,
+  family = "binomial",
+  control.family = list(link = "logit"),
+  data = invData_wZeroes %>% filter(., !(is.na(EDF_MEAN_scaled))),
+  options = list(
+    control.inla=list(int.strategy = "eb"),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+gc()
+
+# RUN OCCURRENCE MODEL WITHOUT WASTEWATER
+
+# Run model
+modelNoWastewater_Occ <- bru(
+  components = compsNoWastewater_Occ,
+  family = "binomial",
+  control.family = list(link = "logit"),
+  data = invData_wZeroes,
+  options = list(
+    control.inla=list(int.strategy = "eb"),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+
+gc()
+
+### RUN OCCURRENCE TREND MODELS -------------------------------------------------
+
+# SET MODEL COMPONENTS
+
+# Occurrence trend model without wastewater
+compsNoWastewater_OccTrend <- OccTrend ~
+  pestDiv(pesticideShannon_scaled, model = "linear") +
+  pestTox(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
+  cattle(cattle_scaled, model = "linear") +
+  pigs(pigs_scaled, model = "linear") +
+  sheep(sheep_scaled, model = "linear") +
+  poultry(poultry_scaled, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
+  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+  quality(HS_HQA_scaled, model = "linear") +
+  upstreamArea(totalArea_scaled, model = "linear") +
+  PC1(PC1, model = "linear") +
+  PC2(PC2, model = "linear") +
+  PC3(PC3, model = "linear") +
+  PC4(PC4, model = "linear") +
+  space(main = geometry,
+        model = spaceHyper) +
+  species(TAXON,  model = "iid", hyper = iidHyper_Ab)
+
+# Occurrence trend model with wastewater
+compsWastewater_OccTrend <- update(compsNoWastewater_OccTrend,
+                                   ~ . + wastewater(EDF_MEAN_scaled,
+                                                    model = "linear"))
+
+# RUN OCCURRENCE MODEL WITH WASTEWATER
+
+# Run model
+modelWastewater_OccTrend <- bru(
+  components = compsWastewater_OccTrend,
+  data = invData_OccTrend %>% filter(., !(is.na(EDF_MEAN_scaled))),
+  options = list(
+    control.inla=list(int.strategy = "eb"),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+gc()
+
+# RUN OCCURRENCE MODEL WITHOUT WASTEWATER
+
+# Run model
+modelNoWastewater_OccTrend <- bru(
+  components = compsNoWastewater_OccTrend,
+  data = invData_OccTrend,
+  options = list(
+    control.inla=list(int.strategy = "eb"),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+
+gc()
+
+### RUN ABUNDANCE MODELS -------------------------------------------------------
+
+# SET MODEL COMPONENTS
 
 # Abundance model without wastewater
-compsNoWastewater_Ab <- Abundance ~
-  pesticideDiv(pesticideShannon_scaled, model = "linear") +
+compsNoWastewater_Ab <- geoMean  ~
+  pestDiv(pesticideShannon_scaled, model = "linear") +
+  pestTox(pesticideToxicLoad_scaled, model = "linear") +
+  eutroph(eutroph_scaled, model = "linear") +
+  cattle(cattle_scaled, model = "linear") +
+  pigs(pigs_scaled, model = "linear") +
+  sheep(sheep_scaled, model = "linear") +
+  poultry(poultry_scaled, model = "linear") +
+  residential(residential_scaled, model = "linear") +
+  woodland(woodland_scaled, model = "linear") +
+  modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+  quality(HS_HQA_scaled, model = "linear") +
+  upstreamArea(totalArea_scaled, model = "linear") +
+  PC1(PC1, model = "linear") +
+  PC2(PC2, model = "linear") +
+  PC3(PC3, model = "linear") +
+  PC4(PC4, model = "linear") +
+  month(
+    MONTH_NUM,
+    model = "rw2",
+    cyclic = TRUE,
+    scale.model = TRUE,
+    hyper = rwHyper_Ab) +
+  year(YEAR,
+       model = "rw2",
+       scale.model = TRUE,
+       hyper = rwHyper_Ab) +
+  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
+  space(main = geometry,
+        model = spaceHyper) +
+  species(TAXON,  model = "iid", hyper = iidHyper_Ab)
+
+# Abundance model with wastewater
+compsWastewater_Ab <- update(compsNoWastewater_Ab,
+                             ~ . + wastewater(EDF_MEAN_scaled,
+                                              model = "linear"))
+
+# RUN ABUNDANCE MODEL WITH WASTEWATER
+
+# Run model
+modelWastewater_Ab <- bru(
+  components = compsWastewater_Ab,
+  family = "poisson",
+  data = invData_GM %>% filter(., !(is.na(EDF_MEAN_scaled))),
+  options = list(
+    control.inla=list(int.strategy = "eb"),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+gc()
+
+# RUN ABUNDANCE MODEL WITHOUT WASTEWATER
+    
+# Run model
+modelNoWastewater_Ab <- bru(
+  components = compsNoWastewater_Ab,
+  family = "poisson",
+  data = invData_GM ,
+  options = list(
+    control.inla=list(int.strategy = "eb"),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+
+gc()
+
+### RUN ABUNDANCE TREND MODELS -------------------------------------------------
+
+# SET MODEL COMPONENTS
+
+# Abundance model without wastewater
+compsNoWastewater_AbTrend <- AbTrend ~
+  pestDiv(pesticideShannon_scaled, model = "linear") +
   pestTox(pesticideToxicLoad_scaled, model = "linear") +
   eutroph(eutroph_scaled, model = "linear") +
   cattle(cattle_scaled, model = "linear") +
@@ -459,46 +628,21 @@ compsNoWastewater_Ab <- Abundance ~
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  # month(
-  #   MONTH_NUM,
-  #   model = "rw2",
-  #   cyclic = TRUE,
-  #   scale.model = TRUE,
-  #   hyper = rwHyper_Ab) +
-  # year(YEAR,
-  #      model = "rw2",
-  #      scale.model = TRUE,
-  # hyper = rwHyper_Ab) +
-  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
-  # space(main = geometry,
-  #       model = spaceHyper) +
+  space(main = geometry,
+        model = spaceHyper) +
   species(TAXON,  model = "iid", hyper = iidHyper_Ab)
-    
-# RUN ABUNDANCE MODEL WITHOUT WASTEWATER
-    
-# Run model
-modelNoWastewater_Ab <- bru(
-  components = compsNoWastewater_Ab,
-  family = "zeroinflatednbinomial1",
-  data = invData_Ab_wZeroes,
-  options = list(
-    control.inla=list(int.strategy = "eb"),
-    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
-    verbose = TRUE
-  )
-)
 
-gc()
+# Abundance model with wastewater
+compsWastewater_AbTrend <- update(compsNoWastewater_Ab,
+                                  ~ . + wastewater(EDF_MEAN_scaled,
+                                                   model = "linear")) 
 
 # RUN ABUNDANCE MODEL WITH WASTEWATER
 
 # Run model
-modelWastewater_Ab <- bru(
-  components = compsWastewater_Ab,
-  family = "zeroinflatednbinomial1",
-  data = invData_Ab_wZeroes %>% filter(., !(is.na(EDF_MEAN_scaled))),
+modelWastewater_AbTrend <- bru(
+  components = compsWastewater_AbTrend,
+  data = invData_AbTrend %>% filter(., !(is.na(EDF_MEAN_scaled))),
   options = list(
     control.inla=list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
@@ -506,14 +650,33 @@ modelWastewater_Ab <- bru(
   )
 )
 gc()
-      
+
+# RUN ABUNDANCE MODEL WITHOUT WASTEWATER
+
+# Run model
+modelNoWastewater_AbTrend <- bru(
+  components = compsNoWastewater_AbTrend,
+  data = invData_AbTrend,
+  options = list(
+    control.inla=list(int.strategy = "eb"),
+    control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
+    verbose = TRUE
+  )
+)
+
+gc()
+
 # PLOTS ------------------------------------------------------------------
 
 # Loop through both models
 models <- list(modelWastewater_SR = modelWastewater_SR,
                modelNoWastewater_SR = modelNoWastewater_SR,
+               modelWastewater_SRtrend = modelWastewater_SRtrend,
+               modelNoWastewater_SRtrend = modelNoWastewater_SRtrend,
                modelWastewater_Ab = modelWastewater_Ab,
-               modelNoWastewater_Ab = modelNoWastewater_Ab)
+               modelNoWastewater_Ab = modelNoWastewater_Ab,
+               modelWastewater_AbTrend = modelWastewater_AbTrend,
+               modelNoWastewater_AbTrend = modelNoWastewater_AbTrend)
       
 for (modelName in names(models)) {
 
