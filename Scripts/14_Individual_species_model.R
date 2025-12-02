@@ -37,7 +37,7 @@ library(GGally)
 library(cowplot)
 
 # Set inla options
-inla.setOption(num.threads = 16)
+inla.setOption(num.threads = 32)
 inla.setOption(inla.timeout = 300) # 5 minutes
 
 ### DIRECTORY MANAGEMENT -------------------------------------------------------
@@ -58,7 +58,7 @@ englandSmooth <- readRDS(paste0(dataDir, "Raw/Country_data/EnglandSmooth.Rds"))
 # SET PARAMETERS ---------------------------------------------------------------
 
 linearLabels_NoW <- c(
-  'pesticideDiv' = "Pesticide diversity",
+  'pestDiv' = "Pesticide diversity",
   'pestTox' = "Pesticide toxicity",
   'eutroph' = "Mean N and P application",
   'cattle' = "Cattle",
@@ -79,7 +79,7 @@ randomLabels <- c( 'month' = "Month",
                    'year' = "Year")
 
 # Set minimum number of records to model - remove rare species
-minRecords <- 1000
+minRecords <- 100
 
 # Schedule 2 species list
 invDataS2 <- invData %>%
@@ -157,7 +157,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
                                        TOTAL_ABUNDANCE,
                                        0)) %>%
       # Remove TOTAL_ABUNDANCE column as deprecated
-      select(-TOTAL_ABUNDANCE)
+      select(-c(TOTAL_ABUNDANCE, TAXON))
     
     # Covert to unique column for each SAMPLE_ID
     speciesData <- speciesData %>%
@@ -168,7 +168,16 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       # Ungroup
       ungroup()
     
-    speciesTrendData <- speciesData %>%
+    # Add occurence column
+    speciesData <- speciesData %>%
+      mutate(Occurrence = ifelse(speciesAbundance > 0,
+                                1,
+                                0))
+    
+    # CREATE TREND DATASETS
+    
+    # Create ABUNDANCE trend
+    speciesData_AbTrend <- speciesData %>%
       group_by(SITE_ID) %>%
       filter(n()>=10) %>%
       filter(any(speciesAbundance > 0)) %>%
@@ -177,21 +186,31 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       # Ungroup
       ungroup()
 
-    # RUN ABUNDANCE MODEL ------------------------------------------------------
+    # Create OCCUPANCY trend
+    speciesData_OccTrend <- speciesData %>%
+      group_by(SITE_ID) %>%
+      filter(n()>=10) %>%
+      filter(any(Occurrence > 0)) %>%
+      mutate(OccTrend = lm(Occurrence~YEAR)$coefficients[["YEAR"]]) %>%
+      slice(which.max(OccTrend)) %>%
+      # Ungroup
+      ungroup()
     
     # SET MODEL PARAMETERS
-
+    
     # Priors for random effects
     iidHyper <- list(prec = list(prior = "pc.prec",
                                  param = c(1, 0.5)))
     rwHyper <- list(prec = list(prior="pc.prec",
                                 param=c(1, 0.5)))
     
+    # RUN OCCURRENCE MODEL ------------------------------------------------------
+    
     # SET MODEL COMPONENTS
     
-    # Model with wastewater
-    abWastewaterComps <- speciesAbundance ~
-      pesticideDiv(pesticideShannon_scaled, model = "linear") +
+    # Components WITHOUT wastewater
+    compsNoWastewater_Occ <- Occurrence ~
+      pestDiv(pesticideShannon_scaled, model = "linear") +
       pestTox(pesticideToxicLoad_scaled, model = "linear") +
       eutroph(eutroph_scaled, model = "linear") +
       cattle(cattle_scaled, model = "linear") +
@@ -202,7 +221,6 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       woodland(woodland_scaled, model = "linear") +
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
-      wastewater(EDF_MEAN_scaled, model = "linear") +
       upstreamArea(totalArea_scaled, model = "linear") +
       PC1(PC1, model = "linear") +
       PC2(PC2, model = "linear") +
@@ -211,22 +229,75 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       month(
         MONTH_NUM,
         model = "rw2",
-        scale.model = TRUE,
         cyclic = TRUE,
+        scale.model = TRUE,
         hyper = rwHyper) +
       year(YEAR,
            model = "rw2",
            scale.model = TRUE,
            hyper = rwHyper) +
-      #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR)# +
-       space(main = geometry,
-             model = spaceHyper)
+      #basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+      space(main = geometry,
+            model = spaceHyper)
+    
+    # Components WITHOUT wastewater
+    compsWastewater_Occ <-  update(compsNoWastewater_Occ,
+                                   ~ . + wastewater(EDF_MEAN_scaled,
+                                                    model = "linear")) 
+    
+    # RUN MODEL WITH WASTEWATER
+    
+    # Remove previous model
+    if (exists("occWastewater")) {rm(occWastewater)}
+    
+    # Add escape if model does not converge(
+    try(
       
-    # Model without wastewater
-    abNoWastewaterComps <- speciesAbundance ~
-      pesticideDiv(pesticideShannon_scaled, model = "linear") +
+      occWastewater <- bru(
+        components = compsWastewater_Occ,
+        family = "binomial",
+        control.family = list(link = "logit"),
+        data = speciesData %>% filter(., !(is.na(EDF_MEAN_scaled))),
+        options = list(
+          control.inla=list(int.strategy = "eb"),
+          control.compute = list(waic = TRUE,
+                                 dic = TRUE,
+                                 cpo = TRUE),
+          verbose = TRUE)
+      )
+    )
+    
+    # RUN MODEL WITHOUT WASTEWATER
+    
+    # Remove previous model
+    if (exists("occNoWastewater")) {rm("occNoWastewater")}
+    
+    # Add escape if model does not converge(
+    try(
+      
+      occNoWastewater <- bru(
+        components = compsNoWastewater_Occ,
+        family = "binomial",
+        control.family = list(link = "logit"),
+        data = speciesData,
+        options = list(
+          control.inla=list(int.strategy = "eb"),
+          control.compute = list(waic = TRUE,
+                                 dic = TRUE,
+                                 cpo = TRUE),
+          verbose = TRUE)
+      )
+    )
+    
+    # RUN OCCURRENCE TREND MODEL -----------------------------------------------
+
+    # SET MODEL COMPONENTS
+
+    # Components WITHOUT wastewater
+    compsNoWastewater_OccTrend <- OccTrend ~
+      pestDiv(pesticideShannon_scaled, model = "linear") +
       pestTox(pesticideToxicLoad_scaled, model = "linear") +
       eutroph(eutroph_scaled, model = "linear") +
       cattle(cattle_scaled, model = "linear") +
@@ -238,7 +309,78 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
       upstreamArea(totalArea_scaled, model = "linear") +
-      #wastewater(EDF_MEAN_scaled, model = "linear") +
+      PC1(PC1, model = "linear") +
+      PC2(PC2, model = "linear") +
+      PC3(PC3, model = "linear") +
+      PC4(PC4, model = "linear") +
+      #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
+      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
+      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
+      space(main = geometry,
+            model = spaceHyper)
+
+    # Components WITH wastewater
+    compsWastewater_OccTrend <- update(compsNoWastewater_OccTrend,
+                                   ~ . + wastewater(EDF_MEAN_scaled,
+                                                    model = "linear"))
+    # RUN MODEL WITH WASTEWATER
+
+    # Remove previous model
+    if (exists("occTrendWastewater")) {rm(occTrendWastewater)}
+
+    # Add escape if model does not converge(
+    try(
+
+      occTrendWastewater <- bru(
+        components = compsWastewater_OccTrend,
+        data = speciesData_OccTrend %>% filter(., !(is.na(EDF_MEAN_scaled))),
+        options = list(
+          control.inla=list(int.strategy = "eb"),
+          control.compute = list(waic = TRUE,
+                                 dic = TRUE,
+                                 cpo = TRUE),
+          verbose = TRUE)
+      )
+    )
+
+    # RUN MODEL WITHOUT WASTEWATER
+
+    # Remove previous model
+    if (exists("occTrendNoWastewater")) {rm("occTrendNoWastewater")}
+
+    # Add escape if model does not converge(
+    try(
+
+      occTrendNoWastewater <- bru(
+        components = compsNoWastewater_OccTrend,
+        data = speciesData_OccTrend,
+        options = list(
+          control.inla=list(int.strategy = "eb"),
+          control.compute = list(waic = TRUE,
+                                 dic = TRUE,
+                                 cpo = TRUE),
+          verbose = TRUE)
+      )
+    )
+
+    # RUN ABUNDANCE MODEL ------------------------------------------------------
+    
+    # SET MODEL COMPONENTS
+    
+    # Components WITHOUT wastewater
+    compsNoWastewater_Ab <- speciesAbundance ~
+      pestDiv(pesticideShannon_scaled, model = "linear") +
+      pestTox(pesticideToxicLoad_scaled, model = "linear") +
+      eutroph(eutroph_scaled, model = "linear") +
+      cattle(cattle_scaled, model = "linear") +
+      pigs(pigs_scaled, model = "linear") +
+      sheep(sheep_scaled, model = "linear") +
+      poultry(poultry_scaled, model = "linear") +
+      residential(residential_scaled, model = "linear") +
+      woodland(woodland_scaled, model = "linear") +
+      modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
+      quality(HS_HQA_scaled, model = "linear") +
+      upstreamArea(totalArea_scaled, model = "linear") +
       PC1(PC1, model = "linear") +
       PC2(PC2, model = "linear") +
       PC3(PC3, model = "linear") +
@@ -256,9 +398,14 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
       #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
       #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
-       space(main = geometry,
-             model = spaceHyper)
+      space(main = geometry,
+            model = spaceHyper)
     
+    # Components WITH wastewater
+    compsWastewater_Ab <- update(compsNoWastewater_Ab,
+                                 ~ . + wastewater(EDF_MEAN_scaled,
+                                                  model = "linear")) 
+
     # RUN MODEL WITH WASTEWATER
     
     # Remove previous model
@@ -268,7 +415,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     try(
 
       abWastewater <- bru(
-        components = abWastewaterComps,
+        components = compsWastewater_Ab,
         family = "zeroinflatednbinomial1",
         data = speciesData %>% filter(., !(is.na(EDF_MEAN_scaled))),
         options = list(
@@ -289,7 +436,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
     try(
       
       abNoWastewater <- bru(
-        components = abNoWastewaterComps,
+        components = compsNoWastewater_Ab,
         family = "zeroinflatednbinomial1",
         data = speciesData,
         options = list(
@@ -301,38 +448,13 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       )
     )
     
-    # RUN TREND MODEL ----------------------------------------------------------
-    
+    # RUN ABUNDANCE TREND MODEL ------------------------------------------------
+
     # SET MODEL COMPONENTS
-    
-    # Model with wastewater
-    trendWastewaterComps <- AbTrend ~
-      pesticideDiv(pesticideShannon_scaled, model = "linear") +
-      pestTox(pesticideToxicLoad_scaled, model = "linear") +
-      eutroph(eutroph_scaled, model = "linear") +
-      cattle(cattle_scaled, model = "linear") +
-      pigs(pigs_scaled, model = "linear") +
-      sheep(sheep_scaled, model = "linear") +
-      poultry(poultry_scaled, model = "linear") +
-      residential(residential_scaled, model = "linear") +
-      woodland(woodland_scaled, model = "linear") +
-      modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
-      quality(HS_HQA_scaled, model = "linear") +
-      wastewater(EDF_MEAN_scaled, model = "linear") +
-      upstreamArea(totalArea_scaled, model = "linear") +
-      PC1(PC1, model = "linear") +
-      PC2(PC2, model = "linear") +
-      PC3(PC3, model = "linear") +
-      PC4(PC4, model = "linear") +
-      #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR)# +
-      space(main = geometry,
-            model = spaceHyper)
-    
-    # Model without wastewater
+
+    # Components WITHOUT wastewater
     trendNoWastewaterComps <- AbTrend ~
-      pesticideDiv(pesticideShannon_scaled, model = "linear") +
+      pestDiv(pesticideShannon_scaled, model = "linear") +
       pestTox(pesticideToxicLoad_scaled, model = "linear") +
       eutroph(eutroph_scaled, model = "linear") +
       cattle(cattle_scaled, model = "linear") +
@@ -354,18 +476,23 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
       space(main = geometry,
             model = spaceHyper)
-    
+
+    # Components WITH wastewater
+    trendWastewaterComps <- update(compsNoWastewater_Ab,
+                                   ~ . + wastewater(EDF_MEAN_scaled,
+                                                    model = "linear"))
+
     # RUN MODEL WITH WASTEWATER
-    
+
     # Remove previous model
-    if (exists("trendWastewater")) {rm(trendWastewater)}
-    
+    if (exists("abTrendWastewater")) {rm(abTrendWastewater)}
+
     # Add escape if model does not converge(
     try(
-      
-      trendWastewater <- bru(
+
+      abTrendWastewater <- bru(
         components = trendWastewaterComps,
-        data = speciesTrendData %>% filter(., !(is.na(EDF_MEAN_scaled))),
+        data = speciesData_AbTrend %>% filter(., !(is.na(EDF_MEAN_scaled))),
         options = list(
           control.inla=list(int.strategy = "eb"),
           control.compute = list(waic = TRUE,
@@ -374,18 +501,18 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
           verbose = TRUE)
       )
     )
-    
+
     # RUN MODEL WITHOUT WASTEWATER
-    
+
     # Remove previous model
-    if (exists("trendNoWastewater")) {rm("trendNoWastewater")}
-    
+    if (exists("abTrendNoWastewater")) {rm("abTrendNoWastewater")}
+
     # Add escape if model does not converge(
     try(
-      
-      trendNoWastewater <- bru(
+
+      abTrendNoWastewater <- bru(
         components = trendNoWastewaterComps,
-        data = speciesTrendData,
+        data = speciesData_AbTrend,
         options = list(
           control.inla=list(int.strategy = "eb"),
           control.compute = list(waic = TRUE,
@@ -394,24 +521,42 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
           verbose = TRUE)
       )
     )
+
+    # PLOTS --------------------------------------------------------------------
+   
+    # SET UP LOOP
     
+     try(
     
     # Only plot and save if both models converge
-    if (!is.null(summary(abWastewater)$inla) & 
-        !is.null(summary(abNoWastewater)$inla) &
-        !is.null(summary(trendWastewater)$inla) &
-        !is.null(summary(trendNoWastewater)$inla)) {
+       if (
+         !is.null(summary(occWastewater)$inla) &
+           !is.null(summary(occNoWastewater)$inla) &
+           !is.null(summary(occTrendWastewater)$inla) &
+           !is.null(summary(occTrendNoWastewater)$inla) &
+           !is.null(summary(abWastewater)$inla) &
+           !is.null(summary(abNoWastewater)$inla) &
+           !is.null(summary(abTrendWastewater)$inla) &
+           !is.null(summary(abTrendNoWastewater)$inla)
+                    ) {
 
       # Loop through both models
-      models <- list(abWastewater = abWastewater,
+      models <- list(occWastewater = occWastewater,
+                     occNoWastewater = occNoWastewater,
+                     occTrendWastewater = occTrendWastewater,
+                     occTrendNoWastewater = occTrendNoWastewater,
+                     abWastewater = abWastewater,
                      abNoWastewater = abNoWastewater,
-                     trendWastewater = trendWastewater,
-                     trendNoWastewater = trendNoWastewater) 
-      
+                     abTrendWastewater = abTrendWastewater,
+                     abTrendNoWastewater = abTrendNoWastewater
+                    ) 
       
       # Loop through both models
-      for (modelName in c("abWastewater", "abNoWastewater",
-                          "trendWastewater", "trendNoWastewater")) {
+      for (modelName in c("occWastewater", "occNoWastewater",
+                          "occTrendWastewater", "occTrendNoWastewater",
+                          "abWastewater", "abNoWastewater",
+                          "abTrendWastewater", "abTrendNoWastewater")
+                          ) {
         
         # Get model
         model <- models[[modelName]]
@@ -420,13 +565,12 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         modelSummary <- summary(model)
         
         # Get linear effect labels
-        if (modelName %in% c("abNoWastewater", 
-                             "trendNoWastewater" )) { linearLabels <- linearLabels_NoW}
-        if (modelName %in% c("abWastewater", 
-                             "trendWastewater" )) { linearLabels <- linearLabels_W}
-        
-        # PLOTS ------------------------------------------------------------------
-        
+        if (grepl("NoWastewater", modelName)) {
+          linearLabels <- linearLabels_NoW
+        } else {
+          linearLabels <- linearLabels_W
+        }
+
         # FIXED EFFECTS
         
         # Loop through variables and extract estimates
@@ -486,7 +630,8 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         
         # RANDOM EFFECTS
         
-        if (modelName %in% c("abWastewater", "abNoWastewater")) {
+        if (modelName %in% c("occWastewater", "occNoWastewater",
+                             "abWastewater", "abNoWastewater")) {
           
         # Extract random effects from model, and exclude spatial
         randomEff_df <- model$summary.random
@@ -548,7 +693,8 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
           labs(fill = "Spatial Field   ")
         
         # COMBINE PLOTS
-        if (modelName %in% c("abWastewater", "abNoWastewater")) {
+        if (modelName %in% c("occWastewater", "occNoWastewater",
+                             "abWastewater", "abNoWastewater")) {
         
         evalPlot <- plot_grid(fixedEffPlot, randomEffPlot, spatialEffPlot,
                               nrow = 1, ncol = 3)
@@ -602,5 +748,6 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
                limitsize = FALSE)
       }
     }
+    )
   }
 }
