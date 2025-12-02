@@ -38,7 +38,8 @@ dataDir <- "/dbfs/mnt/lab/unrestricted/charles.cunningham@defra.gov.uk/Pesticide
 # DATA FILES -------------------------------------------------------------------
 
 # Loop through models that include and exclude wastewater
-for (type in c("Wastewater", "NoWastewater")) {
+for (type in c("abWastewater", "abNoWastewater",
+               "trendWastewater", "trendNoWastewater")) {
 
   # Load SDM fixed effect summaries
   load(paste0(dataDir, "Species_effects/", type, "/Schedule_2.Rdata"))
@@ -55,9 +56,9 @@ for (type in c("Wastewater", "NoWastewater")) {
 # N.B. Species effect nested within taxa effect
 # (i.e. taxa + taxa:species random effects)
 
-pesticideDiv_brms <- brm(data = effects_wide,
+pestDiv_brms <- brm(data = effects_wide,
                  family = gaussian,
-                 mean_pesticideDiv | se(sd_pesticideDiv) ~
+                 mean_pestDiv | se(sd_pestDiv) ~
                    1 + (1 | taxa) + (1 | taxa:species),
                  prior = c(prior(normal(0, 1), class = Intercept),
                            prior(cauchy(0, 1), class = sd)),
@@ -69,9 +70,9 @@ pesticideDiv_brms <- brm(data = effects_wide,
                  cores = 4,
                  chains = 4)
 
-chemApp_brms <- brm(data = effects_wide,
+pestTox_brms <- brm(data = effects_wide,
                          family = gaussian,
-                         mean_chemApp | se(sd_chemApp) ~
+                         mean_pestTox | se(sd_pestTox) ~
                            1 + (1 | taxa) + (1 | taxa:species),
                          prior = c(prior(normal(0, 1), class = Intercept),
                                    prior(cauchy(0, 1), class = sd)),
@@ -83,9 +84,9 @@ chemApp_brms <- brm(data = effects_wide,
                          cores = 4,
                          chains = 4)
 
-lessPest_brms <- brm(data = effects_wide,
+eutroph_brms <- brm(data = effects_wide,
                 family = gaussian,
-                mean_lessPest | se(sd_lessPest) ~
+                mean_eutroph | se(sd_eutroph) ~
                   1 + (1 | taxa) + (1 | taxa:species),
                 prior = c(prior(normal(0, 1), class = Intercept),
                           prior(cauchy(0, 1), class = sd)),                
@@ -223,7 +224,7 @@ upstreamArea_brms <- brm(data = effects_wide,
                      cores = 4,
                      chains = 4)
 
-if(type == "Wastewater") {
+if(type %in% c("abWastewater", "trendWastewater")) {
   
   wastewater_brms <- brm(data = effects_wide,
                        family = gaussian,
@@ -245,7 +246,7 @@ if(type == "Wastewater") {
 ### Save
 
 # List of brms objects
-brmsList <- c("pesticideDiv_brms", "chemApp_brms", "lessPest_brms",
+brmsList <- c("pestDiv_brms", "pestTox_brms", "eutroph_brms",
               "cattle_brms", "sheep_brms", "pigs_brms", "poultry_brms",
               "wastewater_brms", "modification_brms", "quality_brms",
               "residential_brms", "upstreamArea_brms", "woodland_brms")
