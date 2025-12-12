@@ -78,10 +78,12 @@ invData$YEAR <- invData$YEAR - (min(invData$YEAR) - 1)
 
 # Filter available  data
 invData <- invData %>%
-  # Remove sites with upstream area greater than 500km^2 (500,000,000m^2) 
+  # Remove sites with upstream area greater than 200km^2 (200,000,000m^2) 
   # to avoid increasing uncertainty with larger areas
   # area is in 25x25m cells
-  filter((totalArea * 25*25) < 500000000) %>%
+  filter((totalArea * 25*25) < 200000000) %>%
+  # Filter rows to spring
+  filter(MONTH_NUM >=3 & MONTH_NUM <= 5) %>%
   # Remove rows with no upstream data
   filter(!(is.na(pesticideLoad))) %>%
   # Remove rows with no site data
@@ -124,6 +126,7 @@ invData$WATER_BODY_F <-paste( invData$REPORTING_AREA,
   as.factor() %>%
   as.numeric() %>%
   as.factor()
+invData$SITE_ID <- as.factor(invData$SITE_ID)
 
 ### CONVERT SAMPLING SITE ABIOTIC VARIABLES TO PCA -----------------------------
 
