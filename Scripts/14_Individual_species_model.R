@@ -103,28 +103,28 @@ bng <- sf::st_crs(paste0(dataDir, "bng.prj"))$wkt
 
 ### CREATE MESH ----------------------------------------------------------------
 
-# Max edge is as a rule of thumb (range/3 to range/10)
-maxEdge <- 20
-
-# Create mesh
-mesh <- fm_mesh_2d_inla(boundary = englandSmooth,
-                        max.edge =  maxEdge,
-                        cutoff = maxEdge/5,
-                        min.angle = 26,
-                        crs =  gsub( "units=m", "units=km",
-                                     st_crs(bng)$proj4string ))
-
-# Define spatial SPDE priors
-spaceHyper <- inla.spde2.pcmatern(
-  mesh,
-  prior.range = c(1 * maxEdge, 0.5),
-  prior.sigma = c(1, 0.5))
-
-# Create mesh dataframe for examining spatial field
-mesh_df <- fm_pixels(mesh,
-                     mask = st_transform(englandSmooth,
-                                         crs = gsub( "units=m", "units=km",
-                                                     st_crs(bng)$proj4string )))
+# # Max edge is as a rule of thumb (range/3 to range/10)
+# maxEdge <- 20
+# 
+# # Create mesh
+# mesh <- fm_mesh_2d_inla(boundary = englandSmooth,
+#                         max.edge =  maxEdge,
+#                         cutoff = maxEdge/5,
+#                         min.angle = 26,
+#                         crs =  gsub( "units=m", "units=km",
+#                                      st_crs(bng)$proj4string ))
+# 
+# # Define spatial SPDE priors
+# spaceHyper <- inla.spde2.pcmatern(
+#   mesh,
+#   prior.range = c(1 * maxEdge, 0.5),
+#   prior.sigma = c(1, 0.5))
+# 
+# # Create mesh dataframe for examining spatial field
+# mesh_df <- fm_pixels(mesh,
+#                      mask = st_transform(englandSmooth,
+#                                          crs = gsub( "units=m", "units=km",
+#                                                      st_crs(bng)$proj4string )))
 
 ### MODEL SET UP FOR INDIVIDUAL SPECIES ----------------------------------------
 # Loop through taxa then species to preserve ordering
@@ -236,11 +236,12 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            model = "rw2",
            scale.model = TRUE,
            hyper = rwHyper) +
-      #basin(BASIN_F, model = "iid", hyper = iidHyper) +
-      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+      basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      #site(SITE_ID, model = "iid", hyper = iidHyper_SR)
+      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) 
       #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
-      space(main = geometry,
-            model = spaceHyper)
+      # space(main = geometry,
+      #       model = spaceHyper)
     
     # Components WITHOUT wastewater
     compsWastewater_Occ <-  update(compsNoWastewater_Occ,
@@ -313,11 +314,12 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       PC2(PC2, model = "linear") +
       PC3(PC3, model = "linear") +
       PC4(PC4, model = "linear") +
-      #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
-      space(main = geometry,
-            model = spaceHyper)
+      basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      #site(SITE_ID, model = "iid", hyper = iidHyper_SR)
+      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) 
+    #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+    # space(main = geometry,
+    #       model = spaceHyper)
 
     # Components WITH wastewater
     compsWastewater_OccTrend <- update(compsNoWastewater_OccTrend,
@@ -395,11 +397,12 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
            model = "rw2",
            scale.model = TRUE,
            hyper = rwHyper) +
-      #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
-      space(main = geometry,
-            model = spaceHyper)
+      basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      #site(SITE_ID, model = "iid", hyper = iidHyper_SR)
+      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper)
+    #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+    # space(main = geometry,
+    #       model = spaceHyper)
     
     # Components WITH wastewater
     compsWastewater_Ab <- update(compsNoWastewater_Ab,
@@ -466,16 +469,16 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
       modification(HS_HMS_RSB_SubScore_scaled, model = "linear") +
       quality(HS_HQA_scaled, model = "linear") +
       upstreamArea(totalArea_scaled, model = "linear") +
-      #wastewater(EDF_MEAN_scaled, model = "linear") +
       PC1(PC1, model = "linear") +
       PC2(PC2, model = "linear") +
       PC3(PC3, model = "linear") +
       PC4(PC4, model = "linear") +
-      #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-      #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
-      space(main = geometry,
-            model = spaceHyper)
+      basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      #site(SITE_ID, model = "iid", hyper = iidHyper_SR)
+      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper)
+    #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+    # space(main = geometry,
+    #       model = spaceHyper)
 
     # Components WITH wastewater
     trendWastewaterComps <- update(compsNoWastewater_Ab,
@@ -644,7 +647,7 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
           rename("q0.025" = "0.025quant",
                  "q0.5" = "0.5quant",
                  "q0.975" = "0.975quant") %>%
-          filter(!(randomEff %in% c("basin", "catchment", "wb", "space"))) %>%
+          filter(!(randomEff %in% c("basin", "catchment", "wb", "site", "space"))) %>%
           select(ID, q0.025, q0.5, q0.975, randomEff)
         
          }
@@ -674,35 +677,35 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         
         # SPATIAL FIELD
         
-        # Predict spatial field over domain
-        pred_df <- predict(model, mesh_df, ~list(space = space))
-
-        # Plot spatial field
-        spatialEffPlot <- ggplot() +
-          gg(pred_df$space["mean"], geom = "tile") +
-          gg(st_transform(englandSmooth,
-                          crs = gsub( "units=m", "units=km",
-                                      st_crs(bng)$proj4string)),
-             alpha = 0,
-             col = "black",
-             size = 1.5) +
-          theme_void() +
-          theme(legend.position = "bottom") +
-          scale_fill_distiller(palette = 'RdYlBu', direction = 1,
-                               limits = c(-1,1)*max(abs(pred_df$space$mean))) +
-          labs(fill = "Spatial Field   ")
-        
+        # # Predict spatial field over domain
+        # pred_df <- predict(model, mesh_df, ~list(space = space))
+        # 
+        # # Plot spatial field
+        # spatialEffPlot <- ggplot() +
+        #   gg(pred_df$space["mean"], geom = "tile") +
+        #   gg(st_transform(englandSmooth,
+        #                   crs = gsub( "units=m", "units=km",
+        #                               st_crs(bng)$proj4string)),
+        #      alpha = 0,
+        #      col = "black",
+        #      size = 1.5) +
+        #   theme_void() +
+        #   theme(legend.position = "bottom") +
+        #   scale_fill_distiller(palette = 'RdYlBu', direction = 1,
+        #                        limits = c(-1,1)*max(abs(pred_df$space$mean))) +
+        #   labs(fill = "Spatial Field   ")
+        # 
         # COMBINE PLOTS
         if (modelName %in% c("occWastewater", "occNoWastewater",
                              "abWastewater", "abNoWastewater")) {
         
-        evalPlot <- plot_grid(fixedEffPlot, randomEffPlot, spatialEffPlot,
-                              nrow = 1, ncol = 3)
+        evalPlot <- plot_grid(fixedEffPlot, randomEffPlot, #spatialEffPlot,
+                              nrow = 2, ncol = 1)
         
         } else {
           
-          evalPlot <- plot_grid(fixedEffPlot, spatialEffPlot,
-                                nrow = 1, ncol = 2)
+          evalPlot <- plot_grid(fixedEffPlot,# spatialEffPlot,
+                                nrow = 1, ncol = 1)
         }
         
         # SAVE OUTPUT ------------------------------------------------------------
@@ -743,8 +746,8 @@ for (iTaxa in unique(invData$TAXON_GROUP_NAME)) {
         ggsave(paste0(iSpeciesDir,
                       "/ModelPlots/", iSpecies, ".png"),
                evalPlot,
-               width = 8000, height = 2000, 
-               units = "px", dpi = 400,
+               width = 3000, height = 3000, 
+               units = "px", dpi = 300,
                limitsize = FALSE)
       }
     }
