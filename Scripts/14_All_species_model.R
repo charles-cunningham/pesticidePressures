@@ -79,13 +79,9 @@ randomLabels <- c( 'month' = "Month",
                    'year' = "Year")
 
 # Priors for random effects
-iidHyper_SR <- list(prec = list(prior = "pc.prec",
-                             param = c(1, 0.5)))
-rwHyper_SR <- list(prec = list(prior="pc.prec",
-                            param=c(1, 0.5)))
-iidHyper_Ab <- list(prec = list(prior = "pc.prec",
+iidHyper <- list(prec = list(prior = "pc.prec",
                                 param = c(1, 0.5)))
-rwHyper_Ab <- list(prec = list(prior="pc.prec",
+rwHyper <- list(prec = list(prior="pc.prec",
                                param=c(1, 0.5)))
 
 ### Download BNG WKT string
@@ -202,9 +198,8 @@ invData_wZeroes <- invData_wZeroes %>%
 # Create RICHNESS trend
 invData_trendSR <- invData_SR %>%
   group_by(SITE_ID) %>%
-  #filter(n()>=10) %>%
-  #mutate(richnessTrend = lm(richness~YEAR)$coefficients[["YEAR"]]) %>%
-  
+  filter(n()>=10) %>%
+  mutate(richnessTrend = lm(richness~YEAR)$coefficients[["YEAR"]]) %>%
   # Extract max (all numSpecies are the same for each SAMPLE_ID)
   slice_head(n = 1) %>%
   # Ungroup
@@ -231,29 +226,29 @@ invData_OccTrend <- invData_wZeroes %>%
   ungroup()
 
 ### CREATE MESH ----------------------------------------------------------------
-
-# Max edge is as a rule of thumb (range/3 to range/10)
-maxEdge <- 20
-
-# Create mesh
-mesh <- fm_mesh_2d_inla(boundary = englandSmooth,
-                        max.edge =  maxEdge,
-                        cutoff = maxEdge/5,
-                        min.angle = 26,
-                        crs =  gsub( "units=m",
-                                     "units=km", st_crs(bng)$proj4string ))
-
-# Define spatial SPDE priors
-spaceHyper <- inla.spde2.pcmatern(
-  mesh,
-  prior.range = c(1 * maxEdge, 0.5),
-  prior.sigma = c(1, 0.5))
-
-# Create mesh dataframe for examining spatial field
-mesh_df <- fm_pixels(mesh,
-                     mask = st_transform(englandSmooth,
-                                         crs = gsub( "units=m", "units=km",
-                                                     st_crs(bng)$proj4string )))
+# 
+# # Max edge is as a rule of thumb (range/3 to range/10)
+# maxEdge <- 20
+# 
+# # Create mesh
+# mesh <- fm_mesh_2d_inla(boundary = englandSmooth,
+#                         max.edge =  maxEdge,
+#                         cutoff = maxEdge/5,
+#                         min.angle = 26,
+#                         crs =  gsub( "units=m",
+#                                      "units=km", st_crs(bng)$proj4string ))
+# 
+# # Define spatial SPDE priors
+# spaceHyper <- inla.spde2.pcmatern(
+#   mesh,
+#   prior.range = c(1 * maxEdge, 0.5),
+#   prior.sigma = c(1, 0.5))
+# 
+# # Create mesh dataframe for examining spatial field
+# mesh_df <- fm_pixels(mesh,
+#                      mask = st_transform(englandSmooth,
+#                                          crs = gsub( "units=m", "units=km",
+#                                                      st_crs(bng)$proj4string )))
 
 ### RUN RICHNESS MODELS --------------------------------------------------------
     
@@ -282,19 +277,20 @@ compsNoWastewater_SR <- richness ~
     model = "rw2",
     cyclic = TRUE,
     scale.model = TRUE,
-    hyper = rwHyper_SR
+    hyper = rwHyper
   ) +
   year(
     YEAR,
        model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper_SR
+       hyper = rwHyper
     ) +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
-  # space(main = geometry, 
-  #       model = spaceHyper)
+  basin(BASIN_F, model = "iid", hyper = iidHyper) +
+  #site(SITE_ID, model = "iid", hyper = iidHyper)
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper)
+#wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+# space(main = geometry,
+#       model = spaceHyper)
 
 # Richness model with wastewater
 compsWastewater_SR <- update(compsNoWastewater_SR,
@@ -353,11 +349,12 @@ compsNoWastewater_SRtrend <- richnessTrend ~
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) #+
-  # space(main = geometry,
-  #       model = spaceHyper)
+  basin(BASIN_F, model = "iid", hyper = iidHyper) +
+  #site(SITE_ID, model = "iid", hyper = iidHyper)
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper)
+#wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+# space(main = geometry,
+#       model = spaceHyper)
 
 # Richness model with wastewater
 compsWastewater_SRtrend <- update(compsNoWastewater_SRtrend,
@@ -419,18 +416,18 @@ compsNoWastewater_Occ <- Occurrence ~
     model = "rw2",
     cyclic = TRUE,
     scale.model = TRUE,
-    hyper = rwHyper_Ab) +
+    hyper = rwHyper) +
   year(YEAR,
        model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper_Ab) +
-  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
-  space(main = geometry,
-        model = spaceHyper) +
-  species(TAXON,  model = "iid", hyper = iidHyper_Ab)
-
+       hyper = rwHyper) +
+      basin(BASIN_F, model = "iid", hyper = iidHyper) +
+      #site(SITE_ID, model = "iid", hyper = iidHyper)
+      catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+      #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+      # space(main = geometry,
+      #       model = spaceHyper)
+  species(TAXON,  model = "iid", hyper = iidHyper)
 
 # Occupancy model with wastewater
 compsWastewater_Occ <- update(compsNoWastewater_Occ,
@@ -492,9 +489,13 @@ compsNoWastewater_OccTrend <- OccTrend ~
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  space(main = geometry,
-        model = spaceHyper) +
-  species(TAXON,  model = "iid", hyper = iidHyper_Ab)
+  basin(BASIN_F, model = "iid", hyper = iidHyper) +
+  #site(SITE_ID, model = "iid", hyper = iidHyper)
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  # space(main = geometry,
+  #       model = spaceHyper)
+  species(TAXON,  model = "iid", hyper = iidHyper)
 
 # Occurrence trend model with wastewater
 compsWastewater_OccTrend <- update(compsNoWastewater_OccTrend,
@@ -535,7 +536,7 @@ gc()
 # SET MODEL COMPONENTS
 
 # Abundance model without wastewater
-compsNoWastewater_Ab <- geoMean  ~
+compsNoWastewater_Ab <- Abundance  ~
   pestDiv(pesticideShannon_scaled, model = "linear") +
   pestTox(pesticideToxicLoad_scaled, model = "linear") +
   eutroph(eutroph_scaled, model = "linear") +
@@ -557,17 +558,18 @@ compsNoWastewater_Ab <- geoMean  ~
     model = "rw2",
     cyclic = TRUE,
     scale.model = TRUE,
-    hyper = rwHyper_Ab) +
+    hyper = rwHyper) +
   year(YEAR,
        model = "rw2",
        scale.model = TRUE,
-       hyper = rwHyper_Ab) +
-  #basin(BASIN_F, model = "iid", hyper = iidHyper_SR) +
-  #catchment(CATCHMENT_F, model = "iid", hyper = iidHyper_SR) +
-  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper_SR) +
-  space(main = geometry,
-        model = spaceHyper) +
-  species(TAXON,  model = "iid", hyper = iidHyper_Ab)
+       hyper = rwHyper) +
+  basin(BASIN_F, model = "iid", hyper = iidHyper) +
+  #site(SITE_ID, model = "iid", hyper = iidHyper_SR)
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  # space(main = geometry,
+  #       model = spaceHyper)
+  species(TAXON,  model = "iid", hyper = iidHyper)
 
 # Abundance model with wastewater
 compsWastewater_Ab <- update(compsNoWastewater_Ab,
@@ -579,8 +581,8 @@ compsWastewater_Ab <- update(compsNoWastewater_Ab,
 # Run model
 modelWastewater_Ab <- bru(
   components = compsWastewater_Ab,
-  family = "poisson",
-  data = invData_GM %>% filter(., !(is.na(EDF_MEAN_scaled))),
+  family = "zeroinflatednbinomial1",
+  data = invData_wZeroes %>% filter(., !(is.na(EDF_MEAN_scaled))),
   options = list(
     control.inla=list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
@@ -594,8 +596,8 @@ gc()
 # Run model
 modelNoWastewater_Ab <- bru(
   components = compsNoWastewater_Ab,
-  family = "poisson",
-  data = invData_GM ,
+  family = "zeroinflatednbinomial1",
+  data = invData_wZeroes ,
   options = list(
     control.inla=list(int.strategy = "eb"),
     control.compute = list(waic = TRUE, dic = TRUE, cpo = TRUE),
@@ -628,9 +630,13 @@ compsNoWastewater_AbTrend <- AbTrend ~
   PC2(PC2, model = "linear") +
   PC3(PC3, model = "linear") +
   PC4(PC4, model = "linear") +
-  space(main = geometry,
-        model = spaceHyper) +
-  species(TAXON,  model = "iid", hyper = iidHyper_Ab)
+  basin(BASIN_F, model = "iid", hyper = iidHyper) +
+  #site(SITE_ID, model = "iid", hyper = iidHyper)
+  catchment(CATCHMENT_F, model = "iid", hyper = iidHyper) +
+  #wb(WATER_BODY_F, model = "iid", hyper = iidHyper) +
+  # space(main = geometry,
+  #       model = spaceHyper)
+  species(TAXON,  model = "iid", hyper = iidHyper)
 
 # Abundance model with wastewater
 compsWastewater_AbTrend <- update(compsNoWastewater_Ab,
